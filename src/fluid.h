@@ -27,13 +27,34 @@
 	#include <curand.h>
     #include <string.h>
     #include "vector.h"
+//	#include "gvdb_vec.h"
+//	using namespace nvdb;
+
     #include "masks.h"
-//#include <../cuda-11.2/targets/x86_64-linux/include/curand_kernel.h>
-    #include <curand_kernel.h>
+#include <../cuda-11.2/targets/x86_64-linux/include/curand_kernel.h>
 
 	typedef	unsigned int		uint;	
 	typedef	unsigned short int	ushort;	
 
+	struct NList {
+		int num;
+		int first;
+	};
+	struct Fluid {						// offset - TOTAL: 72 (must be multiple of 12)
+		Vector3DF		pos;			// 0                // could borrow common/vector.h  .cpp from fluids_v3
+		Vector3DF		vel;			// 12
+		Vector3DF		veleval;		// 24
+		Vector3DF		force;			// 36
+		float			pressure;		// 48
+		float			density;		// 52
+		int				grid_cell;		// 56
+		int				grid_next;		// 60
+		uint			clr;			// 64
+		uint			state;			// 68
+	};
+
+    
+    
     // Buffers:
     // NB one buffer created per particle parameter (marked '#'),
     // & explicitly allocated in FluidSystem::AllocateParticles ( int cnt ).
@@ -52,7 +73,7 @@
     // 
     // # if elastic force is written to both interacting particles, then the effective number of bonds doubles.
     // # i.e. each particle stores three bonds, but the average bonds per atom would be six.
-    #define BONDS_PER_PARTICLE  4// 6 enables triangulated cubic structure    4   // current: 4 bonds plus length and modulus of each NB written to both particles so average 8 bonds per particle //old: actually 3, [0] for self ID, mass & radius
+    #define BONDS_PER_PARTICLE  6// 6 enables triangulated cubic structure    4   // current: 4 bonds plus length and modulus of each NB written to both particles so average 8 bonds per particle //old: actually 3, [0] for self ID, mass & radius
 #define DATA_PER_BOND 9 //6 : [0]current index, [1]elastic limit, [2]restlength, [3]modulus, [4]damping coeff, [5]particle ID, [6]bond index [7]stress integrator [8]change-type binary indicator
                         // previously 3 : [0]current index, [1]mod_lim, [2]particle ID.
 #define BOND_DATA BONDS_PER_PARTICLE * DATA_PER_BOND
@@ -135,7 +156,6 @@
 
     // additional buffers for morphogenesis   
     #define FELASTIDX   14      //# currently [0]current index, [1]elastic limit, [2]restlength, [3]modulus, [4]damping coeff, [5]particle ID, [6]bond index [7]stress integrator [8]change-type binary indicator
-	enum {/*0*/current_index, /*1*/elastic_limit, /*2*/rest_length, /*3*/modulus, /*4*/damping_coeff, /*5*/particle_ID, /*6 bond_index*/ strain_sq_integrator, /*7*/strain_integrator, /*8*/change_type};//FELASTIDX    
                                 //old : BOND_DATA = BONDS_PER_PARTICLE*3 = 12 //uint[BONDS_PER_PARTICLE * 2 = 8 ]  particleID, modulus, elastic limit    
                                 /* old old : 0=self UID, mass, radius. >0= modulus & particle UID */
     #define FPARTICLEIDX 29    //# uint[BONDS_PER_PARTICLE *2]  list of other particles' bonds connecting to this particle AND their indices // NB risk of overwriting race condition, when making bonds.   
@@ -193,8 +213,6 @@
 		#define CALLFUNC
 	#endif		
 
-
-	
 	// Particle & Grid Buffers
 	struct FBufs {       // holds an array of pointers, and functions to access them.    // used to declare "fbuf" at top of fluid_system_cuda.cu
         // Data type sizes  see https://en.cppreference.com/w/cpp/language/types ,  
@@ -235,7 +253,6 @@
 			CUdeviceptr		gpu    (int n )	{ return mgpu[n];  }
 			CUdeviceptr*	gpuptr (int n )	{ return &mgpu[n]; }		
 		#endif			
-
 	};
 
 /*			float3*			mpos;			// particle buffers
@@ -288,26 +305,31 @@
         uint            debug;
 		int				numThreads, numBlocks, threadsPerBlock;
 		int				gridThreads, gridBlocks;	
-		int				szPnts, szGrid;
+
+		int				szPnts, szHash, szGrid;
 		int				stride, pnum, pnumActive, maxPoints;
         bool            freeze;
         uint            frame;
 		int				chk;
 		float			pdist, pmass, prest_dens;
 		float			pextstiff, pintstiff;
-		float			pradius, psmoothradius, r2, psimscale, pvisc, psurface_t;
+		float			pradius, psmoothradius, r2, psimscale, pvisc;
 		float			pforce_min, pforce_max, pforce_freq, pground_slope;
 		float			pvel_limit, paccel_limit, pdamp;
 		float3			pboundmin, pboundmax, pgravity;
 		float			AL, AL2, VL, VL2;
-		float			H, d2, rd2, vterm;		// used in force calculation
-		float			poly6kern, spikykern, lapkern, gausskern, wendlandC2kern;
+
+		float			d2, rd2, vterm;		// used in force calculation		 
+		
+		float			poly6kern, spikykern, lapkern, gausskern;
+
 		float3			gridSize, gridDelta, gridMin, gridMax;
 		int3			gridRes, gridScanMax;
 		int				gridSrch, gridTotal, gridAdjCnt, gridActive;
 		int				gridAdj[64];
-        float           actuation_factor;
-        float           actuation_period;
+
+		int3			brickRes;
+		int				pemit;
 	};
     
     //////////////////////
@@ -369,11 +391,6 @@
         int secrete[NUM_GENES][2*NUM_TF+1];         // -ve secretion => active breakdown. Can be useful for pattern formation.
         int activate[NUM_GENES][2*NUM_GENES+1];
         //uint *function[NUM_GENES];                // cancelled// Hard code a case-switch that calls each gene's function iff the gene is active.
-        
-        enum {l_a, l_b, l_c, l_d,   s_a, s_b, s_c, s_d};   // tanh offset parameters for lengthening/shortening and stregthening/weakening bonds. // computed from params below. ? 
-        //y-shift, y-scaling, x-scaling, x-shift
-        float tanh_param[3][8];
-        
         enum {elastin,collagen,apatite};
                                                     //FBondParams fbondparams[3];   // 0=elastin, 1=collagen, 2=apatite
         
@@ -392,4 +409,8 @@
     // When finding particles in range for a small particle - consider (i) is the bin in range, (ii) iff particle x&y&z are in range 
     // When combining particles - (i) similar type ?, (ii) gradients, (iii) significance to simulation. 
     
+    
+
+
+
 #endif /*PARTICLE_H_*/

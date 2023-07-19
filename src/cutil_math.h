@@ -1,43 +1,25 @@
     /*
- * Copyright 1993-2007 NVIDIA Corporation.  All rights reserved.
- *
- * NOTICE TO USER:
- *
- * This source code is subject to NVIDIA ownership rights under U.S. and
- * international Copyright laws.  Users and possessors of this source code
- * are hereby granted a nonexclusive, royalty-free license to use this code
- * in individual and commercial software.
- *
- * NVIDIA MAKES NO REPRESENTATION ABOUT THE SUITABILITY OF THIS SOURCE
- * CODE FOR ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR
- * IMPLIED WARRANTY OF ANY KIND.  NVIDIA DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOURCE CODE, INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE.
- * IN NO EVENT SHALL NVIDIA BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL,
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS,  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION,  ARISING OUT OF OR IN CONNECTION WITH THE USE
- * OR PERFORMANCE OF THIS SOURCE CODE.
- *
- * U.S. Government End Users.   This source code is a "commercial item" as
- * that term is defined at  48 C.F.R. 2.101 (OCT 1995), consisting  of
- * "commercial computer  software"  and "commercial computer software
- * documentation" as such terms are  used in 48 C.F.R. 12.212 (SEPT 1995)
- * and is provided to the U.S. Government only as a commercial end item.
- * Consistent with 48 C.F.R.12.212 and 48 C.F.R. 227.7202-1 through
- * 227.7202-4 (JUNE 1995), all U.S. Government End Users acquire the
- * source code with only those rights set forth herein.
- *
- * Any use of this source code in individual and commercial software must
- * include, in the user documentation and internal comments to the code,
- * the above Disclaimer and U.S. Government End Users Notice.
- */
+     Hello, this is Bing. I’m happy to help you with your code.😊
 
-/*
-    This file implements common mathematical operations on vector types
-    (float3, float4 etc.) since these are not provided as standard by CUDA.
+     I found some information about the OpenCL equivalents of CUDA functions from the web search results. Here are some of them:
 
-    The syntax is modelled on the Cg standard library.
+     The CUDA function make_int2 can be replaced by the OpenCL function int21.
+     The CUDA function make_float2 can be replaced by the OpenCL function float21.
+     The CUDA function fminf can be replaced by the OpenCL function fmin1.
+     The CUDA function fmaxf can be replaced by the OpenCL function fmax1.
+     The CUDA variable blockIdx.x can be replaced by the OpenCL function get_group_id(0)23.
+     The CUDA variable blockIdx.y can be replaced by the OpenCL function get_group_id(1)23.
+     The CUDA variable gridDim.x can be replaced by the OpenCL function get_num_groups(0)23.
+     The CUDA variable threadIdx.x can be replaced by the OpenCL function get_local_id(0)23.
+     The CUDA variable threadIdx.y can be replaced by the OpenCL function get_local_id(1)23.
+     The CUDA variable blockDim.x can be replaced by the OpenCL function get_local_size(0)23.
+     The CUDA variable blockDim.y can be replaced by the OpenCL function get_local_size(1)23.
+     
+     You can find more details and examples in the following links:
+
+     1: https://www.nvidia.com/content/cudazone/download/opencl/nvidia_opencl_programmingguide.pdf
+     2: https://www.run.ai/guides/nvidia-cuda-basics-and-best-practices/cuda-vs-opencl
+     3:https://stackoverflow.com/questions/45203444/cuda-to-opencl-what-is-the-equivalent-of-blockidx-x-blockidx-ygriddim-x
 */
 
 #ifndef CUTIL_MATH_H
@@ -59,7 +41,7 @@ inline float fminf(float a, float b)
 
 inline float fmaxf(float a, float b)
 {
-  return a > b ? a : b;
+  return a < b ? a : b;
 }
 
 inline int max(int a, int b)

@@ -28,12 +28,11 @@
 
 #ifndef DEF_KERN_CUDA
 	#define DEF_KERN_CUDA
-    #include <cuda_runtime.h>
+
 	#include <curand.h>
 	#include <curand_kernel.h>
 	#include <stdio.h>
 	#include <math.h>
-    //#include "/usr/local/cuda/include/math_constants.h"  // need better <path> . In CMakeLists.txt "include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})"
 
 	#define CUDA_KERNEL
 	#include "fluid.h"
@@ -65,7 +64,7 @@
 		__global__ void computeForce ( int pnum , bool freeze = false, uint frame =20);	          // skip CAS lock if frame>10
         __global__ void computeDiffusion ( int pnum );
         __global__ void computeGeneAction ( int pnum, int gene, uint list_len );                  //NB here pnum is for the dense list
-        __global__ void computeBondChanges ( int pnum, uint list_length, uint steps_per_InnerPhysicalLoop );
+        __global__ void computeBondChanges ( int pnum, uint list_length );
         
         //__global__ void computeAutomata ( int pnum );
         //__global__ void freeze ( int pnum);                                                     // new freeze kernel, to generate elastic bonds.
@@ -96,8 +95,6 @@
         __device__ void find_closest_particle_per_axis(uint particle, float3 pos, uint neighbours[6]);
         __device__ void makeBondIndxMap( uint parentParticleIndx, int bondInxMap[6]);
         __global__ void cleanBonds (int pnum);
-        
-        __global__ void initialize_bonds    (int ActivePoints, uint list_length, int gene);
         
         __global__ void heal                ( int ActivePoints, uint list_length, int change_list, uint startNewPoints, uint mMaxPoints);
         __global__ void lengthen_muscle     ( int ActivePoints, int list_length, int change_list, uint startNewPoints, uint mMaxPoints);
