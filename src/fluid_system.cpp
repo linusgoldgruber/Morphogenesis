@@ -1,29 +1,31 @@
 #include <assert.h>
 #include <iostream>
-#include <cuda.h>
+//#include <cuda.h>
+#include <CL/cl.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <curand_kernel.h>
+#include <curand_kernel.h> //NOT REPLACED YET. POSSIBLE OPTIONS: https://acesse.dev/Y9Zcq
 #include <chrono>
 #include <cstring>
-#include "cutil_math.h"
+//#include "cutil_math.h"
+#include "clutil_math.h"
 #include "fluid_system.h"
 
 
-//bool cuCheck (CUresult launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
-bool cuCheck (CUresult launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug){
-    CUresult kern_stat = CUDA_SUCCESS;
+//declaration of function clCheck (clCheck)
+bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug){
+    cl_int kern_stat = CL_SUCCESS;
 
     if (bDebug) {
-        kern_stat = cuCtxSynchronize();
+        kern_stat = clFinish();
     }
-    if (kern_stat != CUDA_SUCCESS || launch_stat != CUDA_SUCCESS) {
+    if (kern_stat != CL_SUCCESS || launch_stat != CL_SUCCESS) {
         const char* launch_statmsg = "";
         const char* kern_statmsg = "";
-        cuGetErrorString(launch_stat, &launch_statmsg);
-        cuGetErrorString(kern_stat, &kern_statmsg);
+        clGetErrorString(launch_stat, &launch_statmsg);
+        clGetErrorString(kern_stat, &kern_statmsg);
 
-        std::cout << "\nFLUID SYSTEM, CUDA ERROR:\t";
+        std::cout << "\nFLUID SYSTEM, OPENCL ERROR:\t";
         std::cout << " Launch status: "<< launch_statmsg <<"\t";
         std::cout << " Kernel status: "<< kern_statmsg <<"\t";
         std::cout << " Caller: FluidSystem::"<<  method <<"\t";
@@ -35,7 +37,7 @@ bool cuCheck (CUresult launch_stat, const char* method, const char* apicall, con
             assert(0);		// debug - trigger break (see call stack)
         }
         else {
-            std::cout << "fluid_system.cpp cuCheck(..), 'nverror()' \n";
+            std::cout << "fluid_system.cpp clCheck(..), 'nverror()' \n";
             //nverror();		// exit - return 0
         }
         return false;
@@ -54,53 +56,64 @@ FluidSystem::FluidSystem (){
     mMaxPoints = 0;
     mPackGrid = 0x0;
     m_Frame = 0;
-    for (int n=0; n < FUNC_MAX; n++ ) m_Func[n] = (CUfunction) -1;
+    for (int n=0; n < FUNC_MAX; n++ ) m_Kern[n] = (cl_kernel) -1;
 }
 
-bool FluidSystem::cuCheck (CUresult launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug){
-    CUresult kern_stat = CUDA_SUCCESS;
 
+
+bool FluidSystem::clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug){
+    cl_int kern_stat = CL_SUCCESS;
+    
     if (bDebug) {
-        kern_stat = cuCtxSynchronize();
+        kern_stat = clFinish();
     }
-    if (kern_stat != CUDA_SUCCESS || launch_stat != CUDA_SUCCESS) {
+    if (kern_stat != CL_SUCCESS || launch_stat != CL_SUCCESS) {
         const char* launch_statmsg = "";
         const char* kern_statmsg = "";
-        cuGetErrorString(launch_stat, &launch_statmsg);
-        cuGetErrorString(kern_stat, &kern_statmsg);
-
-        std::cout << "\nFLUID SYSTEM, CUDA ERROR:\t";
+        clGetErrorString(launch_stat, &launch_statmsg);
+        clGetErrorString(kern_stat, &kern_statmsg);
+        
+        std::cout << "\nFLUID SYSTEM, OPENCL ERROR:\t";
         std::cout << " Launch status: "<< launch_statmsg <<"\t";
         std::cout << " Kernel status: "<< kern_statmsg <<"\t";
         std::cout << " Caller: FluidSystem::"<<  method <<"\t";
         std::cout << " Call:   "<< apicall <<"\t";
         std::cout << " Args:   "<< arg <<"\t";
-
+        
         if (bDebug) {
             std::cout << "  Generating assert to examine call stack.\n" ;
-            assert(0);		// debug - trigger break (see call stack)
+            assert(0);        // debug - trigger break (see call stack)
         }
         else {
-            std::cout << "fluid_system.cpp cuCheck(..), 'nverror()' \n";
-            //nverror();		// exit - return 0
+            std::cout << "fluid_system.cpp clCheck(..), 'nverror()' \n";
+            //nverror();        // exit - return 0
         }
         Exit();
         return false;
     }
     return true;
-
+    
 }
 
-void FluidSystem::LoadKernel ( int fid, std::string func ){
+/*void FluidSystem::LoadKernel ( int fid, std::string func ){
     char cfn[512];
     strcpy ( cfn, func.c_str() );
 
-    if ( m_Func[fid] == (CUfunction) -1 )
-        cuCheck ( cuModuleGetFunction ( &m_Func[fid], m_Module, cfn ), "LoadKernel", "cuModuleGetFunction", cfn, mbDebug );
+    if ( m_Kern[fid] == (cl_kernel) -1 )
+        clCheck ( cuModuleGetFunction ( &m_Kern[fid], m_program, cfn ), "LoadKernel", "cuModuleGetFunction", cfn, mbDebug );
+}*/
+
+void FluidSystem::LoadKernel(int fid, std::string func) {
+    if (m_Kern[fid] == nullptr) {
+        cl_int err;
+        m_Kern[fid] = clCreateKernel(m_program, func.c_str(), &err);
+        clCheck(err == CL_SUCCESS, "LoadKernel", "clCreateKernel", func.c_str(), mbDebug);
+    }
 }
 
-void FluidSystem::Initialize (){             // used for CPU only for "check_demo".
-    if (m_FParams.debug>1)std::cout << "FluidSystem::Initialize () \n";
+
+void FluidSystem::Initialize(){             // used for CPU only for "check_demo".
+    if (m_FParams.debug>1)std::cout << "FluidSystem::Initialize() \n";
     // An FBufs struct holds an array of pointers.
     // Clear all buffers
     memset ( &m_Fluid, 0,		sizeof(FBufs) );
@@ -109,7 +122,7 @@ void FluidSystem::Initialize (){             // used for CPU only for "check_dem
     memset ( &m_FGenome, 0,		sizeof(FGenome) );
 
     if (m_FParams.debug>1)std::cout << "Chk1.4 \n";
-    // Allocate the sim parameters
+    // Allocate the sim parameters CUCLCUCL
     AllocateBuffer ( FPARAMS,		sizeof(FParams),	0,	1,	 GPU_OFF,     CPU_YES );//AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
     if (m_FParams.debug>1)std::cout << "Chk1.5 \n";
     m_Time = 0;
@@ -117,6 +130,10 @@ void FluidSystem::Initialize (){             // used for CPU only for "check_dem
     if (m_FParams.debug>1)std::cout << "Chk1.6 \n";
 }
 
+//
+//
+////////////////////////////////////////////////////////////////////25.07.23/////////////////////////////////////////////////////////////////
+//
 // /home/nick/Programming/Cuda/Morphogenesis/build/install/ptx/objects/fluid_systemPTX/fluid_system_cuda.ptx
 void FluidSystem::InitializeCuda (){         // used for load_sim  /home/nick/Programming/Cuda/Morphogenesis/build/install/ptx/objects-Debug/fluid_systemPTX/fluid_system_cuda.ptx
     if (m_FParams.debug>1)std::cout << "FluidSystem::InitializeCuda () \n";
@@ -144,8 +161,8 @@ void FluidSystem::InitializeCuda (){         // used for load_sim  /home/nick/Pr
     }
     sprintf( morphogenesis_ptx, "%s/%s/fluid_systemPTX/fluid_system_cuda.ptx", morphogenesis_ptx, name);  
     if (m_FParams.debug>1)std::cout<<"\n release type = "<<name<<"\t ptx path = "<<morphogenesis_ptx<<std::flush;
-    cuCheck ( cuModuleLoad ( &m_Module, morphogenesis_ptx), "LoadKernel", "cuModuleLoad", morphogenesis_ptx, mbDebug);  
-    // loads the file "fluid_system_cuda.ptx" as a module with pointer  m_Module.
+    clCheck ( cuModuleLoad ( &m_program, morphogenesis_ptx), "LoadKernel", "cuModuleLoad", morphogenesis_ptx, mbDebug);
+    // loads the file "fluid_system_cuda.ptx" as a module with pointer  m_program.
 
     if (m_FParams.debug>1)std::cout << "Chk1.1 \n";
     LoadKernel ( FUNC_INSERT,                           "insertParticles" );
@@ -187,10 +204,10 @@ void FluidSystem::InitializeCuda (){         // used for load_sim  /home/nick/Pr
 
     if (m_FParams.debug>1)std::cout << "Chk1.2 \n";
     size_t len = 0;
-    cuCheck ( cuModuleGetGlobal ( &cuFBuf,    &len,	m_Module, "fbuf" ),		"LoadKernel", "cuModuleGetGlobal", "cuFBuf",    mbDebug);   // Returns a global pointer (cuFBuf) from a module  (m_Module), see line 81.
-    cuCheck ( cuModuleGetGlobal ( &cuFTemp,   &len,	m_Module, "ftemp" ),	"LoadKernel", "cuModuleGetGlobal", "cuFTemp",   mbDebug);   // fbuf, ftemp, fparam are defined at top of fluid_system_cuda.cu,
-    cuCheck ( cuModuleGetGlobal ( &cuFParams, &len,	m_Module, "fparam" ),	"LoadKernel", "cuModuleGetGlobal", "cuFParams", mbDebug);   // based on structs "FParams", "FBufs", "FGenome" defined in fluid.h
-    cuCheck ( cuModuleGetGlobal ( &cuFGenome, &len,	m_Module, "fgenome" ),	"LoadKernel", "cuModuleGetGlobal", "cuFGenome", mbDebug);   // NB defined differently in kernel vs cpu code.
+    clCheck ( cuModuleGetGlobal ( &clFBuf,    &len,	m_program, "fbuf" ),		"LoadKernel", "cuModuleGetGlobal", "clFBuf",    mbDebug);   // Returns a global pointer (clFBuf) from a module  (m_program), see line 81.
+    clCheck ( cuModuleGetGlobal ( &clFTemp,   &len,	m_program, "ftemp" ),	"LoadKernel", "cuModuleGetGlobal", "clFTemp",   mbDebug);   // fbuf, ftemp, fparam are defined at top of fluid_system_cuda.cu,
+    clCheck ( cuModuleGetGlobal ( &clFParams, &len,	m_program, "fparam" ),	"LoadKernel", "cuModuleGetGlobal", "clFParams", mbDebug);   // based on structs "FParams", "FBufs", "FGenome" defined in fluid.h
+    clCheck ( cuModuleGetGlobal ( &clFGenome, &len,	m_program, "fgenome" ),	"LoadKernel", "cuModuleGetGlobal", "clFGenome", mbDebug);   // NB defined differently in kernel vs cpu code.
     // An FBufs struct holds an array of pointers.
     if (m_FParams.debug>1)std::cout << "Chk1.3 \n";
 
@@ -205,8 +222,11 @@ void FluidSystem::InitializeCuda (){         // used for load_sim  /home/nick/Pr
 }
 
 /////////////////////////////////////////////////////////////////
+/*void FluidSystem::UpdateGenome (){              // Update Genome on GPU
+    clCheck ( cuMemcpyHtoD ( cuFGenome,    &m_FGenome,        sizeof(FGenome), "FluidGenomeCUDA", "cuMemcpyHtoD", "clFGenome", mbDebug);
+}*/
 void FluidSystem::UpdateGenome (){              // Update Genome on GPU
-    cuCheck ( cuMemcpyHtoD ( cuFGenome,	&m_FGenome,		sizeof(FGenome) ), "FluidGenomeCUDA", "cuMemcpyHtoD", "cuFGenome", mbDebug);
+    clCheck ( clEnqueueWriteBuffer(command_queue, clFGenome, CL_TRUE, 0, sizeof(FGenome), &m_FGenome, 0, NULL, NULL), "FluidGenomeCUDA", "cuMemcpyHtoD", "clFGenome", mbDebug);
 }
 
 FGenome	FluidSystem::GetGenome(){
@@ -229,7 +249,7 @@ FGenome	FluidSystem::GetGenome(){
 void FluidSystem::UpdateParams (){
     // Update Params on GPU
     Vector3DF grav = m_Vec[PPLANE_GRAV_DIR] * m_Param[PGRAV];
-    FluidParamCUDA (  m_Param[PSIMSCALE], m_Param[PSMOOTHRADIUS], m_Param[PRADIUS], m_Param[PMASS], m_Param[PRESTDENSITY],
+    FluidParamCL (  m_Param[PSIMSCALE], m_Param[PSMOOTHRADIUS], m_Param[PRADIUS], m_Param[PMASS], m_Param[PRESTDENSITY],
                       *(float3*)& m_Vec[PBOUNDMIN], *(float3*)& m_Vec[PBOUNDMAX], m_Param[PEXTSTIFF], m_Param[PINTSTIFF],
                       m_Param[PVISC], m_Param[PSURFACE_TENSION], m_Param[PEXTDAMP], m_Param[PFORCE_MIN], m_Param[PFORCE_MAX], m_Param[PFORCE_FREQ],
                       m_Param[PGROUND_SLOPE], grav.x, grav.y, grav.z, m_Param[PACCEL_LIMIT], m_Param[PVEL_LIMIT], 
@@ -248,7 +268,7 @@ void FluidSystem::SetVec ( int p, Vector3DF v ){
 
 void FluidSystem::Exit (){
     // Free fluid buffers
-    cuCheck(cuCtxSynchronize(), "Exit ", "cuCtxSynchronize", "before cudaDeviceReset()", mbDebug);
+    clCheck(clFinish(), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
     for (int n=0; n < MAX_BUF; n++ ) {
         if (m_FParams.debug>0)std::cout << "\n n = " << n << std::flush;
         if ( m_Fluid.bufC(n) != 0x0 )
@@ -257,8 +277,8 @@ void FluidSystem::Exit (){
     size_t   free1, free2, total;
     cudaMemGetInfo(&free1, &total);
     if (m_FParams.debug>0)printf("\nCuda Memory, before cudaDeviceReset(): free=%lu, total=%lu.\t",free1,total);
-    cuCheck(cuCtxSynchronize(), "Exit ", "cuCtxSynchronize", "before cudaDeviceReset()", mbDebug);  
-    if(m_Module != 0x0){
+    clCheck(clFinish(), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
+    if(m_program != 0x0){
         if (m_FParams.debug>0)printf("\ncudaDeviceReset()\n");
         cudaDeviceReset(); // Destroy all allocations and reset all state on the current device in the current process. // must only operate if we have a cuda instance.
     }
@@ -268,7 +288,7 @@ void FluidSystem::Exit (){
     exit(0);
 }
 
-void FluidSystem::Exit_no_CUDA (){
+void FluidSystem::Exit_no_CL (){
     // Free fluid buffers
     for (int n=0; n < MAX_BUF; n++ ) {
         if (m_FParams.debug>0)std::cout << "\n n = " << n << std::flush;
@@ -291,24 +311,26 @@ void FluidSystem::AllocateBuffer ( int buf_id, int stride, int cpucnt, int gpucn
         }
         m_Fluid.setBuf(buf_id, dest_buf);                                 // stores pointer to buffer in mcpu[buf_id]
     }
+    
+
     if(gpumode == GPU_SINGLE || gpumode == GPU_DUAL || gpumode == GPU_TEMP){
-        cuCheck(cuCtxSynchronize(), "AllocateBuffer ", "cuCtxSynchronize", "before 1st cudaMemGetInfo(&free1, &total)", mbDebug);  
+        clCheck(clFinish(), "AllocateBuffer ", "clFinish", "before 1st cudaMemGetInfo(&free1, &total)", mbDebug);
         size_t   free1, free2, total;
         cudaMemGetInfo(&free1, &total);
         //if (m_FParams.debug>1)printf("\nCuda Memory: free=%lu, total=%lu.\t",free1,total);
     
         if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL )	{
-            if (m_Fluid.gpuptr(buf_id) != 0x0) cuCheck(cuMemFree(m_Fluid.gpu(buf_id)), "AllocateBuffer", "cuMemFree", "Fluid.gpu", mbDebug);
-            rtn = cuCheck( cuMemAlloc(m_Fluid.gpuptr(buf_id), stride*gpucnt), "AllocateBuffer", "cuMemAlloc", "Fluid.gpu", mbDebug);         //  ####  cuMemAlloc the buffer, stores pointer to buffer in   m_Fluid.mgpu[buf_id]
+            if (m_Fluid.gpuptr(buf_id) != 0x0) clCheck(cuMemFree(m_Fluid.gpu(buf_id)), "AllocateBuffer", "cuMemFree", "Fluid.gpu", mbDebug);
+            rtn = clCheck( cuMemAlloc(m_Fluid.gpuptr(buf_id), stride*gpucnt), "AllocateBuffer", "cuMemAlloc", "Fluid.gpu", mbDebug);         //  ####  cuMemAlloc the buffer, stores pointer to buffer in   m_Fluid.mgpu[buf_id]
             if (m_FParams.debug>1)std::cout<<"\t\t m_Fluid.gpuptr("<<buf_id<<")'"<<m_Fluid.gpuptr(buf_id)<<",   m_Fluid.gpu("<<buf_id<<")="<<m_Fluid.gpu(buf_id)<<"\t"<<std::flush;
             if(rtn == false)FluidSystem::Exit();
         }
         if (gpumode == GPU_TEMP || gpumode == GPU_DUAL ) {
-            if (m_FluidTemp.gpuptr(buf_id) != 0x0) cuCheck(cuMemFree(m_FluidTemp.gpu(buf_id)), "AllocateBuffer", "cuMemFree", "FluidTemp.gpu", mbDebug);
-            rtn = cuCheck( cuMemAlloc(m_FluidTemp.gpuptr(buf_id), stride*gpucnt), "AllocateBuffer", "cuMemAlloc", "FluidTemp.gpu", mbDebug); //  ####  cuMemAlloc the buffer, stores pointer to buffer in   m_FluidTemp.mgpu[buf_id]
+            if (m_FluidTemp.gpuptr(buf_id) != 0x0) clCheck(cuMemFree(m_FluidTemp.gpu(buf_id)), "AllocateBuffer", "cuMemFree", "FluidTemp.gpu", mbDebug);
+            rtn = clCheck( cuMemAlloc(m_FluidTemp.gpuptr(buf_id), stride*gpucnt), "AllocateBuffer", "cuMemAlloc", "FluidTemp.gpu", mbDebug); //  ####  cuMemAlloc the buffer, stores pointer to buffer in   m_FluidTemp.mgpu[buf_id]
             if(rtn == false)FluidSystem::Exit();
         }
-        cuCheck(cuCtxSynchronize(), "AllocateBuffer ", "cuCtxSynchronize", "before 2nd cudaMemGetInfo(&free2, &total)", mbDebug);  
+        clCheck(clFinish(), "AllocateBuffer ", "clFinish", "before 2nd cudaMemGetInfo(&free2, &total)", mbDebug);
         cudaMemGetInfo(&free2, &total);
         if (m_FParams.debug>1)printf("\nAfter allocation: free=%lu, total=%lu, this buffer=%lu.\n",free2,total,(free1-free2) );
     }
@@ -348,11 +370,11 @@ if (m_FParams.debug>1)std::cout<<"\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUA
     
     // Update GPU access pointers
     if (gpu_mode != GPU_OFF ) {
-        cuCheck( cuMemcpyHtoD(cuFBuf, &m_Fluid, sizeof(FBufs)),			"AllocateParticles", "cuMemcpyHtoD", "cuFBuf", mbDebug);
-        cuCheck( cuMemcpyHtoD(cuFTemp, &m_FluidTemp, sizeof(FBufs)),	"AllocateParticles", "cuMemcpyHtoD", "cuFTemp", mbDebug);
-        cuCheck( cuMemcpyHtoD(cuFParams, &m_FParams, sizeof(FParams)),  "AllocateParticles", "cuMemcpyHtoD", "cuFParams", mbDebug);
-        cuCheck( cuMemcpyHtoD(cuFGenome, &m_FGenome, sizeof(FGenome)),  "AllocateParticles", "cuMemcpyHtoD", "cuFGenome", mbDebug);
-        cuCheck(cuCtxSynchronize(), "AllocateParticles", "cuCtxSynchronize", "", mbDebug );
+        clCheck( cuMemcpyHtoD(clFBuf, &m_Fluid, sizeof(FBufs)),			"AllocateParticles", "cuMemcpyHtoD", "clFBuf", mbDebug);
+        clCheck( cuMemcpyHtoD(clFTemp, &m_FluidTemp, sizeof(FBufs)),	"AllocateParticles", "cuMemcpyHtoD", "clFTemp", mbDebug);
+        clCheck( cuMemcpyHtoD(clFParams, &m_FParams, sizeof(FParams)),  "AllocateParticles", "cuMemcpyHtoD", "clFParams", mbDebug);
+        clCheck( cuMemcpyHtoD(clFGenome, &m_FGenome, sizeof(FGenome)),  "AllocateParticles", "cuMemcpyHtoD", "clFGenome", mbDebug);
+        clCheck(clFinish(), "AllocateParticles", "clFinish", "", mbDebug );
     }
 
     // Allocate auxiliary buffers (prefix sums)
@@ -372,22 +394,22 @@ if (m_FParams.debug>1)std::cout<<"\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUA
 void FluidSystem::AllocateBufferDenseLists ( int buf_id, int stride, int gpucnt, int lists ) {    // mallocs a buffer - called by FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode)
 // Need to save "pointers to the allocated gpu buffers" in a cpu array, AND then cuMemcpyHtoD(...) that list of pointers into the device array.   
     // also called by FluidSystem::....()  to quadruple buffer as needed.
-    cuCheck(cuCtxSynchronize(), "AllocateBufferDenseLists ", "cuCtxSynchronize", "before 1st cudaMemGetInfo(&free1, &total)", mbDebug);  
+    clCheck(clFinish(), "AllocateBufferDenseLists ", "clFinish", "before 1st cudaMemGetInfo(&free1, &total)", mbDebug);
     size_t   free1, free2, total;
     cudaMemGetInfo(&free1, &total);
     if (m_FParams.debug>1)printf("\nCuda Memory: free=%lu, total=%lu.\t",free1,total);
     
-    CUdeviceptr*  listpointer = (CUdeviceptr*) &m_Fluid.bufC(lists)[buf_id * sizeof(CUdeviceptr)] ;
+    cl_device_idptr*  listpointer = (cl_device_idptr*) &m_Fluid.bufC(lists)[buf_id * sizeof(cl_device_idptr)] ;
     
-    //CUdeviceptr  listpointer2 = m_Fluid.gpuptr(lists)[buf_id]  ;
-    if (m_FParams.debug>1)printf("\n*listpointer=%p, listpointer=%p,  lists=%i, buf_id=%i, \t", (CUdeviceptr* ) *listpointer, listpointer,  /*listpointer2,*/ lists, buf_id);/*listpointer2=%llu,*/
+    //cl_device_idptr  listpointer2 = m_Fluid.gpuptr(lists)[buf_id]  ;
+    if (m_FParams.debug>1)printf("\n*listpointer=%p, listpointer=%p,  lists=%i, buf_id=%i, \t", (cl_device_idptr* ) *listpointer, listpointer,  /*listpointer2,*/ lists, buf_id);/*listpointer2=%llu,*/
     //if (m_FParams.debug>1)cout<<"\n listpointer is an:"<< typeid(listpointer).name()<<" *listpointer is an:"<< typeid(*listpointer).name()<<" listpointer2 is an:"<< typeid(listpointer2).name()<<" .  "<<std::flush;//" *listpointer2 is an:"<< typeid(*listpointer2).name()<<
     
     if (m_FParams.debug>1)printf("\nAllocateBufferDenseLists: buf_id=%i, stride=%i, gpucnt=%i, lists=%i,  .\t", buf_id, stride, gpucnt, lists);
-    if (*listpointer != 0x0) cuCheck(cuMemFree(*listpointer), "AllocateBufferDenseLists1", "cuMemFree", "*listpointer", mbDebug);
-    bool result = cuCheck( cuMemAlloc( listpointer, stride*gpucnt),   "AllocateBufferDenseLists2", "cuMemAlloc", "listpointer", mbDebug);    
+    if (*listpointer != 0x0) clCheck(cuMemFree(*listpointer), "AllocateBufferDenseLists1", "cuMemFree", "*listpointer", mbDebug);
+    bool result = clCheck( cuMemAlloc( listpointer, stride*gpucnt),   "AllocateBufferDenseLists2", "cuMemAlloc", "listpointer", mbDebug);
     
-    cuCheck(cuCtxSynchronize(), "AllocateBufferDenseLists ", "cuCtxSynchronize", "before 2nd cudaMemGetInfo(&free2, &total)", mbDebug);  
+    clCheck(clFinish(), "AllocateBufferDenseLists ", "clFinish", "before 2nd cudaMemGetInfo(&free2, &total)", mbDebug);
     cudaMemGetInfo(&free2, &total);
     if (m_FParams.debug>1)printf("\nAfter allocation: free=%lu, total=%lu, this buffer=%lu.\n",free2,total,(free1-free2) );
     if(result==false)Exit();
@@ -406,19 +428,19 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
     AllocateBuffer ( FGRIDCNT_ACTIVE_GENES,  sizeof(uint[NUM_GENES]),       cnt,   m_FParams.szGrid,	gpu_mode, cpu_mode );
     AllocateBuffer ( FGRIDOFF_ACTIVE_GENES,  sizeof(uint[NUM_GENES]),       cnt,   m_FParams.szGrid,	gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_LIST_LENGTHS,	 sizeof(uint),		      NUM_GENES,   NUM_GENES,	        gpu_mode, cpu_mode );
-    AllocateBuffer ( FDENSE_LISTS,	         sizeof(CUdeviceptr),     NUM_GENES,   NUM_GENES,           gpu_mode, cpu_mode );
+    AllocateBuffer ( FDENSE_LISTS,	         sizeof(cl_device_idptr),     NUM_GENES,   NUM_GENES,           gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_BUF_LENGTHS,	 sizeof(uint),            NUM_GENES,   NUM_GENES,           gpu_mode, cpu_mode );
     
     AllocateBuffer ( FGRIDCNT_CHANGES,               sizeof(uint[NUM_CHANGES]),       cnt,   m_FParams.szGrid,	    gpu_mode, cpu_mode );
     AllocateBuffer ( FGRIDOFF_CHANGES,               sizeof(uint[NUM_CHANGES]),       cnt,   m_FParams.szGrid,	    gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_LIST_LENGTHS_CHANGES,	 sizeof(uint),		      NUM_CHANGES,   NUM_CHANGES,	        gpu_mode, cpu_mode );
-    AllocateBuffer ( FDENSE_LISTS_CHANGES,	         sizeof(CUdeviceptr),     NUM_CHANGES,   NUM_CHANGES,           gpu_mode, cpu_mode );
+    AllocateBuffer ( FDENSE_LISTS_CHANGES,	         sizeof(cl_device_idptr),     NUM_CHANGES,   NUM_CHANGES,           gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_BUF_LENGTHS_CHANGES,	 sizeof(uint),            NUM_CHANGES,   NUM_CHANGES,           gpu_mode, cpu_mode );
 
     if (gpu_mode != GPU_OFF ) {
         /*if(gpu_mode == GPU_SINGLE || gpu_mode == GPU_DUAL )*/
         for(int i=0; i<NUM_GENES; i++){ //for each gene allocate intial buffer, write pointer and size to FDENSE_LISTS and FDENSE_LIST_LENGTHS
-            CUdeviceptr*  _listpointer = (CUdeviceptr*) &m_Fluid.bufC(FDENSE_LISTS)[i * sizeof(CUdeviceptr)] ;
+            cl_device_idptr*  _listpointer = (cl_device_idptr*) &m_Fluid.bufC(FDENSE_LISTS)[i * sizeof(cl_device_idptr)] ;
             *_listpointer = 0x0;
             AllocateBufferDenseLists( i, sizeof(uint), INITIAL_BUFFSIZE_ACTIVE_GENES, FDENSE_LISTS);  // AllocateBuffer writes pointer to  m_Fluid.gpuptr(buf_id). 
             m_Fluid.bufI(FDENSE_LIST_LENGTHS)[i] = 0;
@@ -426,20 +448,20 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
         }
         /*if(gpu_mode == GPU_SINGLE || gpu_mode == GPU_DUAL )*/
         for(int i=0; i<NUM_CHANGES; i++){ //Same for the changes lists
-            CUdeviceptr*  _listpointer = (CUdeviceptr*) &m_Fluid.bufC(FDENSE_LISTS_CHANGES)[i * sizeof(CUdeviceptr)] ;
+            cl_device_idptr*  _listpointer = (cl_device_idptr*) &m_Fluid.bufC(FDENSE_LISTS_CHANGES)[i * sizeof(cl_device_idptr)] ;
             *_listpointer = 0x0; 
             AllocateBufferDenseLists( i, sizeof(uint), 2*INITIAL_BUFFSIZE_ACTIVE_GENES, FDENSE_LISTS_CHANGES); // NB buf[2][list_length] holding : particleIdx, bondIdx
             m_Fluid.bufI(FDENSE_LIST_LENGTHS_CHANGES)[i] = 0;
             m_Fluid.bufI(FDENSE_BUF_LENGTHS_CHANGES)[i]  = INITIAL_BUFFSIZE_ACTIVE_GENES;
         }
-        cuMemcpyHtoD(m_Fluid.gpu(FDENSE_LISTS),         m_Fluid.bufC(FDENSE_LISTS),          NUM_GENES * sizeof(CUdeviceptr)  );
-        cuMemcpyHtoD(m_Fluid.gpu(FDENSE_LISTS_CHANGES), m_Fluid.bufC(FDENSE_LISTS_CHANGES),  NUM_GENES * sizeof(CUdeviceptr)  );
-        cuMemcpyHtoD(m_Fluid.gpu(FDENSE_BUF_LENGTHS),   m_Fluid.bufC(FDENSE_BUF_LENGTHS),    NUM_GENES * sizeof(CUdeviceptr)  );
-        cuCheck( cuMemcpyHtoD ( m_Fluid.gpu(FDENSE_BUF_LENGTHS_CHANGES), m_Fluid.bufI(FDENSE_BUF_LENGTHS_CHANGES),	sizeof(uint[NUM_CHANGES]) ), "AllocateGrid", "cuMemcpyHtoD", "FDENSE_BUF_LENGTHS_CHANGES", mbDebug);
+        cuMemcpyHtoD(m_Fluid.gpu(FDENSE_LISTS),         m_Fluid.bufC(FDENSE_LISTS),          NUM_GENES * sizeof(cl_device_idptr)  );
+        cuMemcpyHtoD(m_Fluid.gpu(FDENSE_LISTS_CHANGES), m_Fluid.bufC(FDENSE_LISTS_CHANGES),  NUM_GENES * sizeof(cl_device_idptr)  );
+        cuMemcpyHtoD(m_Fluid.gpu(FDENSE_BUF_LENGTHS),   m_Fluid.bufC(FDENSE_BUF_LENGTHS),    NUM_GENES * sizeof(cl_device_idptr)  );
+        clCheck( cuMemcpyHtoD ( m_Fluid.gpu(FDENSE_BUF_LENGTHS_CHANGES), m_Fluid.bufI(FDENSE_BUF_LENGTHS_CHANGES),	sizeof(uint[NUM_CHANGES]) ), "AllocateGrid", "cuMemcpyHtoD", "FDENSE_BUF_LENGTHS_CHANGES", mbDebug);
         
     
-        cuCheck(cuMemcpyHtoD(cuFBuf, &m_Fluid, sizeof(FBufs)), "AllocateGrid", "cuMemcpyHtoD", "cuFBuf", mbDebug);  // Update GPU access pointers
-        cuCheck(cuCtxSynchronize(), "AllocateParticles", "cuCtxSynchronize", "", mbDebug);
+        clCheck(cuMemcpyHtoD(clFBuf, &m_Fluid, sizeof(FBufs)), "AllocateGrid", "cuMemcpyHtoD", "clFBuf", mbDebug);  // Update GPU access pointers
+        clCheck(clFinish(), "AllocateParticles", "clFinish", "", mbDebug);
     }
 }
 
@@ -652,29 +674,29 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
 void FluidSystem::Run (){   // deprecated, rather use: Run(const char * relativePath, int frame, bool debug) 
 if (m_FParams.debug>1)std::cout << "\tFluidSystem::Run (),  "<<std::flush;  
     //case RUN_GPU_FULL:					// Full CUDA pathway, GRID-accelerted GPU, /w deep copy sort
-//TransferFromCUDA ();
+//TransferFromCL ();
 //std::cout << "\n\n Chk1 \n"<<std::flush;
-    InsertParticlesCUDA ( 0x0, 0x0, 0x0 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After InsertParticlesCUDA", mbDebug);
-//TransferFromCUDA ();
+    InsertParticlesCL ( 0x0, 0x0, 0x0 );
+    clCheck(clFinish(), "Run", "clFinish", "After InsertParticlesCL", mbDebug);
+//TransferFromCL ();
 if (m_FParams.debug>1)std::cout << "\n\n Chk2 \n"<<std::flush;
-    PrefixSumCellsCUDA ( 1 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After PrefixSumCellsCUDA", mbDebug);
-//TransferFromCUDA ();
+    PrefixSumCellsCL ( 1 );
+    clCheck(clFinish(), "Run", "clFinish", "After PrefixSumCellsCL", mbDebug);
+//TransferFromCL ();
 if (m_FParams.debug>1)std::cout << "\n\n Chk3 \n"<<std::flush;
-    CountingSortFullCUDA ( 0x0 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After CountingSortFullCUDA", mbDebug);
-//TransferFromCUDA ();
+    CountingSortFullCL ( 0x0 );
+    clCheck(clFinish(), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
+//TransferFromCL ();
 if (m_FParams.debug>1)std::cout << "\n\n Chk4 \n"<<std::flush;
     
-    ComputePressureCUDA();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputePressureCUDA", mbDebug); 
-//TransferFromCUDA ();
+    ComputePressureCL();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputePressureCL", mbDebug);
+//TransferFromCL ();
 if (m_FParams.debug>1)std::cout << "\n\n Chk5 \n"<<std::flush;
     // FreezeCUDA ();                                   // makes the system plastic, ie the bonds keep reforming
 //std::cout << "\n\n Chk6 \n"<<std::flush;
-    ComputeForceCUDA ();                                // now includes the function of freeze 
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeForceCUDA", mbDebug);
+    ComputeForceCL ();                                // now includes the function of freeze 
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeForceCL", mbDebug);
 
     // TODO compute nerve activation ? 
     
@@ -682,297 +704,297 @@ if (m_FParams.debug>1)std::cout << "\n\n Chk5 \n"<<std::flush;
     // TODO compute muscle action ?
     
 //std::cout << "\n\n Chk6 \n"<<std::flush;    
-    ComputeDiffusionCUDA();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeDiffusionCUDA", mbDebug);
+    ComputeDiffusionCL();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeDiffusionCL", mbDebug);
 
 //std::cout << "\n\n Chk7 \n"<<std::flush;    
-    ComputeGenesCUDA();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeGenesCUDA", mbDebug);
+    ComputeGenesCL();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeGenesCL", mbDebug);
     
 if (m_FParams.debug>1)std::cout << "\n\n Chk8 \n"<<std::flush;
-    ComputeBondChangesCUDA (1);// Just 1 step of ComputeForceCUDA() above.
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeBondChangesCUDA", mbDebug);
+    ComputeBondChangesCL (1);// Just 1 step of ComputeForceCL() above.
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeBondChangesCL", mbDebug);
     
     //  make dense lists of particle changes
     // insert changes
     // prefix sum changes, inc tally_changelist_lengths
     // counting sort changes
-    //InsertChangesCUDA ( ); // done by ComputeBondChanges() above
-    //cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After InsertChangesCUDA", mbDebug);
+    //InsertChangesCL ( ); // done by ComputeBondChanges() above
+    //clCheck(clFinish(), "Run", "clFinish", "After InsertChangesCL", mbDebug);
 
 if (m_FParams.debug>1)std::cout << "\n\n Chk9 \n"<<std::flush;
-    PrefixSumChangesCUDA ( 1 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After PrefixSumChangesCUDA", mbDebug);
+    PrefixSumChangesCL ( 1 );
+    clCheck(clFinish(), "Run", "clFinish", "After PrefixSumChangesCL", mbDebug);
     
 if (m_FParams.debug>1)std::cout << "\n\n Chk10 \n"<<std::flush;
-    CountingSortChangesCUDA (  );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After CountingSortChangesCUDA", mbDebug);
+    CountingSortChangesCL (  );
+    clCheck(clFinish(), "Run", "clFinish", "After CountingSortChangesCL", mbDebug);
     
     
-    //  execute particle changes // _should_ be able to run concurrently => no cuCtxSynchronize()
-    // => single fn ComputeParticleChangesCUDA ()
+    //  execute particle changes // _should_ be able to run concurrently => no clFinish()
+    // => single fn ComputeParticleChangesCL ()
 if (m_FParams.debug>1)std::cout << "\n\n Chk11 \n"<<std::flush;
-    ComputeParticleChangesCUDA ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCUDA", mbDebug);
+    ComputeParticleChangesCL ();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeParticleChangesCL", mbDebug);
 
 if (m_FParams.debug>1)std::cout << "\n\n Chk12 \n"<<std::flush;
-    CleanBondsCUDA ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After CleanBondsCUDA ", mbDebug);
+    CleanBondsCL ();
+    clCheck(clFinish(), "Run", "clFinish", "After CleanBondsCL ", mbDebug);
     
 if (m_FParams.debug>1)std::cout << "\n\n Chk13 \n"<<std::flush;
     TransferPosVelVeval ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
+    clCheck(clFinish(), "Run", "clFinish", "After TransferPosVelVeval ", mbDebug);
     
-    AdvanceCUDA ( m_Time, m_DT, m_Param[PSIMSCALE] );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After AdvanceCUDA", mbDebug);   
+    AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+    clCheck(clFinish(), "Run", "clFinish", "After AdvanceCL", mbDebug);
     
-   // SpecialParticlesCUDA ( m_Time, m_DT, m_Param[PSIMSCALE] );
-   // cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After SpecialParticlesCUDA", mbDebug); 
+   // SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+   // clCheck(clFinish(), "Run", "clFinish", "After SpecialParticlesCL", mbDebug);
     
     
-//TransferFromCUDA ();
-    //EmitParticlesCUDA ( m_Time, (int) m_Vec[PEMIT_RATE].x );
-    TransferFromCUDA ();	// return for rendering
+//TransferFromCL ();
+    //EmitParticlesCL ( m_Time, (int) m_Vec[PEMIT_RATE].x );
+    TransferFromCL ();	// return for rendering
 //std::cout << "\n\n Chk7 \n"<<std::flush;
 
     AdvanceTime ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug);  
+    clCheck(clFinish(), "Run", "clFinish", "After AdvanceTime", mbDebug);
 //std::cout << " finished \n";
 }
 
 void FluidSystem::Run (const char * relativePath, int frame, bool debug, bool gene_activity, bool remodelling ){       // version to save data after each kernel
     m_FParams.frame = frame;                 // used by computeForceCuda( .. Args)
     if (m_FParams.debug>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<frame<<" #########################################################"<<std::flush;
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "begin Run", mbDebug); 
+    clCheck(clFinish(), "Run", "clFinish", "begin Run", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame );
         std::cout << "\n\nRun(relativePath,frame) Chk1, saved "<< frame <<".csv At start of Run(...) \n"<<std::flush;
     }
-    InsertParticlesCUDA ( 0x0, 0x0, 0x0 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After InsertParticlesCUDA", mbDebug);
+    InsertParticlesCL ( 0x0, 0x0, 0x0 );
+    clCheck(clFinish(), "Run", "clFinish", "After InsertParticlesCL", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+1 );
-        std::cout << "\n\nRun(relativePath,frame) Chk2, saved "<< frame+1 <<".csv  After InsertParticlesCUDA\n"<<std::flush;
+        std::cout << "\n\nRun(relativePath,frame) Chk2, saved "<< frame+1 <<".csv  After InsertParticlesCL\n"<<std::flush;
     }
-    PrefixSumCellsCUDA ( 1 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After PrefixSumCellsCUDA", mbDebug);
+    PrefixSumCellsCL ( 1 );
+    clCheck(clFinish(), "Run", "clFinish", "After PrefixSumCellsCL", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+2 );
-        std::cout << "\n\nRun(relativePath,frame) Chk3, saved "<< frame+2 <<".csv  After PrefixSumCellsCUDA\n"<<std::flush;
+        std::cout << "\n\nRun(relativePath,frame) Chk3, saved "<< frame+2 <<".csv  After PrefixSumCellsCL\n"<<std::flush;
     }
-    CountingSortFullCUDA ( 0x0 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After CountingSortFullCUDA", mbDebug);
+    CountingSortFullCL ( 0x0 );
+    clCheck(clFinish(), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+3 );
-        std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< frame+3 <<".csv  After CountingSortFullCUDA\n"<<std::flush;
+        std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< frame+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
     }
     
     if(m_FParams.freeze==true){
-        InitializeBondsCUDA ();
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After InitializeBondsCUDA ", mbDebug);
+        InitializeBondsCL ();
+        clCheck(clFinish(), "Run", "clFinish", "After InitializeBondsCL ", mbDebug);
         if(debug){
-            TransferFromCUDA ();
+            TransferFromCL ();
             SavePointsCSV2 (  relativePath, frame+3 );      // NB overwrites previous file.
-            std::cout << "\n\nRun(relativePath,frame) Chk4.5, saved "<< frame+3 <<".csv  After InitializeBondsCUDA \n"<<std::flush;
+            std::cout << "\n\nRun(relativePath,frame) Chk4.5, saved "<< frame+3 <<".csv  After InitializeBondsCL \n"<<std::flush;
         }
     }
         
-    ComputePressureCUDA();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputePressureCUDA", mbDebug);
+    ComputePressureCL();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputePressureCL", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+4 );
-        std::cout << "\n\nRun(relativePath,frame) Chk5, saved "<< frame+4 <<".csv  After ComputePressureCUDA \n"<<std::flush;
+        std::cout << "\n\nRun(relativePath,frame) Chk5, saved "<< frame+4 <<".csv  After ComputePressureCL \n"<<std::flush;
     }
     
-    ComputeForceCUDA ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeForceCUDA", mbDebug);
+    ComputeForceCL ();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeForceCL", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+5 );
-        std::cout << "\n\nRun(relativePath,frame) Chk6, saved "<< frame+5 <<".csv  After ComputeForceCUDA \n"<<std::flush;
+        std::cout << "\n\nRun(relativePath,frame) Chk6, saved "<< frame+5 <<".csv  After ComputeForceCL \n"<<std::flush;
     }
     // TODO compute nerve activation ? 
     
     // TODO compute muscle action ?
     
-    ComputeDiffusionCUDA();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeDiffusionCUDA", mbDebug);
+    ComputeDiffusionCL();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeDiffusionCL", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+6 );
-        std::cout << "\n\nRun(relativePath,frame) Chk7, saved "<< frame+6 <<".csv  After ComputeDiffusionCUDA \n"<<std::flush;
+        std::cout << "\n\nRun(relativePath,frame) Chk7, saved "<< frame+6 <<".csv  After ComputeDiffusionCL \n"<<std::flush;
     }
     if(gene_activity){
-        ComputeGenesCUDA();     // NB (i)Epigenetic countdown, (ii) GRN gene regulatory network sensitivity to TransciptionFactors (FCONC)
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeGenesCUDA", mbDebug);
+        ComputeGenesCL();     // NB (i)Epigenetic countdown, (ii) GRN gene regulatory network sensitivity to TransciptionFactors (FCONC)
+        clCheck(clFinish(), "Run", "clFinish", "After ComputeGenesCL", mbDebug);
         if(debug){
-            TransferFromCUDA ();
+            TransferFromCL ();
             SavePointsCSV2 (  relativePath, frame+7 );
-            std::cout << "\n\nRun(relativePath,frame) Chk8, saved "<< frame+7 <<".csv  After ComputeGenesCUDA \n"<<std::flush;
+            std::cout << "\n\nRun(relativePath,frame) Chk8, saved "<< frame+7 <<".csv  After ComputeGenesCL \n"<<std::flush;
         }
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After SavePointsCSV2 after ComputeGenesCUDA", mbDebug); // wipes out FEPIGEN
+        clCheck(clFinish(), "Run", "clFinish", "After SavePointsCSV2 after ComputeGenesCL", mbDebug); // wipes out FEPIGEN
     }
     if(remodelling){
-        AssembleFibresCUDA ();
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After AssembleFibresCUDA", mbDebug); 
+        AssembleFibresCL ();
+        clCheck(clFinish(), "Run", "clFinish", "After AssembleFibresCL", mbDebug);
         if(debug){
-            TransferFromCUDA ();
+            TransferFromCL ();
             SavePointsCSV2 (  relativePath, frame+8 );
-            std::cout << "\n\nRun(relativePath,frame) Chk9.0, saved "<< frame+8 <<".csv  After AssembleFibresCUDA  \n"<<std::flush;
+            std::cout << "\n\nRun(relativePath,frame) Chk9.0, saved "<< frame+8 <<".csv  After AssembleFibresCL  \n"<<std::flush;
         }
         
         
-        ComputeBondChangesCUDA (1);// Just 1 step of ComputeForceCUDA() above.
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeBondChangesCUDA", mbDebug); // wipes out FEPIGEN ////////////////////////////////////
+        ComputeBondChangesCL (1);// Just 1 step of ComputeForceCL() above.
+        clCheck(clFinish(), "Run", "clFinish", "After ComputeBondChangesCL", mbDebug); // wipes out FEPIGEN ////////////////////////////////////
         if(debug){
-            TransferFromCUDA ();
+            TransferFromCL ();
             SavePointsCSV2 (  relativePath, frame+9 );
-            std::cout << "\n\nRun(relativePath,frame) Chk9, saved "<< frame+9 <<".csv  After ComputeBondChangesCUDA  \n"<<std::flush;
+            std::cout << "\n\nRun(relativePath,frame) Chk9, saved "<< frame+9 <<".csv  After ComputeBondChangesCL  \n"<<std::flush;
         }
-        PrefixSumChangesCUDA ( 1 );
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After PrefixSumChangesCUDA", mbDebug); // writes mangled (?original?) data to FEPIGEN - not anymore
+        PrefixSumChangesCL ( 1 );
+        clCheck(clFinish(), "Run", "clFinish", "After PrefixSumChangesCL", mbDebug); // writes mangled (?original?) data to FEPIGEN - not anymore
         if(debug){
-            TransferFromCUDA ();
+            TransferFromCL ();
             SavePointsCSV2 (  relativePath, frame+10 );
-            std::cout << "\n\nRun(relativePath,frame) Chk10, saved "<< frame+10 <<".csv  After PrefixSumChangesCUDA \n"<<std::flush;
+            std::cout << "\n\nRun(relativePath,frame) Chk10, saved "<< frame+10 <<".csv  After PrefixSumChangesCL \n"<<std::flush;
         }
-        CountingSortChangesCUDA (  );
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After CountingSortChangesCUDA", mbDebug);
+        CountingSortChangesCL (  );
+        clCheck(clFinish(), "Run", "clFinish", "After CountingSortChangesCL", mbDebug);
         if(debug){
-            TransferFromCUDA ();
+            TransferFromCL ();
             SavePointsCSV2 (  relativePath, frame+11 );
-            std::cout << "\n\nRun(relativePath,frame) Chk11, saved "<< frame+11 <<".csv  After CountingSortChangesCUDA  \n"<<std::flush;
+            std::cout << "\n\nRun(relativePath,frame) Chk11, saved "<< frame+11 <<".csv  After CountingSortChangesCL  \n"<<std::flush;
         }
-        ComputeParticleChangesCUDA ();                                     // execute particle changes // _should_ be able to run concurrently => no cuCtxSynchronize()
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCUDA", mbDebug);
+        ComputeParticleChangesCL ();                                     // execute particle changes // _should_ be able to run concurrently => no clFinish()
+        clCheck(clFinish(), "Run", "clFinish", "After ComputeParticleChangesCL", mbDebug);
         if(debug){
-            TransferFromCUDA ();
+            TransferFromCL ();
             SavePointsCSV2 (  relativePath, frame+12 );
-            std::cout << "\n\nRun(relativePath,frame) Chk12, saved "<< frame+12 <<".csv  After  ComputeParticleChangesCUDA.  mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
+            std::cout << "\n\nRun(relativePath,frame) Chk12, saved "<< frame+12 <<".csv  After  ComputeParticleChangesCL.  mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
         }
         
-        //CleanBondsCUDA ();
-        //cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After CleanBondsCUDA ", mbDebug);
+        //CleanBondsCL ();
+        //clCheck(clFinish(), "Run", "clFinish", "After CleanBondsCL ", mbDebug);
     }
 
 
     TransferPosVelVeval ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
+    clCheck(clFinish(), "Run", "clFinish", "After TransferPosVelVeval ", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+13 );
         std::cout << "\n\nRun(relativePath,frame) Chk13, saved "<< frame+13 <<".csv  After  TransferPosVelVeval.  mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
     }
-    AdvanceCUDA ( m_Time, m_DT, m_Param[PSIMSCALE] );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After AdvanceCUDA", mbDebug);
+    AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+    clCheck(clFinish(), "Run", "clFinish", "After AdvanceCL", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+14 );
-        std::cout << "\n\nRun(relativePath,frame) Chk14, saved "<< frame+14 <<".csv  After  AdvanceCUDA\n"<<std::flush;
+        std::cout << "\n\nRun(relativePath,frame) Chk14, saved "<< frame+14 <<".csv  After  AdvanceCL\n"<<std::flush;
     }
-/*    SpecialParticlesCUDA ( m_Time, m_DT, m_Param[PSIMSCALE]);
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After SpecialParticlesCUDA", mbDebug);
+/*    SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]);
+    clCheck(clFinish(), "Run", "clFinish", "After SpecialParticlesCL", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+15 );
-        std::cout << "\n\nRun(relativePath,frame) Chk15, saved "<< frame+14 <<".csv  After  SpecialParticlesCUDA\n"<<std::flush;
+        std::cout << "\n\nRun(relativePath,frame) Chk15, saved "<< frame+14 <<".csv  After  SpecialParticlesCL\n"<<std::flush;
     }
 */
     AdvanceTime ();
 /*
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug); 
+    clCheck(clFinish(), "Run", "clFinish", "After AdvanceTime", mbDebug);
     if(debug){
-        TransferFromCUDA ();
+        TransferFromCL ();
         SavePointsCSV2 (  relativePath, frame+15 );
     }
 */
 /*
 //     if(debug){
-//         TransferFromCUDA ();
+//         TransferFromCL ();
 //         SavePointsCSV2 (  relativePath, frame+18 );
-//         std::cout << "\n\nRun(relativePath,frame) Chk16, saved "<< frame+6 <<".csv  After AdvanceCUDA \n"<<std::flush;
+//         std::cout << "\n\nRun(relativePath,frame) Chk16, saved "<< frame+6 <<".csv  After AdvanceCL \n"<<std::flush;
 //     }
-    //cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After AdvanceCUDA", mbDebug);    
-    //EmitParticlesCUDA ( m_Time, (int) m_Vec[PEMIT_RATE].x );
-    //TransferFromCUDA ();	// return for rendering
+    //clCheck(clFinish(), "Run", "clFinish", "After AdvanceCL", mbDebug);
+    //EmitParticlesCL ( m_Time, (int) m_Vec[PEMIT_RATE].x );
+    //TransferFromCL ();	// return for rendering
 
 //     if(debug){
-//         TransferFromCUDA ();
+//         TransferFromCL ();
 //         SavePointsCSV2 (  relativePath, frame+19 );
 //         std::cout << "Run(relativePath,frame) finished,  saved "<< frame+7 <<".csv  After AdvanceTime \n";
 //     }
 */
-}// 0:start, 1:InsertParticles, 2:PrefixSumCellsCUDA, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
+}// 0:start, 1:InsertParticles, 2:PrefixSumCellsCL, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
 
 void FluidSystem::Run2PhysicalSort(){
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2PhysicalSort()start";
-    InsertParticlesCUDA ( 0x0, 0x0, 0x0 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After InsertParticlesCUDA", mbDebug);
+    InsertParticlesCL ( 0x0, 0x0, 0x0 );
+    clCheck(clFinish(), "Run", "clFinish", "After InsertParticlesCL", mbDebug);
     if(launchParams.debug>0){
         std::cout<<"\nchk a"<<std::flush;
-        TransferFromCUDA ();
+        TransferFromCL ();
         m_Debug_file++;
         std::cout<<"\nchk b: launchParams.outPath="<<launchParams.outPath<<",  m_Frame+m_Debug_file=0;="<<m_Frame+m_Debug_file<<"\t"<<std::flush;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-        std::cout << "\n\nRun2PhysicalSort() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  InsertParticlesCUDA\n"<<std::flush;
-        //TransferFromTempCUDA(int buf_id, int sz );
+        std::cout << "\n\nRun2PhysicalSort() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  InsertParticlesCL\n"<<std::flush;
+        //TransferFromTempCL(int buf_id, int sz );
     }
-    PrefixSumCellsCUDA ( 1 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After PrefixSumCellsCUDA", mbDebug);
+    PrefixSumCellsCL ( 1 );
+    clCheck(clFinish(), "Run", "clFinish", "After PrefixSumCellsCL", mbDebug);
     if(launchParams.debug>0){
-        TransferFromCUDA ();
+        TransferFromCL ();
         m_Debug_file++;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-        std::cout << "\n\nRun2PhysicalSort() Chk2, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  PrefixSumCellsCUDA\n"<<std::flush;
-        //TransferFromTempCUDA(int buf_id, int sz );
+        std::cout << "\n\nRun2PhysicalSort() Chk2, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  PrefixSumCellsCL\n"<<std::flush;
+        //TransferFromTempCL(int buf_id, int sz );
     }
-    CountingSortFullCUDA ( 0x0 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After CountingSortFullCUDA", mbDebug);
+    CountingSortFullCL ( 0x0 );
+    clCheck(clFinish(), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2PhysicalSort()end";
 }
 
 void FluidSystem::Run2InnerPhysicalLoop(){
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()start";
     if(m_FParams.freeze==true){
-        InitializeBondsCUDA ();
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After InitializeBondsCUDA ", mbDebug);
+        InitializeBondsCL ();
+        clCheck(clFinish(), "Run", "clFinish", "After InitializeBondsCL ", mbDebug);
     }
     
-    ComputePressureCUDA();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputePressureCUDA", mbDebug);
+    ComputePressureCL();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputePressureCL", mbDebug);
     
-    ComputeForceCUDA ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeForceCUDA", mbDebug);
+    ComputeForceCL ();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeForceCL", mbDebug);
     
     if(launchParams.debug>1){
-        TransferFromCUDA ();
+        TransferFromCL ();
         launchParams.file_increment++;
         SavePointsCSV2 (  launchParams.outPath, launchParams.file_num+launchParams.file_increment );
-        std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< launchParams.file_num+3 <<".csv  After CountingSortFullCUDA\n"<<std::flush;
+        std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< launchParams.file_num+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
     }
     
     TransferPosVelVeval ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
+    clCheck(clFinish(), "Run", "clFinish", "After TransferPosVelVeval ", mbDebug);
     
-    AdvanceCUDA ( m_Time, m_DT, m_Param[PSIMSCALE] );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After AdvanceCUDA", mbDebug);
+    AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+    clCheck(clFinish(), "Run", "clFinish", "After AdvanceCL", mbDebug);
     
-    SpecialParticlesCUDA ( m_Time, m_DT, m_Param[PSIMSCALE]);
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After SpecialParticlesCUDA", mbDebug);
+    SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]);
+    clCheck(clFinish(), "Run", "clFinish", "After SpecialParticlesCL", mbDebug);
     
     TransferPosVelVevalFromTemp ();
     
      if(launchParams.debug>0){
-        TransferFromCUDA ();
+        TransferFromCL ();
         m_Debug_file++;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
         std::cout << "\n\nRun2InnerPhysicalLoop() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  TransferPosVelVevalFromTemp ();\n"<<std::flush;
-        //TransferFromTempCUDA(int buf_id, int sz );
+        //TransferFromTempCL(int buf_id, int sz );
     }
     
     AdvanceTime ();
@@ -981,45 +1003,45 @@ void FluidSystem::Run2InnerPhysicalLoop(){
 
 void FluidSystem::Run2GeneAction(){//NB gene sorting occurs within Run2PhysicalSort()
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2GeneAction()start";
-    ComputeDiffusionCUDA();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeDiffusionCUDA", mbDebug);
+    ComputeDiffusionCL();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeDiffusionCL", mbDebug);
     
-    ComputeGenesCUDA(); // NB (i)Epigenetic countdown, (ii) GRN gene regulatory network sensitivity to TransciptionFactors (FCONC)
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeGenesCUDA", mbDebug);
+    ComputeGenesCL(); // NB (i)Epigenetic countdown, (ii) GRN gene regulatory network sensitivity to TransciptionFactors (FCONC)
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeGenesCL", mbDebug);
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2GeneAction()end";
 }
 
 void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
     if(m_FParams.debug>1){std::cout<<"\n####\nRun2Remodelling()start";}
-    AssembleFibresCUDA ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After AssembleFibresCUDA", mbDebug); 
+    AssembleFibresCL ();
+    clCheck(clFinish(), "Run", "clFinish", "After AssembleFibresCL", mbDebug);
     
-    ComputeBondChangesCUDA (steps_per_InnerPhysicalLoop);
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeBondChangesCUDA", mbDebug); 
+    ComputeBondChangesCL (steps_per_InnerPhysicalLoop);
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeBondChangesCL", mbDebug);
     
-    PrefixSumChangesCUDA ( 1 );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After PrefixSumChangesCUDA", mbDebug);
+    PrefixSumChangesCL ( 1 );
+    clCheck(clFinish(), "Run", "clFinish", "After PrefixSumChangesCL", mbDebug);
     
-    CountingSortChangesCUDA (  );
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After CountingSortChangesCUDA", mbDebug);
+    CountingSortChangesCL (  );
+    clCheck(clFinish(), "Run", "clFinish", "After CountingSortChangesCL", mbDebug);
     
     if(launchParams.debug>0){
-        TransferFromCUDA ();
+        TransferFromCL ();
         m_Debug_file++;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-        std::cout << "\n\nRun2Remodelling() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  CountingSortChangesCUDA ();\n"<<std::flush;
-        //TransferFromTempCUDA(int buf_id, int sz );
+        std::cout << "\n\nRun2Remodelling() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  CountingSortChangesCL ();\n"<<std::flush;
+        //TransferFromTempCL(int buf_id, int sz );
     }
     
-    ComputeParticleChangesCUDA ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCUDA", mbDebug);
+    ComputeParticleChangesCL ();
+    clCheck(clFinish(), "Run", "clFinish", "After ComputeParticleChangesCL", mbDebug);
     
     if(launchParams.debug>0){
-        TransferFromCUDA ();
+        TransferFromCL ();
         m_Debug_file++;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-        std::cout << "\n\nRun2Remodelling() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  ComputeParticleChangesCUDA ();\n"<<std::flush;
-        //TransferFromTempCUDA(int buf_id, int sz );
+        std::cout << "\n\nRun2Remodelling() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  ComputeParticleChangesCL ();\n"<<std::flush;
+        //TransferFromTempCL(int buf_id, int sz );
     }
     
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2Remodelling()end";
@@ -1029,7 +1051,7 @@ void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
 
 void FluidSystem::setFreeze(bool freeze){
     m_FParams.freeze = freeze;
-    cuCheck ( cuMemcpyHtoD ( cuFParams,	&m_FParams,		sizeof(FParams) ), "FluidParamCUDA", "cuMemcpyHtoD", "cuFParams", mbDebug);
+    clCheck ( cuMemcpyHtoD ( clFParams,	&m_FParams,		sizeof(FParams) ), "FluidParamCL", "cuMemcpyHtoD", "clFParams", mbDebug);
 }
 
 
@@ -1498,7 +1520,7 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
     //std::cout<<"\nSetupSimulation chk3, m_FParams.debug="<<m_FParams.debug<<std::flush;
     
     if (gpu_mode != GPU_OFF) {     // create CUDA instance etc.. 
-        FluidSetupCUDA ( mMaxPoints, m_GridSrch, *(int3*)& m_GridRes, *(float3*)& m_GridSize, *(float3*)& m_GridDelta, *(float3*)& m_GridMin, *(float3*)& m_GridMax, m_GridTotal, 0 );
+        FluidSetupCL ( mMaxPoints, m_GridSrch, *(int3*)& m_GridRes, *(float3*)& m_GridSize, *(float3*)& m_GridDelta, *(float3*)& m_GridMin, *(float3*)& m_GridMax, m_GridTotal, 0 );
         UpdateParams();            //  sends simulation params to device.
         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
     }
@@ -1514,13 +1536,13 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
 
 void FluidSystem::RunSimulation (){
     //std::cout<<"\nRunSimulation chk1 "<<std::flush;
-    Init_FCURAND_STATE_CUDA ();
+    Init_FCURAND_STATE_CL ();
     //std::cout<<"\nRunSimulation chk2 "<<std::flush;
     auto old_begin = std::chrono::steady_clock::now();
     //std::cout<<"\nRunSimulation chk3 "<<std::flush;
     TransferPosVelVeval ();
     //std::cout<<"\nRunSimulation chk4 "<<std::flush;
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
+    clCheck(clFinish(), "Run", "clFinish", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
     //std::cout<<"\nRunSimulation chk5 "<<std::flush;
     
     setFreeze(true);
@@ -1534,7 +1556,7 @@ void FluidSystem::RunSimulation (){
       std::cout<<"\n\nFreeze()"<<k<<"\n"<<std::flush;
       Run (launchParams.outPath, launchParams.file_num, (launchParams.debug>4), (launchParams.gene_activity=='y'), (launchParams.remodelling=='y') );
       TransferPosVelVeval ();
-      if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCUDA ();
+      if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
       if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
       if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
       launchParams.file_num+=100;
@@ -1545,12 +1567,12 @@ void FluidSystem::RunSimulation (){
     for ( ; launchParams.file_num<launchParams.num_files; launchParams.file_num+=100 ) {
         for ( int j=0; j<launchParams.steps_per_file; j++ ) {//, bool gene_activity, bool remodelling 
             Run (launchParams.outPath, launchParams.file_num, (launchParams.debug>4), (launchParams.gene_activity=='y'), (launchParams.remodelling=='y') );  // run the simulation  // Run(outPath, file_num) saves file after each kernel,, Run() does not.
-        }// 0:start, 1:InsertParticles, 2:PrefixSumCellsCUDA, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
+        }// 0:start, 1:InsertParticles, 2:PrefixSumCellsCL, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
 
         //fluid.SavePoints (i);                         // alternate file formats to write
         // TODO flip mutex
         auto begin = std::chrono::steady_clock::now();
-        if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCUDA ();
+        if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
         if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
         if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
         if (m_FParams.debug>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
@@ -1571,18 +1593,18 @@ void FluidSystem::RunSimulation (){
 
 void FluidSystem::Run2Simulation(){
     printf("\n\n Run2Simulation(), m_FParams.debug=%i .", m_FParams.debug );
-    Init_FCURAND_STATE_CUDA ();
+    Init_FCURAND_STATE_CL ();
     auto old_begin = std::chrono::steady_clock::now();
     TransferPosVelVeval ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
+    clCheck(clFinish(), "Run", "clFinish", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
     setFreeze(true);
     m_Debug_file=0;
     if (m_FParams.debug>0)std::cout<<"\n\nFreeze()"<<-1<<"\n"<<std::flush;
     Run2PhysicalSort();
-    InitializeBondsCUDA();
+    InitializeBondsCL();
     
-    if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCUDA ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "Run2Simulation After TransferFromCUDA", mbDebug); 
+    if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
+    clCheck(clFinish(), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);
     if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
     if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
     if (m_FParams.debug>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
@@ -1592,13 +1614,13 @@ void FluidSystem::Run2Simulation(){
       m_Debug_file=0;
       if (m_FParams.debug>0)std::cout<<"\n\nFreeze()"<<k<<"\n"<<std::flush;
       //Run2PhysicalSort();
-      //InitializeBondsCUDA();
+      //InitializeBondsCL();
       //Run (launchParams.outPath, launchParams.file_num, (launchParams.debug>4), (launchParams.gene_activity=='y'), (launchParams.remodelling=='y') );
       for (int k=0; k<launchParams.steps_per_InnerPhysicalLoop*2; k++) Run2InnerPhysicalLoop();
       Run2PhysicalSort();
-      ZeroVelCUDA ();                                                                                       // remove velocity, kinetic energy and momentum
+      ZeroVelCL ();                                                                                       // remove velocity, kinetic energy and momentum
       //TransferPosVelVeval ();
-      if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCUDA ();
+      if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
       if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
       if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
       launchParams.file_num+=100;
@@ -1619,10 +1641,10 @@ void FluidSystem::Run2Simulation(){
             if(launchParams.gene_activity=='y') Run2GeneAction();                                           // Run2GeneAction();
             if(launchParams.remodelling=='y') Run2Remodelling(launchParams.steps_per_InnerPhysicalLoop);                                          // Run2Remodelling();
             Run2PhysicalSort();                                                                             // Run2PhysicalSort();                // sort required for SavePointsVTP2 
-            ZeroVelCUDA ();                                                                                 // remove velocity, kinetic energy and momentum
+            ZeroVelCL ();                                                                                 // remove velocity, kinetic energy and momentum
         }
-        if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCUDA ();
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "Run2Simulation After TransferFromCUDA", mbDebug); 
+        if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
+        clCheck(clFinish(), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);
         if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
         if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
         if (m_FParams.debug>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
@@ -1646,8 +1668,8 @@ void FluidSystem::Run2Simulation(){
             Run2PhysicalSort();                                                                             // Run2PhysicalSort();                // sort required for SavePointsVTP2 
         }
         auto begin = std::chrono::steady_clock::now();
-        if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCUDA ();
-        cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "Run2Simulation After TransferFromCUDA", mbDebug); 
+        if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
+        clCheck(clFinish(), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);
         if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
         if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
         if (m_FParams.debug>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
@@ -1666,7 +1688,7 @@ void FluidSystem::Run2Simulation(){
     }
     //launchParams.file_num++;
     
-    TransferFromCUDA ();
+    TransferFromCL ();
     SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+99);   // save "end condition", even if not saving the series.
     SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+99);
     
@@ -1674,5 +1696,4 @@ void FluidSystem::Run2Simulation(){
     WriteGenome( launchParams.outPath );
     WriteSpecificationFile_fromLaunchParams( launchParams.outPath );
 }
-
 

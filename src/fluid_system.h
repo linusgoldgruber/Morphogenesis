@@ -105,7 +105,7 @@
 	#define PINITMAX			5
 	#define PPLANE_GRAV_DIR		6
 
-	// kernel function   "m_Func[]"
+	// kernel function   "m_Kern[]"
 	#define FUNC_INSERT			0
 	#define	FUNC_COUNTING_SORT	1
 	#define FUNC_QUERY			2
@@ -164,15 +164,15 @@
 	#define CPU_OFF				4
 	#define CPU_YES				5
 
-	bool cuCheck (CUresult launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
+	bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
 	
 	class FluidSystem {
 	public:
 		FluidSystem ();
-        bool cuCheck (CUresult launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
+        bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
 		void LoadKernel ( int id, std::string kname );
 		void Initialize ();
-        void InitializeCuda ();                             // used for load_sim
+        void InitializeCL ();                             // used for load_sim
 
 		// Particle Utilities
 		void AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode);		
@@ -203,7 +203,7 @@
         uint* getNerveIdx( int n )      { return &m_Fluid.bufI(FNERVEIDX)[n]; }              //#define FNERVEIDX        15    //# uint
         float* getConc(int tf)          { return &m_Fluid.bufF(FCONC)[tf*mMaxPoints];}       //note #define FCONC       16    //# float[NUM_TF]        NUM_TF = num transcription factors & morphogens
         uint* getEpiGen(int gene)       { return &m_Fluid.bufI(FEPIGEN)[gene*mMaxPoints];}   //note #define FEPIGEN     17    //# uint[NUM_GENES] // used in savePoints... 
-                                                                                             //NB int mMaxPoints is set even if FluidSetupCUDA(..) isn't called, e.g. in makedemo ..
+                                                                                             //NB int mMaxPoints is set even if FluidSetupCL(..) isn't called, e.g. in makedemo ..
 		// Setup
 		void SetupSPH_Kernels ();
 		void SetupDefaultParams ();
@@ -233,9 +233,10 @@
 		void AdvanceTime ();
 		
 		void Exit ();
-        void Exit_no_CUDA ();
-		void TransferToCUDA ();
-		void TransferFromCUDA ();
+        void Exit_no_CL ();
+		void TransferToCL ();
+		void TransferFromCL ();
+        //DT=deltaTime?
 		double GetDT()		{ return m_DT; }
 		
 		// Acceleration Grid
@@ -244,38 +245,38 @@
 		Vector3DF GetGridMax ()		{ return m_GridMax; }
 		Vector3DF GetGridDelta ()	{ return m_GridDelta; }
 
-		void FluidSetupCUDA ( int num, int gsrch, int3 res, float3 size, float3 delta, float3 gmin, float3 gmax, int total, int chk );
-		void FluidParamCUDA ( float ss, float sr, float pr, float mass, float rest, float3 bmin, float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p );
+		void FluidSetupCL ( int num, int gsrch, int3 res, float3 size, float3 delta, float3 gmin, float3 gmax, int total, int chk );
+		void FluidParamCL ( float ss, float sr, float pr, float mass, float rest, float3 bmin, float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p );
 
-        void Init_FCURAND_STATE_CUDA ();
-		void InsertParticlesCUDA ( uint* gcell, uint* ccell, uint* gcnt );	
-		void PrefixSumCellsCUDA ( int zero_offsets );		
-		void CountingSortFullCUDA ( Vector3DF* gpos );
+        void Init_FCURAND_STATE_CL ();
+		void InsertParticlesCL ( uint* gcell, uint* ccell, uint* gcnt );
+		void PrefixSumCellsCL ( int zero_offsets );
+		void CountingSortFullCL ( Vector3DF* gpos );
         
-        void InitializeBondsCUDA ();
+        void InitializeBondsCL ();
         
-        void InsertChangesCUDA ( /*uint* gcell, uint* gndx, uint* gcnt*/ );
-        void PrefixSumChangesCUDA ( int zero_offsets );
-        void CountingSortChangesCUDA ( );
+        void InsertChangesCL ( /*uint* gcell, uint* gndx, uint* gcnt*/ );
+        void PrefixSumChangesCL ( int zero_offsets );
+        void CountingSortChangesCL ( );
         
-		void ComputePressureCUDA ();
-		void ComputeDiffusionCUDA();
-		void ComputeForceCUDA ();
-        void ComputeGenesCUDA ();
-        void AssembleFibresCUDA ();
-        void ComputeBondChangesCUDA (uint steps_per_InnerPhysicalLoop);
-        void ComputeParticleChangesCUDA ();
-        void CleanBondsCUDA ();                                         // Should this functionality be rolled into countingSortFull() ? OR should it be kept separate? 
+		void ComputePressureCL ();
+		void ComputeDiffusionCL();
+		void ComputeForceCL ();
+        void ComputeGenesCL ();
+        void AssembleFibresCL ();
+        void ComputeBondChangesCL (uint steps_per_InnerPhysicalLoop);
+        void ComputeParticleChangesCL ();
+        void CleanBondsCL ();                                         // Should this functionality be rolled into countingSortFull() ? OR should it be kept separate?
         
-        void TransferToTempCUDA ( int buf_id, int sz );
-        void TransferFromTempCUDA ( int buf_id, int sz );
-		void TransferPosVelVeval ();                                    // Called B4 1st timestep, & B4 AdvanceCuda thereafter. 
+        void TransferToTempCL ( int buf_id, int sz );
+        void TransferFromTempCL ( int buf_id, int sz );
+		void TransferPosVelVeval ();                                    // Called B4 1st timestep, & B4 AdvanceCL thereafter.
         void TransferPosVelVevalFromTemp ();
-        void ZeroVelCUDA ();
+        void ZeroVelCL ();
         
-        void AdvanceCUDA ( float time, float dt, float ss );            // Writes to ftemp 
-        void SpecialParticlesCUDA (float tm, float dt, float ss);       // Reads fbuf, writes to ftemp, corects AdvanceCUDA().
-		void EmitParticlesCUDA ( float time, int cnt );
+        void AdvanceCL ( float time, float dt, float ss );            // Writes to ftemp
+        void SpecialParticlesCL (float tm, float dt, float ss);       // Reads fbuf, writes to ftemp, corects AdvanceCL().
+		void EmitParticlesCL ( float time, int cnt );
         
 		// I/O Files
         void SaveUintArray( uint* array, int numElem1, const char * relativePath );
@@ -309,7 +310,7 @@
         
 		// Parameters
 		void UpdateParams ();
-		void SetParam (int p, float v );//     { m_Param[p] = v; }           // NB must call UpdateParams() afterwards, to call FluidParamCUDA
+		void SetParam (int p, float v );//     { m_Param[p] = v; }           // NB must call UpdateParams() afterwards, to call FluidParamCL
 		void SetParam (int p, int v )		{ m_Param[p] = (float) v; }
 		float GetParam ( int p )			{ return (float) m_Param[p]; }
 
@@ -349,9 +350,10 @@
 		float						m_DT;
 		float						m_Time;	
 
-		// CUDA Kernels
-		CUmodule					m_Module;
-		CUfunction					m_Func[ FUNC_MAX ];
+		// OpenCL Kernels(!)
+		cl_program					m_Program;
+                                    // Array of kernel functions
+		cl_kernel					m_Kern[ FUNC_MAX ];
         
 		// Simulation Parameters                                //  NB MAX_PARAM = 50 
 		float						m_Param [ MAX_PARAM ];	    // 0-47 used.  see defines above. NB m_Param[1] = maximum number of points.
@@ -369,10 +371,10 @@
 		FParams					m_FParams;				// Fluid parameters struct - that apply to all particles 
 		FGenome					m_FGenome;				// Genome struct of arrays for genne params
 
-		CUdeviceptr				cuFBuf;					// GPU pointer containers
-		CUdeviceptr				cuFTemp;
-		CUdeviceptr				cuFParams;
-		CUdeviceptr				cuFGenome;
+		cl_device_idptr				clFBuf;					// GPU pointer containers
+		cl_device_idptr				clFTemp;
+		cl_device_idptr				clFParams;
+		cl_device_idptr				clFGenome;
 
 		// Acceleration Grid		
 		int						m_GridTotal;			// total # cells

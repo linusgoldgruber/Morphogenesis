@@ -23,7 +23,8 @@
 #ifndef DEF_FLUID
 	#define DEF_FLUID
 	
-	#include <cuda.h>
+	//#include <cuda.h>
+    #include <CL/cl.h>
 	#include <curand.h>
     #include <string.h>
     #include "vector.h"
@@ -231,9 +232,9 @@
 		#ifdef CUDA_KERNEL
 			char*			mgpu[ MAX_BUF ];		// on device, pointer is local.
 		#else			
-			CUdeviceptr		mgpu[ MAX_BUF ];		// on host, gpu is a device pointer // an array of pointers, filled by cuMemAlloc
-			CUdeviceptr		gpu    (int n )	{ return mgpu[n];  }
-			CUdeviceptr*	gpuptr (int n )	{ return &mgpu[n]; }		
+			cl_device_idptr		mgpu[ MAX_BUF ];		// on host, gpu is a device pointer // an array of pointers, filled by cuMemAlloc
+			cl_device_idptr		gpu    (int n )	{ return mgpu[n];  }
+			cl_device_idptr*	gpuptr (int n )	{ return &mgpu[n]; }		
 		#endif			
 
 	};

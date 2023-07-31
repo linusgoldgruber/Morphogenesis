@@ -43,15 +43,18 @@ int main ( int argc, const char** argv )
     }
     
     // Initialize
-    cuInit ( 0 );
-    int deviceCount = 0;
-    cuDeviceGetCount ( &deviceCount );
+    //cuInit ( 0 );
+    //int deviceCount = 0;
+    size_t deviceCount;
+    //CUDA: cuDeviceGetCount ( &deviceCount ); OpenCL:
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &deviceCount);
     if ( deviceCount == 0 ) {
         printf ( "There is no device supporting CUDA.\n" );
         exit ( 0 );
     }
-    CUdevice cuDevice;
-    cuDeviceGet ( &cuDevice, 0 );
+    cl_device_id clDevice; //should this be an array???
+    //cuDeviceGet ( &cuDevice, 0 );
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, deviceCount, &clDevice, NULL);
     CUcontext cuContext;
     cuCtxCreate ( &cuContext, 0, cuDevice );
     
@@ -259,8 +262,8 @@ elongation_threshold,	elongation_factor,	strength_threshold,	strengthening_facto
     cudaMemGetInfo(&free1, &total);
     printf("\n\nCuda Memory, before cuCtxDestroy(cuContext): free=%lu, total=%lu.\t",free1,total);
     
-    CUresult cuResult = cuCtxDestroy ( cuContext ) ;
-    if ( cuResult!=0 ) {printf ( "error closing, cuResult = %i \n",cuResult );}
+    cl_int cl_intResult = cuCtxDestroy ( cuContext ) ;
+    if ( cl_intResult!=0 ) {printf ( "error closing, cl_intResult = %i \n",cl_intResult );}
     
     cudaMemGetInfo(&free2, &total);
     printf("\nAfter cuCtxDestroy(cuContext): free=%lu, total=%lu, released=%lu.\n",free2,total,(free2-free1) );

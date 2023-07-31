@@ -40,16 +40,47 @@
     The syntax is modelled on the Cg standard library.
 */
 
-#ifndef CUTIL_MATH_H
-#define CUTIL_MATH_H
+//#ifndef CUTIL_MATH_H
+//#define CUTIL_MATH_H
+//
+#ifndef CL_UTIL_MATH_H
+#define CL_UTIL_MATH_H
 
-#include "cuda_runtime.h"
+//#include "cuda_runtime.h"
+//
+#include "CL/cl.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 typedef unsigned int uint;
 typedef unsigned short ushort;
 
+/*
 #ifndef __CUDACC__
+#include <math.h>
+
+inline float fminf(float a, float b)
+{
+  return a < b ? a : b;
+}
+
+inline float fmaxf(float a, float b)
+{
+  return a > b ? a : b;
+}
+
+inline int max(int a, int b)
+{
+  return a > b ? a : b;
+}
+
+inline int min(int a, int b)
+{
+  return a < b ? a : b;
+}
+#endif
+*/
+
+#ifndef __OPENCLC__
 #include <math.h>
 
 inline float fminf(float a, float b)

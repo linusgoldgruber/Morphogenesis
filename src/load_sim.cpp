@@ -59,19 +59,21 @@ int main ( int argc, const char** argv )
     }
 std::cout <<"\nchk load_sim_0.1\n"<<std::flush;  
 
-    cuInit ( 0 );                                       // Initialize
-    int deviceCount = 0;
-    cuDeviceGetCount ( &deviceCount );
+    //cuInit ( 0 );                                       // Initialize
+    //int deviceCount = 0;
+    size_t deviceCount;
+    //CUDA: cuDeviceGetCount ( &deviceCount ); OpenCL:
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &deviceCount);
     if ( deviceCount == 0 ) {
         printf ( "There is no device supporting CUDA.\n" );
         exit ( 0 );
     }
 std::cout <<"\nchk load_sim_0.2\n"<<std::flush;  
 
-    CUdevice cuDevice;
-    cuDeviceGet ( &cuDevice, 0 );
+    cl_device_id clDevice;
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, deviceCount, &clDevice, NULL);
     CUcontext cuContext;
-    cuCtxCreate ( &cuContext, 0, cuDevice );
+    cuCtxCreate ( &cuContext, 0, clDevice );
 std::cout <<"\nchk load_sim_0.3\n"<<std::flush;  
     
     FluidSystem fluid;
@@ -88,18 +90,18 @@ std::cout <<"\nchk load_sim_0.4.2\n"<<std::flush;
     fluid.ReadPointsCSV2 ( pointsPath, GPU_DUAL, CPU_YES );    // NB currently GPU allocation is by Allocate particles, called by ReadPointsCSV.
 std::cout <<"\nchk load_sim_0.5\n"<<std::flush;
 
-    fluid.Init_FCURAND_STATE_CUDA ();    
+    fluid.Init_FCURAND_STATE_CL ();    
 std::cout <<"\nchk load_sim_1.0\n"<<std::flush;
 
     auto old_begin = std::chrono::steady_clock::now();
     
-    fluid.TransferFromCUDA ();
+    fluid.TransferFromCL ();
     fluid.SavePointsCSV2 ( outPath, file_num );
     if(save_vtp=='y') fluid.SavePointsVTP2( outPath, file_num);
     file_num++;
     
     fluid.TransferPosVelVeval ();
-    cuCheck(cuCtxSynchronize(), "Run", "cuCtxSynchronize", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
+    clCheck(clFinish(), "Run", "clFinish", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
     
  
 std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
@@ -114,7 +116,7 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
         
         fluid.Run (outPath, file_num, (debug>4), (gene_activity=='y'), (remodelling=='y') );
         fluid.TransferPosVelVeval (); // Freeze movement until heal() has formed bonds, over 1st n timesteps.
-        if(save_csv=='y'||save_vtp=='y') fluid.TransferFromCUDA ();
+        if(save_csv=='y'||save_vtp=='y') fluid.TransferFromCL ();
         if(save_csv=='y') fluid.SavePointsCSV2 ( outPath, file_num+90);
         if(save_vtp=='y') fluid.SavePointsVTP2 ( outPath, file_num+90);
         file_num+=100;
@@ -128,12 +130,12 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
         for ( int j=0; j<steps_per_file; j++ ) {//, bool gene_activity, bool remodelling 
             
             fluid.Run (outPath, file_num, (debug>4), (gene_activity=='y'), (remodelling=='y') );  // run the simulation  // Run(outPath, file_num) saves file after each kernel,, Run() does not.
-        }// 0:start, 1:InsertParticles, 2:PrefixSumCellsCUDA, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
+        }// 0:start, 1:InsertParticles, 2:PrefixSumCellsCL, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
 
         //fluid.SavePoints (i);                         // alternate file formats to write
         // TODO flip mutex
         auto begin = std::chrono::steady_clock::now();
-        if(save_csv=='y'||save_vtp=='y') fluid.TransferFromCUDA ();
+        if(save_csv=='y'||save_vtp=='y') fluid.TransferFromCL ();
         if(save_csv=='y') fluid.SavePointsCSV2 ( outPath, file_num+90);
         if(save_vtp=='y') fluid.SavePointsVTP2 ( outPath, file_num+90);
         cout << "\n File# " << file_num << ". " << std::flush;
@@ -164,12 +166,12 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
     size_t   free1, free2, total;
     cudaMemGetInfo(&free1, &total);
     if(debug>0) printf("\nCuda Memory, before cuCtxDestroy(cuContext): free=%lu, total=%lu.\t",free1,total);
-   // cuCheck(cuCtxSynchronize(), "load_sim.cpp ", "cuCtxSynchronize", "before cuCtxDestroy(cuContext)", 1/_*mbDebug*_/);  
+   // clCheck(clFinish(), "load_sim.cpp ", "clFinish", "before cuCtxDestroy(cuContext)", 1/_*mbDebug*_/);  
     
-    CUresult cuResult = cuCtxDestroy ( cuContext ) ;
-    if ( cuResult!=0 ) {printf ( "error closing, cuResult = %i \n",cuResult );}
+    cl_int cl_intResult = cuCtxDestroy ( cuContext ) ;
+    if ( cl_intResult!=0 ) {printf ( "error closing, cl_intResult = %i \n",cl_intResult );}
     
-   // cuCheck(cuCtxSynchronize(), "load_sim.cpp ", "cuCtxSynchronize", "after cudaDeviceReset()", 1/_*mbDebug*_/); 
+   // clCheck(clFinish(), "load_sim.cpp ", "clFinish", "after cudaDeviceReset()", 1/_*mbDebug*_/); 
     cudaMemGetInfo(&free2, &total);
     if(debug>0) printf("\nAfter cuCtxDestroy(cuContext): free=%lu, total=%lu, released=%lu.\n",free2,total,(free2-free1) );
     if(debug>0) printf ( "\nClosing load_sim.\n" );

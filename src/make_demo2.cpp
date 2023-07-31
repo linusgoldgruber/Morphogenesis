@@ -25,17 +25,19 @@ int main ( int argc, const char** argv )
     }
     
     // Initialize
-    cuInit ( 0 );
-    int deviceCount = 0;
-    cuDeviceGetCount ( &deviceCount );
+    //cuInit ( 0 );
+    //int deviceCount = 0;
+    size_t deviceCount;
+    //CUDA: cuDeviceGetCount ( &deviceCount ); OpenCL:
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &deviceCount);
     if ( deviceCount == 0 ) {
         printf ( "There is no device supporting CUDA.\n" );
         exit ( 0 );
     }
-    CUdevice cuDevice;
-    cuDeviceGet ( &cuDevice, 0 );
+    cl_device_id clDevice;
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &clDevice, NULL);
     CUcontext cuContext;
-    cuCtxCreate ( &cuContext, 0, cuDevice );
+    cuCtxCreate ( &cuContext, 0, clDevice );
     
     FluidSystem fluid;
     fluid.InitializeCuda ();
@@ -58,7 +60,7 @@ int main ( int argc, const char** argv )
     //std::cout<<"\n\nmake_demo2 chk2 "<<std::flush;
     uint num_particles_start=fluid.ActivePoints();
     
-    fluid.TransferToCUDA (); 
+    fluid.TransferToCL (); 
     fluid.Run2Simulation ();
     
     //std::cout<<"\n\nmake_demo2 chk3 "<<std::flush;
@@ -68,8 +70,8 @@ int main ( int argc, const char** argv )
     cudaMemGetInfo(&free1, &total);
     printf("\n\nmake_demo2: Cuda Memory, before cuCtxDestroy(cuContext): free=%lu, total=%lu.\t",free1,total);
     
-    CUresult cuResult = cuCtxDestroy ( cuContext ) ;
-    if ( cuResult!=0 ) {printf ( "error closing, cuResult = %i \n",cuResult );}
+    cl_int cl_intResult = cuCtxDestroy ( cuContext ) ;
+    if ( cl_intResult!=0 ) {printf ( "error closing, cl_intResult = %i \n",cl_intResult );}
     
     cudaMemGetInfo(&free2, &total);
     printf("\nmake_demo2: After cuCtxDestroy(cuContext): free=%lu, total=%lu, released=%lu.\n",free2,total,(free2-free1) );

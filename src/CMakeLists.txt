@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8  FATAL_ERROR)
 
 cmake_policy(SET CMP0054 NEW)
 
-project(Morphogenesis LANGUAGES C CXX CUDA)
+project(Morphogenesis LANGUAGES C CXX OPENCL)
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "~/apps/morphogenesis/0.1.1" CACHE PATH "..." FORCE)
@@ -22,6 +22,7 @@ RelWithDebInfo MinSizeRel."
       FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
 
+add_definitions(-D__OPENCLC__)
 
 find_package(CUDA REQUIRED)
 

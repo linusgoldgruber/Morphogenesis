@@ -54,7 +54,7 @@ extern "C" __global__ void insertParticles ( int pnum )                         
 	uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;	// particle index
 	if ( i >= pnum ) return;
 
-	//-- debugging (pointers should match CUdeviceptrs on host side)
+	//-- debugging (pointers should match cl_device_idptrs on host side)
 	// printf ( " pos: %012llx, gcell: %012llx, gndx: %012llx, gridcnt: %012llx\n", fbuf.bufC(FPOS), fbuf.bufC(FGCELL), fbuf.bufC(FGNDX), fbuf.bufC(FGRIDCNT) );
   //  if (fparam.debug>2 && i==0)printf("\ninsertParticles(): pnum=%u\n",pnum);
 
@@ -719,7 +719,7 @@ extern "C" __global__ void computeGeneAction ( int pnum, int gene, uint list_len
     }
 }
 
-extern "C" __global__ void tallyGeneAction ( int pnum, int gene, uint list_length ){// called by ComputeGenesCUDA () after computeGeneAction (..) & synchronize().
+extern "C" __global__ void tallyGeneAction ( int pnum, int gene, uint list_length ){// called by ComputeGenesCL () after computeGeneAction (..) & synchronize().
     uint particle_index = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;                            // particle index
     if ( particle_index >= list_length ) return;                                                    // pnum should be length of list.
     // ## TODO convert i to particle index _iff_ not called for all particles : use a special dense list for "living tissue", made at same time as gene lists
@@ -1300,11 +1300,11 @@ extern "C" __device__ void addParticle (uint parent_Idx, uint &new_particle_Idx)
     /**/if (fparam.debug>2  && threadIdx.x==0) printf("\naddParticle()1:  parent_Idx=%u, new_particle_Idx=%u, fbuf.bufI(FPARTICLE_ID)[new_particle_Idx]=%u", parent_Idx, new_particle_Idx, fbuf.bufI(FPARTICLE_ID)[new_particle_Idx] );
     
     atomicCAS(&fbuf.bufI(FPARTICLE_ID)[new_particle_Idx /*_otherParticleBondIndex*/], UINT_MAX, parent_Idx);// this prevents colision between kernels if run concurrently. 
-    //NB cuMemsetD32 m_Fluid.gpu(FPARTICLEIDX) UINT_MAX in CountingSortFullCUDA(...), Run2PhyysicalSort()
+    //NB cuMemsetD32 m_Fluid.gpu(FPARTICLEIDX) UINT_MAX in CountingSortFullCL(...), Run2PhyysicalSort()
     
     if(fbuf.bufI(FPARTICLE_ID)[new_particle_Idx]== parent_Idx){//   // problem causes failure pf particle adition
         fbuf.bufI(FPARTICLE_ID)[new_particle_Idx]= new_particle_Idx;
-    //int particle_Idx = atomicAdd(&fparam.pnumActive, 1);                              // fparam.pnumActive = mActivePoints from PrefixSumCellsCUDA, set in CountingSortFullCUDA
+    //int particle_Idx = atomicAdd(&fparam.pnumActive, 1);                              // fparam.pnumActive = mActivePoints from PrefixSumCellsCL, set in CountingSortFullCL
                                                                                       // NOT safe to use fbuf.bufI(FGRIDOFF)[fparam.gridTotal] as active particle count!
         //if (fparam.debug>2)printf("\naddParticle()2:  parent_Idx=%u, new_particle_Idx=%u", parent_Idx, new_particle_Idx);
     
@@ -1828,7 +1828,7 @@ extern "C" __device__ int insertNewParticle(uint new_particle_Idx, float3 newPar
 //    return ret3;                                                                                                //NB causes incoming bonds to fluid particles -> non-adherent surface.
 }
 
-extern "C" __global__ void cleanBonds (int pnum){                                   // Called by CleanBondsCUDA (); for use after ComputeParticleChangesCUDA (); Only in Run(), not Run(...)?
+extern "C" __global__ void cleanBonds (int pnum){                                   // Called by CleanBondsCL (); for use after ComputeParticleChangesCL (); Only in Run(), not Run(...)?
     uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;                         // particle index
     if ( i >= pnum ) return;
     uint gc = fbuf.bufI(FGCELL)[ i ];                                               // Get search cell	
@@ -2863,9 +2863,9 @@ extern "C" __global__ void weaken_tissue ( int ActivePoints, int list_length, in
     //           part of particle sorting, build particle index arrays for 
     //                  (i) available genes (ii) active genes (iii) diffusion particles (iv) active/reserve particles. 
     //                   NB sequence of kernels called bu fluid_system::run()
-    //                   InsertParticlesCUDA - sort particles into bins
-    //                   PrefixSumCellsCUDA - count particles in bins - need to count (i&ii) above. (NB FUNC_FPREFIXSUM & FUNC_FPREFIXFIXUP)
-    //                   CountingSortFullCUDA - build arrays - need (NB TransferToTempCUDA(..) for each fbuf array )
+    //                   InsertParticlesCL - sort particles into bins
+    //                   PrefixSumCellsCL - count particles in bins - need to count (i&ii) above. (NB FUNC_FPREFIXSUM & FUNC_FPREFIXFIXUP)
+    //                   CountingSortFullCL - build arrays - need (NB TransferToTempCL(..) for each fbuf array )
     
     // NB bitonic merge sort _may_ be useful to sort particles in active gene lists wrt to their location in the main particle list.
     // This is sorting particles in gene bins, on their particle bin FGNDX.
@@ -2874,7 +2874,7 @@ extern "C" __global__ void weaken_tissue ( int ActivePoints, int list_length, in
     // could write to a list of particles per gene, then run dense blocks for each gene.
     // NB all particles in block execute identical code.
     // Build active gene arrays during sorting
-    // NB sequence : InsertParticles, PrefixSumCells, CountingSortFullCUDA  
+    // NB sequence : InsertParticles, PrefixSumCells, CountingSortFullCL  
 
     // NB generally in C/C++/Cuda types <32bit have to be converted to 32bit for processing. 
     // => use 32bit int/float, except where there is explicit support.
