@@ -101,13 +101,21 @@ bool FluidSystem::clCheck (cl_int launch_stat, const char* method, const char* a
     strcpy ( cfn, func.c_str() );
 
     if ( m_Kern[fid] == (cl_kernel) -1 )
+<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
         clCheck ( cuModuleGetFunction ( &m_Kern[fid], m_Program, cfn ), "LoadKernel", "cuModuleGetFunction", cfn, mbDebug );
+=======
+        clCheck ( cuModuleGetFunction ( &m_Kern[fid], m_program, cfn ), "LoadKernel", "cuModuleGetFunction", cfn, mbDebug );
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
 }*/
 
 void FluidSystem::LoadKernel(int fid, std::string func) {
     if (m_Kern[fid] == nullptr) {
         cl_int err;
+<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
         m_Kern[fid] = clCreateKernel(m_Program, func.c_str(), &err);
+=======
+        m_Kern[fid] = clCreateKernel(m_program, func.c_str(), &err);
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
         clCheck(err == CL_SUCCESS, "LoadKernel", "clCreateKernel", func.c_str(), mbDebug);
     }
 }
@@ -176,6 +184,13 @@ void FluidSystem::InitializeOpenCL() {      //used for load_sim
         printf("Error: Failed to create a compute context!\n");
         exit ( 0 );
     }
+<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
+=======
+    sprintf( morphogenesis_ptx, "%s/%s/fluid_systemPTX/fluid_system_cuda.ptx", morphogenesis_ptx, name);  
+    if (m_FParams.debug>1)std::cout<<"\n release type = "<<name<<"\t ptx path = "<<morphogenesis_ptx<<std::flush;
+    clCheck ( cuModuleLoad ( &m_program, morphogenesis_ptx), "LoadKernel", "cuModuleLoad", morphogenesis_ptx, mbDebug);
+    // loads the file "fluid_system_cuda.ptx" as a module with pointer  m_program.
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
 
     // get the list of GPU devices associated with context
     clGetContextInfo(clContext, CL_CONTEXT_DEVICES, 0, NULL, &cb);
@@ -278,6 +293,17 @@ void FluidSystem::InitializeOpenCL() {      //used for load_sim
     cl_kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING = clCreateKernel(program, "assembleMuscleFibresInComing", ret);
     cl_kernel FUNC_INITIALIZE_BONDS = clCreateKernel(program, "initialize_bonds", ret);
 
+<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
+=======
+    if (m_FParams.debug>1)std::cout << "Chk1.2 \n";
+    size_t len = 0;
+    clCheck ( cuModuleGetGlobal ( &clFBuf,    &len,	m_program, "fbuf" ),		"LoadKernel", "cuModuleGetGlobal", "clFBuf",    mbDebug);   // Returns a global pointer (clFBuf) from a module  (m_program), see line 81.
+    clCheck ( cuModuleGetGlobal ( &clFTemp,   &len,	m_program, "ftemp" ),	"LoadKernel", "cuModuleGetGlobal", "clFTemp",   mbDebug);   // fbuf, ftemp, fparam are defined at top of fluid_system_cuda.cu,
+    clCheck ( cuModuleGetGlobal ( &clFParams, &len,	m_program, "fparam" ),	"LoadKernel", "cuModuleGetGlobal", "clFParams", mbDebug);   // based on structs "FParams", "FBufs", "FGenome" defined in fluid.h
+    clCheck ( cuModuleGetGlobal ( &clFGenome, &len,	m_program, "fgenome" ),	"LoadKernel", "cuModuleGetGlobal", "clFGenome", mbDebug);   // NB defined differently in kernel vs cpu code.
+    // An FBufs struct holds an array of pointers.
+    if (m_FParams.debug>1)std::cout << "Chk1.3 \n";
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
 
 
     clFBuf = clCreateBuffer(clContext, CL_MEM_READ_WRITE, sizeof(clFBuf), NULL, ret);
@@ -381,7 +407,11 @@ void FluidSystem::Exit (){
     cudaMemGetInfo(&free1, &total);
     if (m_FParams.debug>0)printf("\nCuda Memory, before cudaDeviceReset(): free=%lu, total=%lu.\t",free1,total);
     clCheck(clFinish(), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
+<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
     if(m_Program != 0x0){
+=======
+    if(m_program != 0x0){
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
         if (m_FParams.debug>0)printf("\ncudaDeviceReset()\n");
         cudaDeviceReset(); // Destroy all allocations and reset all state on the current device in the current process. // must only operate if we have a cuda instance.
     }

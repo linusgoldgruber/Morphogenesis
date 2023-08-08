@@ -24,7 +24,11 @@
 	#define DEF_FLUID
 	
 	//#include <cuda.h>
+<<<<<<< HEAD:Morphogenesis/src/fluid.h
     #include <CL/opencl.h>
+=======
+    #include <CL/cl.h>
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid.h
 	#include <curand.h>
     #include <string.h>
     #include "vector.h"
@@ -234,9 +238,15 @@
 		#ifdef CUDA_KERNEL
 			char*			mgpu[ MAX_BUF ];		// on device, pointer is local.
 		#else			
+<<<<<<< HEAD:Morphogenesis/src/fluid.h
 			cl_mem		mgpu[ MAX_BUF ];		// on host, gpu is a device pointer // an array of pointers, filled by cuMemAlloc
 			cl_mem		gpu    (int n )	{ return mgpu[n];  }
 			cl_mem *gpuptr (int n )	{ return &mgpu[n]; }
+=======
+			cl_device_idptr		mgpu[ MAX_BUF ];		// on host, gpu is a device pointer // an array of pointers, filled by cuMemAlloc
+			cl_device_idptr		gpu    (int n )	{ return mgpu[n];  }
+			cl_device_idptr*	gpuptr (int n )	{ return &mgpu[n]; }		
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid.h
 		#endif			
 
 	};

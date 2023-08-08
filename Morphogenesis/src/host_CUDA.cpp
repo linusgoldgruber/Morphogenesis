@@ -238,7 +238,11 @@ void FluidSystem::Init_FCURAND_STATE_CL (){ // designed to use to bootstrap itse
     
 }
 ///////////////////////////////// above here is all about setting up CUDA
+<<<<<<< HEAD:Morphogenesis/src/host_CUDA.cpp
 void FluidSystem::InsertParticles ( uint* gcell, uint* gndx, uint* gcnt ){   // first zero the counters
+=======
+void FluidSystem::InsertParticlesCL ( uint* gcell, uint* gndx, uint* gcnt ){   // first zero the counters
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/host_CUDA.cpp
     clCheck ( cuMemsetD8 ( m_Fluid.gpu(FGRIDCNT), 0,	m_GridTotal*sizeof(int) ), "InsertParticlesCL", "cuMemsetD8", "FGRIDCNT", mbDebug );
     clCheck ( cuMemsetD8 ( m_Fluid.gpu(FGRIDOFF), 0,	m_GridTotal*sizeof(int) ), "InsertParticlesCL", "cuMemsetD8", "FGRIDOFF", mbDebug );
     
@@ -259,6 +263,10 @@ void FluidSystem::InsertParticles ( uint* gcell, uint* gndx, uint* gcnt ){   // 
         clCheck( cuMemcpyDtoH ( gcell,	m_Fluid.gpu(FGCELL),	mNumPoints *sizeof(uint) ), "InsertParticlesCL", "cuMemcpyDtoH", "FGCELL", mbDebug );
         clCheck( cuMemcpyDtoH ( gndx,	m_Fluid.gpu(FGNDX),		mNumPoints *sizeof(uint) ), "InsertParticlesCL", "cuMemcpyDtoH", "FGNDX", mbDebug);
         clCheck( cuMemcpyDtoH ( gcnt,	m_Fluid.gpu(FGRIDCNT),	m_GridTotal*sizeof(uint) ), "InsertParticlesCL", "cuMemcpyDtoH", "FGRIDCNT", mbDebug);
+<<<<<<< HEAD:Morphogenesis/src/host_CUDA.cpp
+=======
+        clFinish ();
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/host_CUDA.cpp
     }
     if(m_debug>4){
         if (m_FParams.debug>1) cout<<"\nSaving (FGCELL) InsertParticlesCL: (particleIdx, cell) , mMaxPoints="<<mMaxPoints<<"\t"<<std::flush;
@@ -267,6 +275,7 @@ void FluidSystem::InsertParticles ( uint* gcell, uint* gndx, uint* gcnt ){   // 
     }
 }
 
+<<<<<<< HEAD:Morphogenesis/src/host_CUDA.cpp
 void FluidSystem::InsertParticlesCL ( uint* gcell, uint* gndx, uint* gcnt ){
     // first zero the counters
     clEnqueueFillBuffer(queue, m_Fluid.gpu(FGRIDCNT), 0, sizeof(int), 0, m_GridTotal * sizeof(int), 0, NULL, NULL);
@@ -295,6 +304,8 @@ void FluidSystem::InsertParticlesCL ( uint* gcell, uint* gndx, uint* gcnt ){
     }
 }
 
+=======
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/host_CUDA.cpp
 void FluidSystem::PrefixSumCellsCL ( int zero_offsets ){
     // Prefix Sum - determine grid offsets
     int blockSize = SCAN_BLOCKSIZE << 1;                // NB 1024 = 512 << 1.  NB SCAN_BLOCKSIZE is the number of threads per block

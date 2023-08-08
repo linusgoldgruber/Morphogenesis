@@ -34,10 +34,17 @@ int main ( int argc, const char** argv )
         printf ( "There is no device supporting CUDA.\n" );
         exit ( 0 );
     }
+<<<<<<< HEAD:Morphogenesis/src/make_demo2.cpp
     cl_device_id devices;
     clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &devices, NULL);
     CUcontext clContext;
     clCreateContext ( &clContext, 0, devices );
+=======
+    cl_device_id clDevice;
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &clDevice, NULL);
+    CUcontext cuContext;
+    cuCtxCreate ( &cuContext, 0, clDevice );
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/make_demo2.cpp
     
     FluidSystem fluid;
     fluid.InitializeOpenCL ();
@@ -70,7 +77,11 @@ int main ( int argc, const char** argv )
     cudaMemGetInfo(&free1, &total);
     printf("\n\nmake_demo2: Cuda Memory, before cuCtxDestroy(clContext): free=%lu, total=%lu.\t",free1,total);
     
+<<<<<<< HEAD:Morphogenesis/src/make_demo2.cpp
     cl_int cl_intResult = cuCtxDestroy ( clContext ) ;
+=======
+    cl_int cl_intResult = cuCtxDestroy ( cuContext ) ;
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/make_demo2.cpp
     if ( cl_intResult!=0 ) {printf ( "error closing, cl_intResult = %i \n",cl_intResult );}
     
     cudaMemGetInfo(&free2, &total);

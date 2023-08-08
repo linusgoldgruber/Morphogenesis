@@ -60,6 +60,26 @@ int main ( int argc, const char** argv )
         printf ("remodelling = %c\n", remodelling );
     }
 std::cout <<"\nchk load_sim_0.1\n"<<std::flush;  
+<<<<<<< HEAD:Morphogenesis/src/load_sim.cpp
+=======
+
+    //cuInit ( 0 );                                       // Initialize
+    //int deviceCount = 0;
+    size_t deviceCount;
+    //CUDA: cuDeviceGetCount ( &deviceCount ); OpenCL:
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &deviceCount);
+    if ( deviceCount == 0 ) {
+        printf ( "There is no device supporting CUDA.\n" );
+        exit ( 0 );
+    }
+std::cout <<"\nchk load_sim_0.2\n"<<std::flush;  
+
+    cl_device_id clDevice;
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, deviceCount, &clDevice, NULL);
+    CUcontext cuContext;
+    cuCtxCreate ( &cuContext, 0, clDevice );
+std::cout <<"\nchk load_sim_0.3\n"<<std::flush;  
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/load_sim.cpp
     
     FluidSystem fluid;
     fluid.SetDebug ( debug );
@@ -154,10 +174,17 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
     /*
     size_t   free1, free2, total;
     cudaMemGetInfo(&free1, &total);
+<<<<<<< HEAD:Morphogenesis/src/load_sim.cpp
     if(debug>0) printf("\nCuda Memory, before cuCtxDestroy(clContext): free=%lu, total=%lu.\t",free1,total);
    // clCheck(clFinish(), "load_sim.cpp ", "clFinish", "before cuCtxDestroy(clContext)", 1/_*mbDebug*_/);
     
     cl_int cl_intResult = cuCtxDestroy ( clContext ) ;
+=======
+    if(debug>0) printf("\nCuda Memory, before cuCtxDestroy(cuContext): free=%lu, total=%lu.\t",free1,total);
+   // clCheck(clFinish(), "load_sim.cpp ", "clFinish", "before cuCtxDestroy(cuContext)", 1/_*mbDebug*_/);  
+    
+    cl_int cl_intResult = cuCtxDestroy ( cuContext ) ;
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/load_sim.cpp
     if ( cl_intResult!=0 ) {printf ( "error closing, cl_intResult = %i \n",cl_intResult );}
     
    // clCheck(clFinish(), "load_sim.cpp ", "clFinish", "after cudaDeviceReset()", 1/_*mbDebug*_/); 

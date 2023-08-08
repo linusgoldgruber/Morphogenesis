@@ -106,7 +106,11 @@
 	#define PINITMAX			5
 	#define PPLANE_GRAV_DIR		6
 
+<<<<<<< HEAD:Morphogenesis/src/fluid_system.h
 	kernel function   "m_Kern[]"
+=======
+	// kernel function   "m_Kern[]"
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.h
 	#define FUNC_INSERT			0
 	#define	FUNC_COUNTING_SORT	1
 	#define FUNC_QUERY			2
@@ -173,7 +177,11 @@
         bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
 		void LoadKernel ( int id, std::string kname );
 		void Initialize ();
+<<<<<<< HEAD:Morphogenesis/src/fluid_system.h
         void InitializeOpenCL ();                             // used for load_sim
+=======
+        void InitializeCL ();                             // used for load_sim
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.h
 
 		// Particle Utilities
 		void AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode);		
@@ -351,6 +359,7 @@
 		float						m_DT;
 		float						m_Time;	
 
+<<<<<<< HEAD:Morphogenesis/src/fluid_system.h
 		// OpenCL
 		cl_int err;                                             // Initialize
 		cl_uint num_platforms;
@@ -403,6 +412,12 @@
 		m_Kern [FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = clCreateKernel(program, "assembleMuscleFibresInComing", ret);
 		m_Kern [FUNC_INITIALIZE_BONDS] = clCreateKernel(program, "initialize_bonds", ret);
 		m_Kern [FUNC_INITIALIZE_BONDS] = clCreateKernel(program, "initialize_bonds", ret);
+=======
+		// OpenCL Kernels(!)
+		cl_program					m_Program;
+                                    // Array of kernel functions
+		cl_kernel					m_Kern[ FUNC_MAX ];
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.h
         
 		// Simulation Parameters                                //  NB MAX_PARAM = 50 
 		float						m_Param [ MAX_PARAM ];	    // 0-47 used.  see defines above. NB m_Param[1] = maximum number of points.
@@ -420,10 +435,17 @@
 		FParams					m_FParams;				// Fluid parameters struct - that apply to all particles 
 		FGenome					m_FGenome;				// Genome struct of arrays for genne params
 
+<<<<<<< HEAD:Morphogenesis/src/fluid_system.h
 		cl_mem				clFBuf;					// GPU pointer containers
 		cl_mem				clFTemp;
 		cl_mem				clFParams;
 		cl_mem				clFGenome;
+=======
+		cl_device_idptr				clFBuf;					// GPU pointer containers
+		cl_device_idptr				clFTemp;
+		cl_device_idptr				clFParams;
+		cl_device_idptr				clFGenome;
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.h
 
 		// Acceleration Grid		
 		int						m_GridTotal;			// total # cells

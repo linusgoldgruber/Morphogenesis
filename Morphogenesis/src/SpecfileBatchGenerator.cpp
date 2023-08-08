@@ -52,11 +52,19 @@ int main ( int argc, const char** argv )
         printf ( "There is no device supporting CUDA.\n" );
         exit ( 0 );
     }
+<<<<<<< HEAD:Morphogenesis/src/SpecfileBatchGenerator.cpp
     cl_device_id devices; //should this be an array???
     //cuDeviceGet ( &cuDevice, 0 );
     clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, deviceCount, &devices, NULL);
     CUcontext clContext;
     clCreateContext ( &clContext, 0, cuDevice );
+=======
+    cl_device_id clDevice; //should this be an array???
+    //cuDeviceGet ( &cuDevice, 0 );
+    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, deviceCount, &clDevice, NULL);
+    CUcontext cuContext;
+    cuCtxCreate ( &cuContext, 0, cuDevice );
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/SpecfileBatchGenerator.cpp
     
     FluidSystem fluid;
     fluid.InitializeOpenCL ();
@@ -262,7 +270,11 @@ elongation_threshold,	elongation_factor,	strength_threshold,	strengthening_facto
     cudaMemGetInfo(&free1, &total);
     printf("\n\nCuda Memory, before cuCtxDestroy(clContext): free=%lu, total=%lu.\t",free1,total);
     
+<<<<<<< HEAD:Morphogenesis/src/SpecfileBatchGenerator.cpp
     cl_int cl_intResult = cuCtxDestroy ( clContext ) ;
+=======
+    cl_int cl_intResult = cuCtxDestroy ( cuContext ) ;
+>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/SpecfileBatchGenerator.cpp
     if ( cl_intResult!=0 ) {printf ( "error closing, cl_intResult = %i \n",cl_intResult );}
     
     cudaMemGetInfo(&free2, &total);
