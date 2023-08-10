@@ -24,20 +24,17 @@
 	#define DEF_FLUID
 	
 	//#include <cuda.h>
-<<<<<<< HEAD:Morphogenesis/src/fluid.h
-    #include <CL/opencl.h>
-=======
+    //#include <CL/opencl.h>
     #include <CL/cl.h>
->>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid.h
-	#include <curand.h>
+	//#include <curand.h>
     #include <string.h>
-    #include "vector.h"
-    #include "masks.h"
+    //#include "vector.h"
+    //#include "masks.h"
 //#include <../cuda-11.2/targets/x86_64-linux/include/curand_kernel.h>
-    #include <curand_kernel.h>
+    //#include <curand_kernel.h>
 
-	typedef	unsigned int		uint;	
-	typedef	unsigned short int	ushort;	
+	typedef	unsigned int		uint;
+	typedef	unsigned short int	ushort;
 
     // Buffers:
     // NB one buffer created per particle parameter (marked '#'),
@@ -197,61 +194,49 @@
 	#else
 		#define CALLFUNC
 	#endif		
-
-
 	
-	// Particle & Grid Buffers
-	struct FBufs {       // holds an array of pointers, and functions to access them.    // used to declare "fbuf" at top of fluid_system_cuda.cu
-        // Data type sizes  see https://en.cppreference.com/w/cpp/language/types ,  
-        // 64 bit Linux uses  or 4/8/8 (int is 32-bit, long and pointer are 64-bit) 
-        // short int 16bit, int 32bit, long int 64bit, float 32bit, double 64bit, 
-		#ifdef CUDA_KERNEL
-			// on device, access data via gpu pointers 
-			inline CALLFUNC Vector3DF* bufV3(int n)		{ return (Vector3DF*) mgpu[n]; }
-			inline CALLFUNC float3* bufF3(int n)		{ return (float3*) mgpu[n]; }
-			inline CALLFUNC float*  bufF (int n)		{ return (float*)  mgpu[n]; }
-			inline CALLFUNC uint*   bufI (int n)		{ return (uint*)   mgpu[n]; }
-			inline CALLFUNC char*   bufC (int n)		{ return (char*)   mgpu[n]; }
-			inline CALLFUNC uint**  bufII (int n)       { return (uint**)  mgpu[n]; }        // for elastIdx[][]
-			inline CALLFUNC curandState_t*  bufCuRNDST (int n)       { return (curandState_t*)  mgpu[n]; }
-			inline CALLFUNC unsigned long long*  bufULL (int n)      { return (unsigned long long*)  mgpu[n]; }
-			//inline CALLFUNC unsigned short* bufS (int n)		{ return (unsigned short*)   mgpu[n]; }
-		#else
-			// on host, access data via cpu pointers
-			inline CALLFUNC Vector3DF* bufV3(int n)		{ return (Vector3DF*) mcpu[n]; }
-			inline CALLFUNC float3* bufF3(int n)		{ return (float3*) mcpu[n]; }
-			inline CALLFUNC float*  bufF (int n)		{ return (float*)  mcpu[n]; }
-			inline CALLFUNC uint*   bufI (int n)		{ return (uint*)   mcpu[n]; }
-			inline CALLFUNC char*   bufC (int n)		{ return (char*)   mcpu[n]; }
-			inline CALLFUNC uint**  bufII (int n)       { return (uint**)  mcpu[n]; }        // for elastIdx[][]
-			inline CALLFUNC curandState_t*  bufCuRNDST (int n)       { return (curandState_t*)  mcpu[n]; }
-			inline CALLFUNC unsigned long long*  bufULL (int n)      { return (unsigned long long*)  mcpu[n]; }
-			
-			//inline CALLFUNC unsigned short* bufS (int n)		{ return (unsigned short*)   mgpu[n]; }
-		#endif
-		inline CALLFUNC void    setBuf (int n, char* buf )	{ mcpu[n] = buf; }			// stores pointer to buffer in mcpu[]
-		inline CALLFUNC void    setCLBuf (int n, cl_mem buf )	{ mgpu[n] = buf; }			// stores pointer to buffer in mcpu[]
-        inline CALLFUNC void    setGpu (int n, cl_mem buf )	{ mgpu[n] = buf; }
 
-		char*				mcpu[ MAX_BUF ];
+    struct FBufs {  // holds an array of pointers, and functions to access them.    // used to declare "fbuf" at top of fluid_system_cuda.cu
+        // Data type sizes  see https://en.cppreference.com/w/cpp/language/types ,
+        // 64 bit Linux uses  or 4/8/8 (int is 32-bit, long and pointer are 64-bit)
+        // short int 16bit, int 32bit, long int 64bit, float 32bit, double 64bit,
+        #ifdef OPENCL_KERNEL
+        // on device, access data via gpu pointers
+            inline Vector3DF* bufV3(int n) { return (Vector3DF*) mgpu[n]; }
+            inline float3* bufF3(int n) { return (float3*) mgpu[n]; }
+            inline float*  bufF (int n) { return (float*)  mgpu[n]; }
+            inline uint*   bufI (int n) { return (uint*)   mgpu[n]; }
+            inline char*   bufC (int n) { return (char*)   mgpu[n]; }
+            inline uint**  bufII (int n) { return (uint**)  mgpu[n]; }
+            inline well512_state*  bufWell512State(int n) { return (well512_state*) mgpu[n]; }
+            inline unsigned long long*  bufULL(int n) { return (unsigned long long*) mgpu[n]; }
+            //inline CALLFUNC unsigned short* bufS (int n)		{ return (unsigned short*)   mgpu[n]; }
 
-		#ifdef CUDA_KERNEL
-			char*			mgpu[ MAX_BUF ];		// on device, pointer is local.
-		#else			
-<<<<<<< HEAD:Morphogenesis/src/fluid.h
-			cl_mem		mgpu[ MAX_BUF ];		// on host, gpu is a device pointer // an array of pointers, filled by cuMemAlloc
-			cl_mem		gpu    (int n )	{ return mgpu[n];  }
-			cl_mem *gpuptr (int n )	{ return &mgpu[n]; }
-=======
-			cl_device_idptr		mgpu[ MAX_BUF ];		// on host, gpu is a device pointer // an array of pointers, filled by cuMemAlloc
-			cl_device_idptr		gpu    (int n )	{ return mgpu[n];  }
-			cl_device_idptr*	gpuptr (int n )	{ return &mgpu[n]; }		
->>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid.h
-		#endif			
+        #else
+            inline Vector3DF* bufV3(int n) { return (Vector3DF*) mcpu[n]; }
+            inline float3* bufF3(int n) { return (float3*) mcpu[n]; }
+            inline float*  bufF (int n) { return (float*)  mcpu[n]; }
+            inline uint*   bufI (int n) { return (uint*)   mcpu[n]; }
+            inline char*   bufC (int n) { return (char*)   mcpu[n]; }
+            inline uint**  bufII (int n) { return (uint**)  mcpu[n]; }          // for elastIdx[][]
+            inline well512_state*  bufWell512State(int n) { return (well512_state*) mcpu[n]; }
+            inline unsigned long long*  bufULL(int n) { return (unsigned long long*) mcpu[n]; }
+        #endif
+        inline void setBuf(int n, char* buf) { mcpu[n] = buf; }
+        inline void setCLBuf(int n, cl_mem buf) { mgpu[n] = buf; }
+        inline void setGpu(int n, cl_mem buf) { mgpu[n] = buf; }
 
-	};
+        char* mcpu[MAX_BUF];
+        #ifdef OPENCL_KERNEL
+            char* mgpu[MAX_BUF];
+        #else
+            cl_mem mgpu[MAX_BUF];
+            cl_mem gpu(int n) { return mgpu[n]; }
+            cl_mem *gpuptr(int n) { return &mgpu[n]; }
+        #endif
+    };
+/*			float3*			mpos;			// particle buffers>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid.h
 
-/*			float3*			mpos;			// particle buffers
 		float3*			mvel;
 		float3*			mveleval;
 		float3*			mforce;

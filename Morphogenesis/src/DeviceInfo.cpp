@@ -1,9 +1,3 @@
-/*
- *
- *
- *
-*/
-
 #define __CL_ENABLE_EXCEPTIONS
 #define CL_HPP_ENABLE_EXCEPTIONS
 #define CL_HPP_TARGET_OPENCL_VERSION 300
@@ -63,17 +57,21 @@ RunCL::RunCL(Json::Value obj_)
 	uload_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 	dload_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 	track_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+																						if(verbosity>0) cout << "RunCL_chk 4: \n" << uload_queue << flush;
+
 																						// Multiple queues for latency hiding: Upload, Download, Mapping, Tracking,... autocalibration, SIRFS, SPMP
 																						// NB Might want to create command queues on multiple platforms & devices.
 																						// NB might want to divde a task across multiple MPI Ranks on a multi-GPU WS or cluster.
 	const char *filename = obj["kernel_filepath"].asCString();							/*Step 5: Create program object*///////////////////////////////
 	string sourceStr;
-	status 						= convertToString(filename, sourceStr);					if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+	status 						= convertToString(filename, sourceStr);					if(status!=CL_SUCCESS)	{cout<<"\nconvertToString status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 	const char 	*source 		= sourceStr.c_str();
 	size_t 		sourceSize[] 	= { strlen(source) };
 	m_program 	= clCreateProgramWithSource(m_context, 1, &source, sourceSize, NULL);
 
-	status = clBuildProgram(m_program, 1, devices, NULL, NULL, NULL);					/*Step 6: Build program.*/////////////////////
+	const char includeOptions[] = "-I /lib/i386-linux-gnu"; // Paths to include directories ///// -I /usr/lib/gcc/x86_64-linux-gnu/11/include /////
+
+	status = clBuildProgram(m_program, 1, devices, includeOptions, NULL, NULL);					/*Step 6: Build program.*/////////////////////
 	if (status != CL_SUCCESS){
 		printf("\nclBuildProgram failed: %d\n", status);
 		char buf[0x10000];
@@ -82,12 +80,9 @@ RunCL::RunCL(Json::Value obj_)
 		exit_(status);
 	}
 
-	insertParticlesCL_kernel     = clCreateKernel(m_program, "insertParticlesCL", NULL);				/*Step 7: Create kernel objects.*////////////
-	prefixFixup_kernel     = clCreateKernel(m_program, "prefixFixup", NULL);				/*Step 7: Create kernel objects.*////////////
-	cost_kernel     = clCreateKernel(m_program, "BuildCostVolume2", NULL);				/*Step 7: Create kernel objects.*////////////
-	cache3_kernel   = clCreateKernel(m_program, "CacheG3", 			NULL);
-	updateQD_kernel = clCreateKernel(m_program, "UpdateQD", 		NULL);
-	updateA_kernel  = clCreateKernel(m_program, "UpdateA2", 		NULL);
+	insertParticlesCL_kernel     = clCreateKernel(m_program, "insertParticlesCLTest", NULL);				/*Step 7: Create kernel objects.*////////////
+	prefixFixup_kernel     = clCreateKernel(m_program, "prefixFixupTest", NULL);
+
 	basemem=imgmem=cdatabuf=hdatabuf=k2kbuf=dmem=amem=basegraymem=gxmem=gymem=g1mem=lomem=himem=0;		// set device pointers to zero
 																						if(verbosity>0) cout << "RunCL_constructor finished\n" << flush;
 }
@@ -96,17 +91,15 @@ RunCL::RunCL(Json::Value obj_)
 RunCL::~RunCL()
 {
 	cl_int status;
-	status = clReleaseKernel(cost_kernel);      	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
-	status = clReleaseKernel(cache3_kernel);		if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
-	status = clReleaseKernel(updateQD_kernel);		if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
-	status = clReleaseKernel(updateA_kernel);		if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
+	status = clReleaseKernel(prefixFixup_kernel);      	if (status != CL_SUCCESS)	{ cout << "\nRelease Kernel1 status = " << checkerror(status) <<"\n"<<flush; }
+	//status = clReleaseKernel(cache3_kernel);		if (status != CL_SUCCESS)	{ cout << "\nRelease Kernel2 status = " << checkerror(status) <<"\n"<<flush; }
 
-	status = clReleaseProgram(m_program);			if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
-	status = clReleaseCommandQueue(m_queue);		if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
-	status = clReleaseCommandQueue(uload_queue);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
-	status = clReleaseCommandQueue(dload_queue);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
-	status = clReleaseCommandQueue(track_queue);	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
-	status = clReleaseContext(m_context);			if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; }
+	status = clReleaseProgram(m_program);			if (status != CL_SUCCESS)	{ cout << "\nRelease Program status = " << checkerror(status) <<"\n"<<flush; }
+	status = clReleaseCommandQueue(m_queue);		if (status != CL_SUCCESS)	{ cout << "\nRelease CQ1 status = " << checkerror(status) <<"\n"<<flush; }
+	status = clReleaseCommandQueue(uload_queue);	if (status != CL_SUCCESS)	{ cout << "\nRelease CQ2 status = " << checkerror(status) <<"\n"<<flush; }
+	status = clReleaseCommandQueue(dload_queue);	if (status != CL_SUCCESS)	{ cout << "\nRelease CQ3 status = " << checkerror(status) <<"\n"<<flush; }
+	status = clReleaseCommandQueue(track_queue);	if (status != CL_SUCCESS)	{ cout << "\nRelease CQ4 status = " << checkerror(status) <<"\n"<<flush; }
+	status = clReleaseContext(m_context);			if (status != CL_SUCCESS)	{ cout << "\nRelease Context status = " << checkerror(status) <<"\n"<<flush; }
 }
 
 void RunCL::CleanUp()
@@ -134,10 +127,8 @@ void RunCL::exit_(cl_int res)
 }
 
 
-int main(int argc, char *argv[])
+int main()
 {
-	if (argc !=2) { cout << "\n\nUsage : DTAM_OpenCL <config_file.json>\n\n" << flush; exit; }
-	ifstream ifs(argv[1]);
     Json::Reader reader;
     Json::Value obj_;
     Json::Value obj;
@@ -146,6 +137,7 @@ int main(int argc, char *argv[])
     obj["opencl_device"] = 0;
     obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
     RunCL runCLInstance(obj);
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

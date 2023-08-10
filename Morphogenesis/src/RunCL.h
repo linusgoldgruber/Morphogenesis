@@ -12,7 +12,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <jsoncpp/json/json.h>
-#include <opencv4/opencv2/core/hal/interface.h>
+#include </home/goldi/opencv-4.x/modules/core/include/opencv2/core/hal/interface.h>
 							// indices for float params passed to __const params_buf
 #define PIXELS			0	// TODO Can these be #included from a common header for both host and device code?
 #define ROWS			1

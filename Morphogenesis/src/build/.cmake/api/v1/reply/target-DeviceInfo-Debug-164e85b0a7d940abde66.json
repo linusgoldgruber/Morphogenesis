@@ -27,25 +27,25 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 68,
+				"line" : 70,
 				"parent" : 0
 			},
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 72,
+				"line" : 74,
 				"parent" : 0
 			},
 			{
 				"command" : 2,
 				"file" : 0,
-				"line" : 81,
+				"line" : 84,
 				"parent" : 0
 			},
 			{
 				"command" : 3,
 				"file" : 0,
-				"line" : 66,
+				"line" : 68,
 				"parent" : 0
 			}
 		]
@@ -56,7 +56,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-g"
+					"fragment" : " -I /usr/lib/gcc/x86_64-linux-gnu/11/include -g"
 				},
 				{
 					"fragment" : "-std=gnu++17"
@@ -97,7 +97,7 @@
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "-g",
+				"fragment" : "-I /usr/lib/gcc/x86_64-linux-gnu/11/include -g",
 				"role" : "flags"
 			},
 			{
@@ -112,6 +112,11 @@
 			{
 				"backtrace" : 2,
 				"fragment" : "-ljsoncpp",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-lstdc++",
 				"role" : "libraries"
 			}
 		],

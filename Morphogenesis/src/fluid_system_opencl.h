@@ -27,7 +27,7 @@
 //----------------------------------------------------------------------------------
 
 #ifndef DEF_KERN_CUDA
-	#define DEF_KERN_CUDA
+	//#define DEF_KERN_CUDA
     //#include <cuda_runtime.h>
 	//#include <curand.h>
 	//#include <curand_kernel.h>
@@ -35,7 +35,7 @@
     #include <CL/cl.h>
     //#include "/usr/local/cuda/include/math_constants.h"  // need better <path> . In CMakeLists.txt "include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})"
 
-	#define CUDA_KERNEL
+	//#define CUDA_KERNEL
 	#include "fluid.h"
 
 	#define EPSILON				0.00001f
@@ -48,11 +48,16 @@
     //#define TWO_POW_31 0x80000000       // Binary 10000000000000000000000000000000  // used to store data in top bit of uint
     //#define TWO_POW_24_MINUS_1 0xFFFFFF // Binary 111111111111111111111111          // used to bit mask 1st 24 bits of uint
 
-    
-	typedef unsigned int		uint;
-	typedef unsigned short int	ushort;
-	typedef unsigned char		uchar;
-	
+
+
+    //////////////////////////////!!!!!!!!!!!!! typedef !!!!!!!!!!!!!!//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	typedef unsigned int		uint;                                                                                                                                       ////////////////////////////////
+	typedef unsigned short int	ushort;                                                                                                                                     ////////////////////////////////
+	typedef unsigned char		uchar;                                                                                                                                      ////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 	extern "C" {
         __global void initialize_FCURAND_STATE (int pnum);
 		__global__ void insertParticles ( int pnum );	

@@ -8,7 +8,7 @@
 //		Normalize ()	Normalizes vector
 //
 
-#include <math.h>
+//#include <math.h>
 
 // Vector2DC Code Definition
 

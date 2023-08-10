@@ -1,4 +1,4 @@
-#cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.10)
 
 ## Set the project name and version
 #project(DeviceInfo VERSION 1.0)
@@ -44,7 +44,7 @@
       #message(STATUS "dir='${dir}'")
       #endforeach()
 
-cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
+#cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 cmake_policy(SET CMP0054 NEW)
 
 project(DeviceInfo LANGUAGES C CXX)
@@ -52,9 +52,11 @@ project(DeviceInfo LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_COMPILER "/usr/bin/gcc")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I /usr/lib/gcc/x86_64-linux-gnu/11/include")
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING
       "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
       FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
@@ -72,6 +74,7 @@ DeviceInfo.cpp
 target_link_libraries(${PROJECT_NAME} PRIVATE
         OpenCL::OpenCL
         ${JSONCPP_LIBRARIES}
+        stdc++
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES C_STANDARD 11

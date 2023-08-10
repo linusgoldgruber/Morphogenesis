@@ -27,7 +27,7 @@
 
 	
         #ifdef _MSC_VER
-            #include <windows.h>
+            //#include <windows.h>
         #else
             typedef unsigned int		DWORD;
         #endif
@@ -910,7 +910,8 @@
 		inline VTYPE *Data (void);
 	};
 	
-	#undef VNAME
+	#undef VNAME		inline Vector4DF &Random ()		{ x=float(rand())/RAND_MAX; y=float(rand())/RAND_MAX; z=float(rand())/RAND_MAX; w = 1;  return *this;}
+
 	#undef VTYPE
 
     // Vector Code Definitions (Inlined)
