@@ -58,7 +58,6 @@
 //     #include <vtk-9.0/vtkPointData.h>
 //     #include <vtk-9.0/vtkCellData.h>
 	#include "fluid.h"
-	#include "RunCL.h"
 
 	extern bool gProfileRend;
     #define EPSILON			0.00001f			// for collision detection
@@ -107,6 +106,58 @@
 	#define PINITMAX			5
 	#define PPLANE_GRAV_DIR		6
 
+	//kernel function   "m_Kern[]"
+
+	#define FUNC_INSERT			0
+	#define	FUNC_COUNTING_SORT	1
+	#define FUNC_QUERY			2
+	#define FUNC_COMPUTE_PRESS	3
+	#define FUNC_COMPUTE_FORCE	4
+	#define FUNC_ADVANCE		5
+	#define FUNC_EMIT			6
+	#define FUNC_RANDOMIZE		7
+	#define FUNC_SAMPLE			8
+	#define FUNC_FPREFIXSUM		9
+	#define FUNC_FPREFIXUP	10
+    #define FUNC_TALLYLISTS     11
+    #define FUNC_COMPUTE_DIFFUSION          12
+    #define FUNC_COUNT_SORT_LISTS           13
+    #define FUNC_COMPUTE_GENE_ACTION        14
+    #define FUNC_TALLY_GENE_ACTION        35
+    #define FUNC_COMPUTE_BOND_CHANGES       15
+
+    #define FUNC_INSERT_CHANGES             16 //insertChanges
+    #define FUNC_PREFIXUP_CHANGES           17 //prefixFixupChanges
+    #define FUNC_PREFIXSUM_CHANGES          18 //prefixSumChanges
+    #define FUNC_TALLYLISTS_CHANGES         19 //tally_changelist_lengths
+    #define FUNC_COUNTING_SORT_CHANGES      20 //countingSortChanges
+    #define FUNC_COMPUTE_NERVE_ACTION       21 //computeNerveActivation
+
+    #define FUNC_COMPUTE_MUSCLE_CONTRACTION 22 //computeMuscleContraction
+    #define FUNC_HEAL                       23 //heal
+    #define FUNC_LENGTHEN_TISSUE            24 //lengthen_muscle
+    #define FUNC_LENGTHEN_MUSCLE            25 //lengthen_tissue
+    #define FUNC_SHORTEN_TISSUE             26 //shorten_muscle
+    #define FUNC_SHORTEN_MUSCLE             27 //shorten_tissue
+
+    #define FUNC_STRENGTHEN_TISSUE          28 //strengthen_muscle
+    #define FUNC_STRENGTHEN_MUSCLE          29 //strengthen_tissue
+    #define FUNC_WEAKEN_TISSUE              30 //weaken_muscle
+    #define FUNC_WEAKEN_MUSCLE              31 //weaken_tissue
+
+    #define FUNC_EXTERNAL_ACTUATION         32
+    #define FUNC_FIXED                      33
+    #define FUNC_CLEAN_BONDS                34
+
+    #define FUNC_INIT_FCURAND_STATE         36
+    #define FUNC_COUNTING_SORT_EPIGEN       37
+
+    #define	FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING     38
+    #define	FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING     39
+    #define	FUNC_INITIALIZE_BONDS                    40
+
+    #define FUNC_MAX			            41
+
     //  used for AllocateBuffer(  .... )
 	#define GPU_OFF				0
 	#define GPU_SINGLE			1
@@ -119,11 +170,10 @@
 	
 	class FluidSystem {
 	public:
-		//FluidSystem (RunCL& runcl);
+		FluidSystem ();
         bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
-		//FluidSystem(RunCL& runCLInstance) : m_runCLInstance(runCLInstance) {}
-		void LoadKernel (RunCL& runcl,  int id, std::string kname );
-		void Initialize (RunCL& runcl);
+		void LoadKernel ( int id, std::string kname );
+		void Initialize ();
         void InitializeOpenCL ();                             // used for load_sim
         void InitializeCL ();                             // used for load_sim
 
@@ -139,23 +189,23 @@
 		int NumPoints ()				{ return mNumPoints; }
 		int MaxPoints ()                { return mMaxPoints; }
 		int ActivePoints ()             { return mActivePoints; }
-		Vector3DF* getPos ( int n )	    { return &bufV3(&m_Fluid, FPOS)[n]; }
-		Vector3DF* getVel ( int n )	    { return &bufV3(&m_Fluid, FVEL)[n]; }
-		Vector3DF* getVeval ( int n )   { return &bufV3(&m_Fluid, FVEVAL)[n]; }
-		Vector3DF* getForce ( int n )   { return &bufV3(&m_Fluid, FFORCE)[n]; }
+		Vector3DF* getPos ( int n )	    { return &m_Fluid.bufV3(FPOS)[n]; }
+		Vector3DF* getVel ( int n )	    { return &m_Fluid.bufV3(FVEL)[n]; }
+		Vector3DF* getVeval ( int n )   { return &m_Fluid.bufV3(FVEVAL)[n]; }
+		Vector3DF* getForce ( int n )   { return &m_Fluid.bufV3(FFORCE)[n]; }
 		
-		float* getPres ( int n )        { return &bufF(&m_Fluid, FPRESS)[n];}
-		float* getDensity ( int n )     { return &bufF(&m_Fluid, FDENSITY)[n];}
+		float* getPres ( int n )        { return &m_Fluid.bufF(FPRESS)[n];} 
+		float* getDensity ( int n )     { return &m_Fluid.bufF(FDENSITY)[n];} 
 		
-		uint* getClr ( int n )			{ return &bufI(&m_Fluid, FCLR)[n]; }
-		uint* getAge ( int n )			{ return &bufI(&m_Fluid, FAGE)[n]; }
-        uint* getElastIdx( int n )      { return &bufI(&m_Fluid, FELASTIDX)[n*(BONDS_PER_PARTICLE * DATA_PER_BOND)]; }        //note #define FELASTIDX   14
-        uint* getParticle_Idx( int n )  { return &bufI(&m_Fluid, FPARTICLEIDX)[n*BONDS_PER_PARTICLE*2]; }
-        uint* getParticle_ID(int n )    { return &bufI(&m_Fluid, FPARTICLE_ID)[n]; }
-        uint* getMass_Radius(int n )    { return &bufI(&m_Fluid, FMASS_RADIUS)[n]; }
-        uint* getNerveIdx( int n )      { return &bufI(&m_Fluid, FNERVEIDX)[n]; }              //#define FNERVEIDX        15    //# uint
-        float* getConc(int tf)          { return &bufF(&m_Fluid, FCONC)[tf*mMaxPoints];}       //note #define FCONC       16    //# float[NUM_TF]        NUM_TF = num transcription factors & morphogens
-        uint* getEpiGen(int gene)       { return &bufI(&m_Fluid, FEPIGEN)[gene*mMaxPoints];}   //note #define FEPIGEN     17    //# uint[NUM_GENES] // used in savePoints...
+		uint* getAge ( int n )			{ return &m_Fluid.bufI(FAGE)[n]; }
+		uint* getClr ( int n )			{ return &m_Fluid.bufI(FCLR)[n]; }
+        uint* getElastIdx( int n )      { return &m_Fluid.bufI(FELASTIDX)[n*(BONDS_PER_PARTICLE * DATA_PER_BOND)]; }        //note #define FELASTIDX   14      
+        uint* getParticle_Idx( int n )  { return &m_Fluid.bufI(FPARTICLEIDX)[n*BONDS_PER_PARTICLE*2]; } 
+        uint* getParticle_ID(int n )    { return &m_Fluid.bufI(FPARTICLE_ID)[n]; }
+        uint* getMass_Radius(int n )    { return &m_Fluid.bufI(FMASS_RADIUS)[n]; }
+        uint* getNerveIdx( int n )      { return &m_Fluid.bufI(FNERVEIDX)[n]; }              //#define FNERVEIDX        15    //# uint
+        float* getConc(int tf)          { return &m_Fluid.bufF(FCONC)[tf*mMaxPoints];}       //note #define FCONC       16    //# float[NUM_TF]        NUM_TF = num transcription factors & morphogens
+        uint* getEpiGen(int gene)       { return &m_Fluid.bufI(FEPIGEN)[gene*mMaxPoints];}   //note #define FEPIGEN     17    //# uint[NUM_GENES] // used in savePoints... 
                                                                                              //NB int mMaxPoints is set even if FluidSetupCL(..) isn't called, e.g. in makedemo ..
 		// Setup
 		void SetupSPH_Kernels ();
@@ -185,7 +235,7 @@
         void Freeze (const char * relativePath, int frame, bool debug, bool gene_activity, bool remodelling);
 		void AdvanceTime ();
 		
-		void Exit (RunCL& runcl);
+		void Exit ();
         void Exit_no_CL ();
 		void TransferToCL ();
 		void TransferFromCL ();
@@ -193,13 +243,13 @@
 		double GetDT()		{ return m_DT; }
 		
 		// Acceleration Grid
-		Vector3DF GetGridRes ()		{ return Vector3DI_to_Vector3DF(m_GridRes); }
+		Vector3DF GetGridRes ()		{ return m_GridRes; }
 		Vector3DF GetGridMin ()		{ return m_GridMin; }
 		Vector3DF GetGridMax ()		{ return m_GridMax; }
 		Vector3DF GetGridDelta ()	{ return m_GridDelta; }
 
 		void FluidSetupCL ( int num, int gsrch, int3 res, float3 size, float3 delta, float3 gmin, float3 gmax, int total, int chk );
-		void FluidParamCL(RunCL& runcl, float ss, float sr, float pr, float mass, float rest, float3 bmin, float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p);
+		void FluidParamCL ( float ss, float sr, float pr, float mass, float rest, float3 bmin, float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p );
 
         void Init_FCURAND_STATE_CL ();
 		void InsertParticlesCL ( uint* gcell, uint* ccell, uint* gcnt );
@@ -249,12 +299,12 @@
         void WriteResultsCSV ( const char * input_folder, const char * output_folder, uint num_particles_start );
 
         // Genome for Morphogenesis
-        void UpdateGenome (RunCL& runcl);
+        void UpdateGenome ();
         void SetGenome ( FGenome newGenome ){m_FGenome=newGenome;}
         void ReadGenome( const char * relativePath);
         void Set_genome_tanh_param();
         void WriteGenome( const char * relativePath);
-        FGenome	GetGenome(RunCL& runcl);/*{
+        FGenome	GetGenome();/*{
             FGenome tempGenome = m_FGenome;
             for (int i=0; i<3;i++)for(int j=0; j<12; j++)tempGenome.param[i][j]=m_FGenome.param[i][j];
             return tempGenome;
@@ -262,13 +312,13 @@
         
         
 		// Parameters
-		void UpdateParams (RunCL& runcl);
-		void SetParam (RunCL& runcl, int p, float v );//     { m_Param[p] = v; }           // NB must call UpdateParams() afterwards, to call FluidParamCL
-		//void SetParam (RunCL& runcl, int p, int v )		{ m_Param[p] = (float) v; }
+		void UpdateParams ();
+		void SetParam (int p, float v );//     { m_Param[p] = v; }           // NB must call UpdateParams() afterwards, to call FluidParamCL
+		void SetParam (int p, int v )		{ m_Param[p] = (float) v; }
 		float GetParam ( int p )			{ return (float) m_Param[p]; }
 
 		Vector3DF GetVec ( int p )			{ return m_Vec[p]; }
-		void SetVec (RunCL& runcl,  int p, Vector3DF v );
+		void SetVec ( int p, Vector3DF v );
 		void SetDebug(uint b) { m_debug=b; m_FParams.debug=b; /*mbDebug = (bool)b;*/ 
             std::cout<<"\n\nSetDebug(uint b): b="<<b<<", m_FParams.debug = "<<m_FParams.debug<<", (m_FParams.debug>1)="<<(m_FParams.debug>1)<<"\n"<<std::flush;
         }
@@ -303,6 +353,63 @@
 		float						m_DT;
 		float						m_Time;	
 
+		// OpenCL
+		cl_int err;                                             // Initialize
+		cl_uint num_platforms;
+		cl_platform_id platform;
+		cl_device_id *devices;
+		cl_context clContext;
+		cl_command_queue queue;
+		cl_program program;
+		cl_kernel kernel;
+    	size_t cb;;
+ 		                                    // Array of kernel functions
+ 		cl_kernel					m_Kern[FUNC_MAX];
+
+		// Create OpenCL kernels
+		cl_int* ret;
+		m_Kern[FUNC_INSERT] = clCreateKernel(program, "insertParticlesCL", ret);
+		m_Kern [FUNC_COUNTING_SORT] = clCreateKernel(program, "countingSortFull", ret);
+		m_Kern [FUNC_QUERY] = clCreateKernel(program, "computeQuery", ret);
+		m_Kern [FUNC_COMPUTE_PRESS] = clCreateKernel(program, "computePressure", ret);
+		m_Kern [FUNC_COMPUTE_FORCE] = clCreateKernel(program, "computeForce", ret);
+		m_Kern [FUNC_ADVANCE] = clCreateKernel(program, "advanceParticles", ret);
+		m_Kern [FUNC_EMIT] = clCreateKernel(program, "emitParticles", ret);
+		m_Kern [FUNC_RANDOMIZE] = clCreateKernel(program, "randomInit", ret);
+		m_Kern [FUNC_SAMPLE] = clCreateKernel(program, "sampleParticles", ret);
+		m_Kern [FUNC_FPREFIXSUM] = clCreateKernel(program, "prefixSum", ret);
+		m_Kern [FUNC_FPREFIXFIXUP] = clCreateKernel(program, "prefixFixup", ret);
+		m_Kern [FUNC_TALLYLISTS] = clCreateKernel(program, "tally_denselist_lengths", ret);
+		m_Kern [FUNC_COMPUTE_DIFFUSION] = clCreateKernel(program, "computeDiffusion", ret);
+		m_Kern [FUNC_COUNT_SORT_LISTS] = clCreateKernel(program, "countingSortDenseLists", ret);
+		m_Kern [FUNC_COMPUTE_GENE_ACTION] = clCreateKernel(program, "computeGeneAction", ret);
+		m_Kern [FUNC_TALLY_GENE_ACTION] = clCreateKernel(program, "tallyGeneAction", ret);
+		m_Kern [FUNC_COMPUTE_BOND_CHANGES] = clCreateKernel(program, "computeBondChanges", ret);
+		m_Kern [FUNC_COUNTING_SORT_CHANGES] = clCreateKernel(program, "countingSortChanges", ret);
+		m_Kern [FUNC_COMPUTE_NERVE_ACTION] = clCreateKernel(program, "computeNerveActivation", ret);
+		m_Kern [FUNC_COMPUTE_MUSCLE_CONTRACTION] = clCreateKernel(program, "computeMuscleContraction", ret);
+		m_Kern [FUNC_CLEAN_BONDS] = clCreateKernel(program, "cleanBonds", ret);
+		m_Kern [FUNC_HEAL] = clCreateKernel(program, "heal", ret);
+		m_Kern [FUNC_LENGTHEN_MUSCLE] = clCreateKernel(program, "lengthen_muscle", ret);
+		m_Kern [FUNC_LENGTHEN_TISSUE] = clCreateKernel(program, "lengthen_tissue", ret);
+		m_Kern [FUNC_SHORTEN_MUSCLE] = clCreateKernel(program, "shorten_muscle", ret);
+		m_Kern [FUNC_SHORTEN_TISSUE] = clCreateKernel(program, "shorten_tissue", ret);
+		m_Kern [FUNC_STRENGTHEN_MUSCLE] = clCreateKernel(program, "strengthen_muscle", ret);
+		m_Kern [FUNC_STRENGTHEN_TISSUE] = clCreateKernel(program, "strengthen_tissue", ret);
+		m_Kern [FUNC_WEAKEN_MUSCLE] = clCreateKernel(program, "weaken_muscle", ret);
+		m_Kern [FUNC_WEAKEN_TISSUE] = clCreateKernel(program, "weaken_tissue", ret);
+		m_Kern [FUNC_EXTERNAL_ACTUATION] = clCreateKernel(program, "externalActuation", ret);
+		m_Kern [FUNC_FIXED] = clCreateKernel(program, "fixedParticles", ret);
+		m_Kern [FUNC_INIT_FCURAND_STATE] = clCreateKernel(program, "initialize_FCURAND_STATE", ret);
+		m_Kern [FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = clCreateKernel(program, "assembleMuscleFibresOutGoing", ret);
+		m_Kern [FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = clCreateKernel(program, "assembleMuscleFibresInComing", ret);
+		m_Kern [FUNC_INITIALIZE_BONDS] = clCreateKernel(program, "initialize_bonds", ret);
+		m_Kern [FUNC_INITIALIZE_BONDS] = clCreateKernel(program, "initialize_bonds", ret);
+		// OpenCL Kernels(!)
+		cl_program					m_Program;
+                                    // Array of kernel functions
+		cl_kernel					m_Kern[ FUNC_MAX ];
+        
 		// Simulation Parameters                                //  NB MAX_PARAM = 50 
 		float						m_Param [ MAX_PARAM ];	    // 0-47 used.  see defines above. NB m_Param[1] = maximum number of points.
 		Vector3DF					m_Vec   [ MAX_PARAM ];      // 0-12 used 
@@ -314,13 +421,12 @@
 		int						mNumPoints;
 		int						mMaxPoints;
 		int						mActivePoints;
-
 		FBufs					m_Fluid;				// Fluid buffers - NB this is an array of pointers (in mPackBuf ?)
 		FBufs					m_FluidTemp;			// Fluid buffers (temporary)
 		FParams					m_FParams;				// Fluid parameters struct - that apply to all particles 
 		FGenome					m_FGenome;				// Genome struct of arrays for genne params
 /*
-		cl_mem				clFBuf;					// GPU pointer containers, DEFINED IN RunCL.h!
+		cl_mem				clFBuf;					// GPU pointer containers
 		cl_mem				clFTemp;
 		cl_mem				clFParams;
 		cl_mem				clFGenome;

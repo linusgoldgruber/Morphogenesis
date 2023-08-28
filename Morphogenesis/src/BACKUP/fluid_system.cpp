@@ -1,17 +1,24 @@
 #include <assert.h>
 #include <iostream>
-//#include <cuda.h>
 #include <CL/cl.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <curand_kernel.h> //NOT REPLACED YET. POSSIBLE OPTIONS: https://acesse.dev/Y9Zcq
+//#include <curand_kernel.h> //NOT REPLACED YET. POSSIBLE OPTIONS: https://acesse.dev/Y9Zcq
 #include <chrono>
 #include <cstring>
-//#include "cutil_math.h"
-#include "clutil_math.h"
 #include "fluid_system.h"
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <math.h>
+#include <regex>
+#include <jsoncpp/json/json.h>
 #define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
+#include "RunCL.h"
+#include "fluid.h"
 
+using namespace std;
 
 //declaration of function clCheck (clCheck)
 bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug){
@@ -60,8 +67,6 @@ FluidSystem::FluidSystem (){
     for (int n=0; n < FUNC_MAX; n++ ) m_Kern[n] = (cl_kernel) -1;
 }
 
-
-
 bool FluidSystem::clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug){
     cl_int kern_stat = CL_SUCCESS;
     
@@ -101,27 +106,20 @@ bool FluidSystem::clCheck (cl_int launch_stat, const char* method, const char* a
     strcpy ( cfn, func.c_str() );
 
     if ( m_Kern[fid] == (cl_kernel) -1 )
-<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
         clCheck ( cuModuleGetFunction ( &m_Kern[fid], m_Program, cfn ), "LoadKernel", "cuModuleGetFunction", cfn, mbDebug );
-=======
-        clCheck ( cuModuleGetFunction ( &m_Kern[fid], m_program, cfn ), "LoadKernel", "cuModuleGetFunction", cfn, mbDebug );
->>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
 }*/
 
 void FluidSystem::LoadKernel(int fid, std::string func) {
     if (m_Kern[fid] == nullptr) {
         cl_int err;
-<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
-        m_Kern[fid] = clCreateKernel(m_Program, func.c_str(), &err);
-=======
-        m_Kern[fid] = clCreateKernel(m_program, func.c_str(), &err);
->>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
+        m_Kern[fid] = clCreateKernel(program, func.c_str(), &err);
         clCheck(err == CL_SUCCESS, "LoadKernel", "clCreateKernel", func.c_str(), mbDebug);
     }
 }
 
 
-void FluidSystem::Initialize(){             // used for CPU only for "check_demo".
+void FluidSystem::Initialize(){             //Left aside for now, implement by copying from InitializeOpenCLused for CPU only for "check_demo".
+
     if (m_FParams.debug>1)std::cout << "FluidSystem::Initialize() \n";
     // An FBufs struct holds an array of pointers.
     // Clear all buffers
@@ -131,223 +129,130 @@ void FluidSystem::Initialize(){             // used for CPU only for "check_demo
     memset ( &m_FGenome, 0,		sizeof(FGenome) );
 
     if (m_FParams.debug>1)std::cout << "Chk1.4 \n";
+
     // Allocate the sim parameters CUCLCUCL
     AllocateBuffer ( FPARAMS,		sizeof(FParams),	0,	1,	 GPU_OFF,     CPU_YES );//AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
+
     if (m_FParams.debug>1)std::cout << "Chk1.5 \n";
+
     m_Time = 0;
     mNumPoints = 0;			// reset count
+
     if (m_FParams.debug>1)std::cout << "Chk1.6 \n";
 }
-
 //
 //
 ////////////////////////////////////////////////////////////////////25.07.23/////////////////////////////////////////////////////////////////
 //
 // /home/nick/Programming/Cuda/Morphogenesis/build/install/ptx/objects/fluid_systemPTX/fluid_system_cuda.ptx
-void FluidSystem::InitializeOpenCL() {      //used for load_sim
+void FluidSystem::InitializeOpenCL(Json::Value obj_) {      //used for load_sim
 
-    if (m_FParams.debug>1)std::cout << "FluidSystem::InitializeOpenCL () \n";
+    obj = obj_;
+	verbosity = obj["verbosity"].asInt();
+	verbosity = 2;
+	std::cout << "RunCL::RunCL verbosity = " << verbosity << std::flush;
+																						if(verbosity>0) cout << "\nRunCL_chk 0\n" << flush;
+	//createFolders( );																	/*Step1: Getting platforms and choose an available one.*/////////
+	cl_uint 		numPlatforms;														//the NO. of platforms
+	cl_platform_id 	platform 		= NULL;												//the chosen platform
+	cl_int			status 			= clGetPlatformIDs(0, NULL, &numPlatforms);			if (status != CL_SUCCESS){ cout << "Error: Getting platforms!" << endl; exit_(status); }
+	uint			conf_platform	= obj["opencl_platform"].asUInt();					if(verbosity>0) cout << "numPlatforms = " << numPlatforms << "\n" << flush;
+	if (numPlatforms > conf_platform){																/*Choose the platform.*/
+		cl_platform_id* platforms 	= (cl_platform_id*)malloc(numPlatforms * sizeof(cl_platform_id));
+		status 	 					= clGetPlatformIDs(numPlatforms, platforms, NULL);	if (status != CL_SUCCESS){ cout << "Error: Getting platformsIDs" << endl; exit_(status); }
+		platform 					= platforms[ conf_platform ];
+		free(platforms);																if(verbosity>0) cout << "\nplatforms[0] = "<<platforms[0]<<", \nplatforms[1] = "<<platforms[1]\
+																						<<"\nSelected platform number :"<<conf_platform<<", cl_platform_id platform = " << platform<<"\n"<<flush;
+	} else {cout<<"Platform num "<<conf_platform<<" not available."<<flush; exit(0);}
 
-    cl_int err;                                             // Initialize
-    cl_uint num_platforms;
-    cl_platform_id platform;
-    cl_device_id devices;
-    cl_context clContext;
-    cl_command_queue queue;
-    cl_program program;
-    cl_kernel kernel;
-    cl_mem input_buffer;
-    int input_data[16] = {0};
-    size_t cb;
-    //cuInit ( 0 );
-    //int deviceCount = 0;
+	cl_uint				numDevices = 0;													/*Step 2:Query the platform.*//////////////////////////////////
+	cl_device_id        *devices;
+	status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);		if (status != CL_SUCCESS) {cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+	uint conf_device = obj["opencl_device"].asUInt();
 
-    // Get platform
-    //err = clGetPlatformIDs(1, &platform, &num_platforms);
-    //CHECK_ERROR(err);
+	if (numDevices > conf_device){
+		devices = (cl_device_id*)malloc(numDevices * sizeof(cl_device_id));
+		status  = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);
+	}																					if (status != CL_SUCCESS) {cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 
+																						if(verbosity>0) cout << "RunCL_chk 3\n" << flush; cout << "cl_device_id  devices = " << devices << "\n" << flush;
+	cl_context_properties cps[3]={CL_CONTEXT_PLATFORM,(cl_context_properties)platform,0};/*Step 3: Create context.*////////////////////////////////////
+	m_context = clCreateContextFromType( cps, CL_DEVICE_TYPE_GPU, NULL, NULL, &status); if(status!=0) 			{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+	deviceId  = devices[conf_device];													/*Step 4: Create command queue & associate context.*///////////
+	cl_command_queue_properties prop[] = { 0 };											//  NB Device (GPU) queues are out-of-order execution -> need synchronization.
+	m_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);		if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+	uload_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+	dload_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+	track_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+																						if(verbosity>0) cout << "RunCL_chk 4: \n" << uload_queue << flush;
 
-    // Count devices
-    //cl_uint deviceCount;
-    //err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &devices, &deviceCount);
-    //CHECK_ERROR(err);
+																						// Multiple queues for latency hiding: Upload, Download, Mapping, Tracking,... autocalibration, SIRFS, SPMP
+																						// NB Might want to create command queues on multiple platforms & devices.
+																						// NB might want to divde a task across multiple MPI Ranks on a multi-GPU WS or cluster.
+	const char *filename = obj["kernel_filepath"].asCString();							/*Step 5: Create program object*///////////////////////////////
+	string sourceStr;
+	status 						= convertToString(filename, sourceStr);					if(status!=CL_SUCCESS)	{cout<<"\nconvertToString status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+	const char 	*source 		= sourceStr.c_str();
+	size_t 		sourceSize[] 	= { strlen(source) };
+	m_program 	= clCreateProgramWithSource(m_context, 1, &source, sourceSize, NULL);
 
-    //Check device count
-    //if ( deviceCount == 0 ) {
-    //    printf ( "There is no device supporting OpenCL.\n" );
-    //    exit ( 0 );
-    //}
+	const char includeOptions[] = "-I /lib/i386-linux-gnu -I \"/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src\""; // Paths to include directories ///// -I /usr/lib/gcc/x86_64-linux-gnu/11/include /////
 
-    // create the OpenCL context on a GPU device
-    clContext = clCreateContextFromType(0, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
-    if (err != CL_SUCCESS) {
-        printf("Error: Failed to create a compute context!\n");
-        exit ( 0 );
-    }
-<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
-=======
-    sprintf( morphogenesis_ptx, "%s/%s/fluid_systemPTX/fluid_system_cuda.ptx", morphogenesis_ptx, name);  
-    if (m_FParams.debug>1)std::cout<<"\n release type = "<<name<<"\t ptx path = "<<morphogenesis_ptx<<std::flush;
-    clCheck ( cuModuleLoad ( &m_program, morphogenesis_ptx), "LoadKernel", "cuModuleLoad", morphogenesis_ptx, mbDebug);
-    // loads the file "fluid_system_cuda.ptx" as a module with pointer  m_program.
->>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
+	status = clBuildProgram(m_program, 1, devices, includeOptions, NULL, NULL);					/*Step 6: Build program.*/////////////////////
+	if (status != CL_SUCCESS){
+		printf("\nclBuildProgram failed: %d\n", status);
+		char buf[0x10000];
+		clGetProgramBuildInfo(m_program, deviceId, CL_PROGRAM_BUILD_LOG, 0x10000, buf, NULL);
+		printf("\n%s\n End of clBuildProgram error log..", buf);
+		exit_(status);
+	}
 
-    // get the list of GPU devices associated with context
-    clGetContextInfo(clContext, CL_CONTEXT_DEVICES, 0, NULL, &cb);
-    devices = (cl_device_id *) malloc(cb);
-    clGetContextInfo(clContext, CL_CONTEXT_DEVICES, cb, devices, NULL);
+	/*Step 7: Create kernel objects.*////////////
+	prefixFixup_kernel				= clCreateKernel(m_program, "prefixFixup", NULL);
+	prefixSum_kernel				= clCreateKernel(m_program, "prefixSum", NULL);
+	tally_denselist_lengths_kernel	= clCreateKernel(m_program, "tally_denselist_lengths", NULL);
+	countingSortFull_kernel	= clCreateKernel(m_program, "countingSortFull", NULL);
+	if (m_FParams.debug>1)std::cout << "Chk1.1 \n";
+	cl_kernel FUNC_INSERT = clCreateKernel(m_program, "insertParticles", ret);
+    cl_kernel FUNC_COUNTING_SORT = clCreateKernel(m_program, "countingSortFull", ret);
+    cl_kernel FUNC_QUERY = clCreateKernel(m_program, "computeQuery", ret);
+    cl_kernel FUNC_COMPUTE_PRESS = clCreateKernel(m_program, "computePressure", ret);
+    cl_kernel FUNC_COMPUTE_FORCE = clCreateKernel(m_program, "computeForce", ret);
+    cl_kernel FUNC_ADVANCE = clCreateKernel(m_program, "advanceParticles", ret);
+    cl_kernel FUNC_EMIT = clCreateKernel(m_program, "emitParticles", ret);
+    cl_kernel FUNC_RANDOMIZE = clCreateKernel(m_program, "randomInit", ret);
+    cl_kernel FUNC_SAMPLE = clCreateKernel(m_program, "sampleParticles", ret);
+    cl_kernel FUNC_FPREFIXSUM = clCreateKernel(m_program, "prefixSum", ret);
+    cl_kernel FUNC_FPREFIXFIXUP = clCreateKernel(m_program, "prefixFixup", ret);
+    cl_kernel FUNC_TALLYLISTS = clCreateKernel(m_program, "tally_denselist_lengths", ret);
+    cl_kernel FUNC_COMPUTE_DIFFUSION = clCreateKernel(m_program, "computeDiffusion", ret);
+    cl_kernel FUNC_COUNT_SORT_LISTS = clCreateKernel(m_program, "countingSortDenseLists", ret);
+    cl_kernel FUNC_COMPUTE_GENE_ACTION = clCreateKernel(m_program, "computeGeneAction", ret);
+    cl_kernel FUNC_TALLY_GENE_ACTION = clCreateKernel(m_program, "tallyGeneAction", ret);
+    cl_kernel FUNC_COMPUTE_BOND_CHANGES = clCreateKernel(m_program, "computeBondChanges", ret);
+    cl_kernel FUNC_COUNTING_SORT_CHANGES = clCreateKernel(m_program, "countingSortChanges", ret);
+    cl_kernel FUNC_COMPUTE_NERVE_ACTION = clCreateKernel(m_program, "computeNerveActivation", ret);
+    cl_kernel FUNC_COMPUTE_MUSCLE_CONTRACTION = clCreateKernel(m_program, "computeMuscleContraction", ret);
+    cl_kernel FUNC_CLEAN_BONDS = clCreateKernel(m_program, "cleanBonds", ret);
+    cl_kernel FUNC_HEAL = clCreateKernel(m_program, "heal", ret);
+    cl_kernel FUNC_LENGTHEN_MUSCLE = clCreateKernel(m_program, "lengthen_muscle", ret);
+    cl_kernel FUNC_LENGTHEN_TISSUE = clCreateKernel(m_program, "lengthen_tissue", ret);
+    cl_kernel FUNC_SHORTEN_MUSCLE = clCreateKernel(m_program, "shorten_muscle", ret);
+    cl_kernel FUNC_SHORTEN_TISSUE = clCreateKernel(m_program, "shorten_tissue", ret);
+    cl_kernel FUNC_STRENGTHEN_MUSCLE = clCreateKernel(m_program, "strengthen_muscle", ret);
+    cl_kernel FUNC_STRENGTHEN_TISSUE = clCreateKernel(m_program, "strengthen_tissue", ret);
+    cl_kernel FUNC_WEAKEN_MUSCLE = clCreateKernel(m_program, "weaken_muscle", ret);
+    cl_kernel FUNC_WEAKEN_TISSUE = clCreateKernel(m_program, "weaken_tissue", ret);
+    cl_kernel FUNC_EXTERNAL_ACTUATION = clCreateKernel(m_program, "externalActuation", ret);
+    cl_kernel FUNC_FIXED = clCreateKernel(m_program, "fixedParticles", ret);
+    cl_kernel FUNC_INIT_FCURAND_STATE = clCreateKernel(m_program, "initialize_FCURAND_STATE", ret);
+    cl_kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING = clCreateKernel(m_program, "assembleMuscleFibresOutGoing", ret);
+    cl_kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING = clCreateKernel(m_program, "assembleMuscleFibresInComing", ret);
+    cl_kernel FUNC_INITIALIZE_BONDS = clCreateKernel(m_program, "initialize_bonds", ret);
 
-    // create a command-queue
-    cl_command_queue cmd_queue = clCreateCommandQueue(clContext, devices[0], 0, &err);
-    if (err != CL_SUCCESS) {
-        printf("Error: Failed to create a command queue!\n");
-        exit ( 0 );
-    }
+	m_FParamDevice=m_Fluid=m_FluidTemp=m_FGenome=0;		// set device pointers to zero
+																						if(verbosity>0) cout << "\nRunCL_constructor finished\n" << flush;
 
-    // Create context(properties, num_devices, devices, CL_CALLBACK pfn_notify, user_data, errcode)
-    //clContext = clCreateContext (NULL, 1, &devices, NULL, NULL, &err);
-    //CHECK_ERROR(err);
-
-    // Create Command queue
-    //cl_queue_properties properties[] = {0};
-    //queue = clCreateCommandQueueWithProperties(clContext, devices, properties, &err);
-    //CHECK_ERROR(err);
-
-    cl_int* ret;
-
-    // Open the cl kernel file
-    FILE *fp = fopen("fluid_system_opencl_kernels.cl", "r");
-    if (!fp) {
-        fprintf(stderr, "Failed to open kernel file\n");
-        exit(1);
-    }
-
-    // Move to the end of the file
-    fseek(fp, 0, SEEK_END);
-
-    // Get the size in bytes
-    size_t kernel_src_size = ftell(fp);
-
-    // Move back to the beginning of the file
-    rewind(fp);
-
-    // Allocate memory the size of the file plus a null terminator (= '\0', important for the compiler)
-    char *kernel_src = (char*)malloc(kernel_src_size + 1);
-    fread(&kernel_src, 1, kernel_src_size, fp);
-    fclose(fp);
-    kernel_src[kernel_src_size] = '\0';
-
-    const char** program_source = (const char**)malloc(sizeof(const char));
-    program_source[0] = kernel_src;
-
-    /*
-    //////////////////////// Alternative loading version
-
-     // Read the kernel source code from a file
-     std::ifstream kernelFile("kernels.cl");
-     std::string kernelSource((std::istreambuf_iterator<char>(kernelFile)), std::istreambuf_iterator<char>());
-     const char* kernelSourceStr = kernelSource.c_str();
-
-     // Create an OpenCL program from the kernel source code
-     cl_program program = clCreateProgramWithSource(context, 1, &kernelSourceStr, NULL, &ret);
-
-     */
-
-
-    // Create OpenCL kernels
-    if (m_FParams.debug>1)std::cout << "Chk1.1 \n";
-    cl_kernel FUNC_INSERT = clCreateKernel(program, "insertParticles", ret);
-    cl_kernel FUNC_COUNTING_SORT = clCreateKernel(program, "countingSortFull", ret);
-    cl_kernel FUNC_QUERY = clCreateKernel(program, "computeQuery", ret);
-    cl_kernel FUNC_COMPUTE_PRESS = clCreateKernel(program, "computePressure", ret);
-    cl_kernel FUNC_COMPUTE_FORCE = clCreateKernel(program, "computeForce", ret);
-    cl_kernel FUNC_ADVANCE = clCreateKernel(program, "advanceParticles", ret);
-    cl_kernel FUNC_EMIT = clCreateKernel(program, "emitParticles", ret);
-    cl_kernel FUNC_RANDOMIZE = clCreateKernel(program, "randomInit", ret);
-    cl_kernel FUNC_SAMPLE = clCreateKernel(program, "sampleParticles", ret);
-    cl_kernel FUNC_FPREFIXSUM = clCreateKernel(program, "prefixSum", ret);
-    cl_kernel FUNC_FPREFIXFIXUP = clCreateKernel(program, "prefixFixup", ret);
-    cl_kernel FUNC_TALLYLISTS = clCreateKernel(program, "tally_denselist_lengths", ret);
-    cl_kernel FUNC_COMPUTE_DIFFUSION = clCreateKernel(program, "computeDiffusion", ret);
-    cl_kernel FUNC_COUNT_SORT_LISTS = clCreateKernel(program, "countingSortDenseLists", ret);
-    cl_kernel FUNC_COMPUTE_GENE_ACTION = clCreateKernel(program, "computeGeneAction", ret);
-    cl_kernel FUNC_TALLY_GENE_ACTION = clCreateKernel(program, "tallyGeneAction", ret);
-    cl_kernel FUNC_COMPUTE_BOND_CHANGES = clCreateKernel(program, "computeBondChanges", ret);
-    cl_kernel FUNC_COUNTING_SORT_CHANGES = clCreateKernel(program, "countingSortChanges", ret);
-    cl_kernel FUNC_COMPUTE_NERVE_ACTION = clCreateKernel(program, "computeNerveActivation", ret);
-    cl_kernel FUNC_COMPUTE_MUSCLE_CONTRACTION = clCreateKernel(program, "computeMuscleContraction", ret);
-    cl_kernel FUNC_CLEAN_BONDS = clCreateKernel(program, "cleanBonds", ret);
-    cl_kernel FUNC_HEAL = clCreateKernel(program, "heal", ret);
-    cl_kernel FUNC_LENGTHEN_MUSCLE = clCreateKernel(program, "lengthen_muscle", ret);
-    cl_kernel FUNC_LENGTHEN_TISSUE = clCreateKernel(program, "lengthen_tissue", ret);
-    cl_kernel FUNC_SHORTEN_MUSCLE = clCreateKernel(program, "shorten_muscle", ret);
-    cl_kernel FUNC_SHORTEN_TISSUE = clCreateKernel(program, "shorten_tissue", ret);
-    cl_kernel FUNC_STRENGTHEN_MUSCLE = clCreateKernel(program, "strengthen_muscle", ret);
-    cl_kernel FUNC_STRENGTHEN_TISSUE = clCreateKernel(program, "strengthen_tissue", ret);
-    cl_kernel FUNC_WEAKEN_MUSCLE = clCreateKernel(program, "weaken_muscle", ret);
-    cl_kernel FUNC_WEAKEN_TISSUE = clCreateKernel(program, "weaken_tissue", ret);
-    cl_kernel FUNC_EXTERNAL_ACTUATION = clCreateKernel(program, "externalActuation", ret);
-    cl_kernel FUNC_FIXED = clCreateKernel(program, "fixedParticles", ret);
-    cl_kernel FUNC_INIT_FCURAND_STATE = clCreateKernel(program, "initialize_FCURAND_STATE", ret);
-    cl_kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING = clCreateKernel(program, "assembleMuscleFibresOutGoing", ret);
-    cl_kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING = clCreateKernel(program, "assembleMuscleFibresInComing", ret);
-    cl_kernel FUNC_INITIALIZE_BONDS = clCreateKernel(program, "initialize_bonds", ret);
-
-<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
-=======
-    if (m_FParams.debug>1)std::cout << "Chk1.2 \n";
-    size_t len = 0;
-    clCheck ( cuModuleGetGlobal ( &clFBuf,    &len,	m_program, "fbuf" ),		"LoadKernel", "cuModuleGetGlobal", "clFBuf",    mbDebug);   // Returns a global pointer (clFBuf) from a module  (m_program), see line 81.
-    clCheck ( cuModuleGetGlobal ( &clFTemp,   &len,	m_program, "ftemp" ),	"LoadKernel", "cuModuleGetGlobal", "clFTemp",   mbDebug);   // fbuf, ftemp, fparam are defined at top of fluid_system_cuda.cu,
-    clCheck ( cuModuleGetGlobal ( &clFParams, &len,	m_program, "fparam" ),	"LoadKernel", "cuModuleGetGlobal", "clFParams", mbDebug);   // based on structs "FParams", "FBufs", "FGenome" defined in fluid.h
-    clCheck ( cuModuleGetGlobal ( &clFGenome, &len,	m_program, "fgenome" ),	"LoadKernel", "cuModuleGetGlobal", "clFGenome", mbDebug);   // NB defined differently in kernel vs cpu code.
-    // An FBufs struct holds an array of pointers.
-    if (m_FParams.debug>1)std::cout << "Chk1.3 \n";
->>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
-
-
-    clFBuf = clCreateBuffer(clContext, CL_MEM_READ_WRITE, sizeof(clFBuf), NULL, ret);
-    //clCheck (clFBuf , "LoadKernel", "cuModuleGetGlobal", "clFBuf",    mbDebug);   // Returns a global pointer (clFBuf) from a module  (m_program), see line 81.
-
-    clFTemp = clCreateBuffer(clContext, CL_MEM_READ_WRITE, sizeof(clFTemp), NULL, ret);
-    //clCheck (clFTemp, "LoadKernel", "cuModuleGetGlobal", "clFTemp",   mbDebug);   // fbuf, ftemp, fparam are defined at top of fluid_system_cuda.cu,
-
-    clFParams = clCreateBuffer(clContext, CL_MEM_READ_WRITE, sizeof(FParams), NULL, ret);
-    //clCheck ( , "LoadKernel", "cuModuleGetGlobal", "clFParams", mbDebug);   // based on structs "FParams", "FBufs", "FGenome" defined in fluid.h
-
-    clFGenome = clCreateBuffer(clContext, CL_MEM_READ_WRITE, sizeof(FGenome), NULL, ret);
-    //clCheck ( , "LoadKernel", "cuModuleGetGlobal", "clFGenome", mbDebug);   // NB defined differently in kernel vs cpu code.
-
-    // Allocate the sim parameters CUCLCUCL
-    AllocateBuffer(FPARAMS, sizeof(FParams), 0, 1, GPU_SINGLE, CPU_OFF);
-
-    // Create program
-    program = clCreateProgramWithSource(clContext, 1, program_source, NULL, &err);
-    CHECK_ERROR(err);
-
-    // Build program
-    err = clBuildProgram(program, 1, &devices, "", NULL, NULL);
-    if (err != CL_SUCCESS) {
-        size_t log_size;
-        char *log;
-        clGetProgramBuildInfo(program, devices, CL_PROGRAM_BUILD_LOG,
-                              0, NULL,&log_size);
-        log = (char*)malloc(log_size+1);
-        clGetProgramBuildInfo(program, devices,
-                              CL_PROGRAM_BUILD_LOG,
-                              log_size+1,
-                              log,
-                              NULL);
-        printf("%s\n", log);
-        free(log);
-        exit(1);
-    }
-
-    // Set initial values for member variables
-    m_Time = 0;
-    //ClearNeighborTable ();
-    mNumPoints = 0;            // reset count
-    if (m_FParams.debug>1)std::cout << "Chk1.5 \n";
 }
 
 /////////////////////////////////////////////////////////////////
@@ -355,7 +260,7 @@ void FluidSystem::InitializeOpenCL() {      //used for load_sim
     clCheck ( cuMemcpyHtoD ( cuFGenome,    &m_FGenome,        sizeof(FGenome), "FluidGenomeCUDA", "cuMemcpyHtoD", "clFGenome", mbDebug);
 }*/
 void FluidSystem::UpdateGenome (){              // Update Genome on GPU
-    clCheck ( clEnqueueWriteBuffer(command_queue, clFGenome, CL_TRUE, 0, sizeof(FGenome), &m_FGenome, 0, NULL, NULL), "FluidGenomeCUDA", "cuMemcpyHtoD", "clFGenome", mbDebug);
+    clCheck ( clEnqueueWriteBuffer(queue, clFGenome, CL_TRUE, 0, sizeof(FGenome), &m_FGenome, 0, NULL, NULL), "FluidGenomeCUDA", "cuMemcpyHtoD", "clFGenome", mbDebug);
 }
 
 FGenome	FluidSystem::GetGenome(){
@@ -397,23 +302,31 @@ void FluidSystem::SetVec ( int p, Vector3DF v ){
 
 void FluidSystem::Exit (){
     // Free fluid buffers
-    clCheck(clFinish(), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
+    //clCheck(clFinish(), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
     for (int n=0; n < MAX_BUF; n++ ) {
         if (m_FParams.debug>0)std::cout << "\n n = " << n << std::flush;
         if ( m_Fluid.bufC(n) != 0x0 )
             free ( m_Fluid.bufC(n) );
     }
-    size_t   free1, free2, total;
-    cudaMemGetInfo(&free1, &total);
+    //size_t   free1, free2, total;
+    //cudaMemGetInfo(&free1, &total);
+    cl_ulong free1, free2, total;
+    clGetDeviceInfo(devices[0], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
+
+    // Free memory cant be checked so easily in OpenCl, need to implement the funtionailty manually, e.g. by a varialbe called AllocatedMem CUCLCUCL
     if (m_FParams.debug>0)printf("\nCuda Memory, before cudaDeviceReset(): free=%lu, total=%lu.\t",free1,total);
-    clCheck(clFinish(), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
-<<<<<<< HEAD:Morphogenesis/src/BACKUP/fluid_system.cpp
-    if(m_Program != 0x0){
-=======
-    if(m_program != 0x0){
->>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid_system.cpp
-        if (m_FParams.debug>0)printf("\ncudaDeviceReset()\n");
-        cudaDeviceReset(); // Destroy all allocations and reset all state on the current device in the current process. // must only operate if we have a cuda instance.
+    //clCheck(clFinish(), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
+    if(program != 0x0){
+        if (m_FParams.debug>0)printf("\nclRelease()\n");
+        //cudaDeviceReset(); // Destroy all allocations and reset all state on the current device in the current process. // must only operate if we have a cuda instance.
+        clReleaseMemObject(clFBuf);
+        clReleaseMemObject(clFTemp);
+        clReleaseMemObject(clFParams);
+        clReleaseMemObject(clFGenome);
+        clReleaseProgram(prograudaDeviceResetm);
+        clReleaseKernel(kernel);
+        clReleaseCommandQueue(queue);
+        clReleaseContext(clContext);
     }
     
     cudaMemGetInfo(&free2, &total);
@@ -437,37 +350,39 @@ void FluidSystem::AllocateBuffer ( int buf_id, int stride, int cpucnt, int gpucn
     if (m_FParams.debug>1)std::cout<<"\nAllocateBuffer ( int buf_id="<<buf_id<<", int stride="<<stride<<", int cpucnt="<<cpucnt<<", int gpucnt="<<gpucnt<<", int "<<gpumode<<", int "<<cpumode<<" )\t"<<std::flush;
     if (cpumode == CPU_YES) {
         char* src_buf  = m_Fluid.bufC(buf_id);
-        char* dest_buf = (char*) malloc(cpucnt*stride);                   //  ####  malloc the buffer   ####
+        cl_mem dest_buf = clCreateBuffer(clContext, CL_MEM_READ_WRITE, cpucnt*stride, NULL, &err); //  ####  malloc the buffer   ####
         if (src_buf != 0x0) {
-            memcpy(dest_buf, src_buf, cpucnt*stride);
+            clEnqueueWriteBuffer(queue, dest_buf, CL_TRUE, 0, cpucnt*stride, src_buf, 0, NULL, NULL);
             free(src_buf);
         }
-        m_Fluid.setBuf(buf_id, dest_buf);                                 // stores pointer to buffer in mcpu[buf_id]
-    }
-    
+        m_Fluid.setCLBuf(buf_id, dest_buf); // stores pointer to buffer in mcpu[buf_id]
+}
 
     if(gpumode == GPU_SINGLE || gpumode == GPU_DUAL || gpumode == GPU_TEMP){
-        clCheck(clFinish(), "AllocateBuffer ", "clFinish", "before 1st cudaMemGetInfo(&free1, &total)", mbDebug);
-        size_t   free1, free2, total;
-        cudaMemGetInfo(&free1, &total);
-        //if (m_FParams.debug>1)printf("\nCuda Memory: free=%lu, total=%lu.\t",free1,total);
-    
-        if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL )	{
-            if (m_Fluid.gpuptr(buf_id) != 0x0) clCheck(cuMemFree(m_Fluid.gpu(buf_id)), "AllocateBuffer", "cuMemFree", "Fluid.gpu", mbDebug);
-            rtn = clCheck( cuMemAlloc(m_Fluid.gpuptr(buf_id), stride*gpucnt), "AllocateBuffer", "cuMemAlloc", "Fluid.gpu", mbDebug);         //  ####  cuMemAlloc the buffer, stores pointer to buffer in   m_Fluid.mgpu[buf_id]
+        cl_ulong free1, free2, total;
+        clGetDeviceInfo(devices[0], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
+        //if (m_FParams.debug>1)printf("\nOpenCL Memory: free=%lu, total=%lu.\t",free1,total);
+
+        if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL )    {
+            if (m_Fluid.gpuptr(buf_id) != 0x0) clCheck(clReleaseMemObject(m_Fluid.gpu(buf_id)), "AllocateBuffer", "clReleaseMemObject", "Fluid.gpu", mbDebug);
+            m_Fluid.setGpu(buf_id, clCreateBuffer(clContext, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
             if (m_FParams.debug>1)std::cout<<"\t\t m_Fluid.gpuptr("<<buf_id<<")'"<<m_Fluid.gpuptr(buf_id)<<",   m_Fluid.gpu("<<buf_id<<")="<<m_Fluid.gpu(buf_id)<<"\t"<<std::flush;
-            if(rtn == false)FluidSystem::Exit();
+            if(err != CL_SUCCESS) FluidSystem::Exit();
         }
         if (gpumode == GPU_TEMP || gpumode == GPU_DUAL ) {
-            if (m_FluidTemp.gpuptr(buf_id) != 0x0) clCheck(cuMemFree(m_FluidTemp.gpu(buf_id)), "AllocateBuffer", "cuMemFree", "FluidTemp.gpu", mbDebug);
-            rtn = clCheck( cuMemAlloc(m_FluidTemp.gpuptr(buf_id), stride*gpucnt), "AllocateBuffer", "cuMemAlloc", "FluidTemp.gpu", mbDebug); //  ####  cuMemAlloc the buffer, stores pointer to buffer in   m_FluidTemp.mgpu[buf_id]
-            if(rtn == false)FluidSystem::Exit();
+            if (m_FluidTemp.gpuptr(buf_id) != 0x0) {
+                clCheck(clReleaseMemObject(m_FluidTemp.gpu(buf_id)), "AllocateBuffer", "clReleaseMemObject", "FluidTemp.gpu", mbDebug);
+            }
+            cl_int err;
+            m_FluidTemp.setGpu(buf_id, clCreateBuffer(clContext, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
+            if (err != CL_SUCCESS) {
+                FluidSystem::Exit();
+            }
         }
-        clCheck(clFinish(), "AllocateBuffer ", "clFinish", "before 2nd cudaMemGetInfo(&free2, &total)", mbDebug);
-        cudaMemGetInfo(&free2, &total);
+        //no clFinish needed, as EnqueueWriteBuffer function gets called with blocking_wirte set to CL_TRUE
+
         if (m_FParams.debug>1)printf("\nAfter allocation: free=%lu, total=%lu, this buffer=%lu.\n",free2,total,(free1-free2) );
     }
-}
 
 // Allocate particle memory
 void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // calls AllocateBuffer(..) for each buffer.  

@@ -28,8 +28,8 @@
 
 #define CUDA_KERNEL
 #include "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/fluid_system_opencl.h"
-#include <cfloat>
-#include <cstdint>
+// #include <cfloat>
+// #include <cstdint>
 //#include "cutil_math.h"			// cutil32.lib
 //#include <string.h>
 #include <assert.h>

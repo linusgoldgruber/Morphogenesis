@@ -25,13 +25,15 @@
 	
 	//#include <cuda.h>
     //#include <CL/opencl.h>
-    #include <CL/cl.h>
+    //#include <CL/cl.h>
 	//#include <curand.h>
-    #include <string.h>
-    //#include "vector.h"
-    //#include "masks.h"
-//#include <../cuda-11.2/targets/x86_64-linux/include/curand_kernel.h>
+    //#include <string.h>
+    #include "vector.h"
+    #include "masks.h"
+    //#include <../cuda-11.2/targets/x86_64-linux/include/curand_kernel.h>
     //#include <curand_kernel.h>
+    #include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
+
 
 	typedef	unsigned int		uint;
 	typedef	unsigned short int	ushort;
@@ -189,53 +191,58 @@
 	#define MAX_BUF		                44
     
 
-	#ifdef CUDA_KERNEL                                                                   // fluid_system_cuda.cuh:37:	#define CUDA_KERNEL ,   fluid_system_cuda.cu:29:#define CUDA_KERNEL
+	#ifdef CL_KERNEL
 		#define	CALLFUNC	__device__
 	#else
 		#define CALLFUNC
 	#endif		
 	
 
-    struct FBufs {  // holds an array of pointers, and functions to access them.    // used to declare "fbuf" at top of fluid_system_cuda.cu
-        // Data type sizes  see https://en.cppreference.com/w/cpp/language/types ,
-        // 64 bit Linux uses  or 4/8/8 (int is 32-bit, long and pointer are 64-bit)
-        // short int 16bit, int 32bit, long int 64bit, float 32bit, double 64bit,
-        #ifdef OPENCL_KERNEL
-        // on device, access data via gpu pointers
-            inline Vector3DF* bufV3(int n) { return (Vector3DF*) mgpu[n]; }
-            inline float3* bufF3(int n) { return (float3*) mgpu[n]; }
-            inline float*  bufF (int n) { return (float*)  mgpu[n]; }
-            inline uint*   bufI (int n) { return (uint*)   mgpu[n]; }
-            inline char*   bufC (int n) { return (char*)   mgpu[n]; }
-            inline uint**  bufII (int n) { return (uint**)  mgpu[n]; }
-            inline well512_state*  bufWell512State(int n) { return (well512_state*) mgpu[n]; }
-            inline unsigned long long*  bufULL(int n) { return (unsigned long long*) mgpu[n]; }
-            //inline CALLFUNC unsigned short* bufS (int n)		{ return (unsigned short*)   mgpu[n]; }
+        typedef struct FBufs {
+                char* mcpu[MAX_BUF];
+            #ifdef CL_KERNEL
+                char* mgpu[MAX_BUF];
+            #else
+                char* mgpu[MAX_BUF];
+            #endif
+        } FBufs;
+
+        #ifdef CL_KERNEL
+            Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mgpu[n]; }
+            float3* bufF3(__constant FBufs* fb, int n) { return (float3*) fb->mgpu[n]; }
+            float*  bufF (__constant FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
+            uint*   bufI (__constant FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
+            char*   bufC (__constant FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
+            uint**  bufII (__constant FBufs* fb, int n) { return (uint**)  fb->mgpu[n]; }
+            well512_state*  bufWell512State(__constant FBufs* fb, int n) { return (well512_state*) fb->mgpu[n]; }
+            unsigned long long*  bufULL(__constant FBufs* fb, int n) { return (unsigned long long*) fb->mgpu[n]; }
 
         #else
-            inline Vector3DF* bufV3(int n) { return (Vector3DF*) mcpu[n]; }
-            inline float3* bufF3(int n) { return (float3*) mcpu[n]; }
-            inline float*  bufF (int n) { return (float*)  mcpu[n]; }
-            inline uint*   bufI (int n) { return (uint*)   mcpu[n]; }
-            inline char*   bufC (int n) { return (char*)   mcpu[n]; }
-            inline uint**  bufII (int n) { return (uint**)  mcpu[n]; }          // for elastIdx[][]
-            inline well512_state*  bufWell512State(int n) { return (well512_state*) mcpu[n]; }
-            inline unsigned long long*  bufULL(int n) { return (unsigned long long*) mcpu[n]; }
+            Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mcpu[n]; }
+            float3* bufF3(FBufs* fb, int n) { return (float3*) fb->mcpu[n]; }
+            float*  bufF (FBufs* fb, int n) { return (float*)  fb->mcpu[n]; }
+            uint*   bufI (FBufs* fb, int n) { return (uint*)   fb->mcpu[n]; }
+            char*   bufC (FBufs* fb, int n) { return (char*)   fb->mcpu[n]; }
+            uint**  bufII (FBufs* fb, int n) { return (uint**)  fb->mcpu[n]; }          // for elastIdx[][]
+            well512_state*  bufWell512State(FBufs* fb, int n) { return (well512_state*) fb->mcpu[n]; }
+            unsigned long long*  bufULL(FBufs* fb, int n) { return (unsigned long long*) fb->mcpu[n]; }
         #endif
-        inline void setBuf(int n, char* buf) { mcpu[n] = buf; }
-        inline void setCLBuf(int n, cl_mem buf) { mgpu[n] = buf; }
-        inline void setGpu(int n, cl_mem buf) { mgpu[n] = buf; }
 
-        char* mcpu[MAX_BUF];
-        #ifdef OPENCL_KERNEL
-            char* mgpu[MAX_BUF];
-        #else
-            cl_mem mgpu[MAX_BUF];
-            cl_mem gpu(int n) { return mgpu[n]; }
-            cl_mem *gpuptr(int n) { return &mgpu[n]; }
-        #endif
-    };
-/*			float3*			mpos;			// particle buffers>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid.h
+        void setBuf(FBufs *fb, int n, char *buf) {
+            fb->mcpu[n] = buf;
+        }
+
+//         #ifdef CL_KERNEL
+//         #else
+//         cl_mem *gpu(FBufs *fb,int n){
+//             return fb->mgpu[n];
+//         }
+//         cl_mem int*gpuptr(FBufs *fb,int n){
+//             return &fb->mgpu[n];
+//         }
+//         #endif
+
+        /*float3*			mpos;			// particle buffers>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid.h
 
 		float3*			mvel;
 		float3*			mveleval;
@@ -243,14 +250,14 @@
 		float*			mpress;
 		float*			mdensity;
 		ushort*			mage;
-		uint*			mclr;			
+		uint*			mclr;
 		uint*			mgcell;
-		uint*			mgnext;		
+		uint*			mgnext;
 		uint*			mnbrndx;
 		uint*			mnbrcnt;
 		uint*			mcluster;
 		char*			msortbuf;		// sorting buffer
-		
+
 		uint*			mgrid;			// grid buffers
 		int*			mgridcnt;
 		int*			mgridoff;
@@ -279,13 +286,13 @@
 	#define OFFSET_DENS		52
 	#define OFFSET_CELL		56
 	#define OFFSET_GCONT	60
-	#define OFFSET_CLR		64	
+	#define OFFSET_CLR		64
 
 	// Fluid Parameters (stored on both host and device)
 	struct FParams {
         uint            debug;
 		int				numThreads, numBlocks, threadsPerBlock;
-		int				gridThreads, gridBlocks;	
+		int				gridThreads, gridBlocks;
 		int				szPnts, szGrid;
 		int				stride, pnum, pnumActive, maxPoints;
         bool            freeze;
@@ -307,28 +314,28 @@
         float           actuation_factor;
         float           actuation_period;
 	};
-    
+
     //////////////////////
     // material parameters for bonds, used in remodelling
   //  struct FBondParams{             //  0=elastin, 1=collagen, 2=apatite //
   //      enum params{  /*triggering bond parameter changes*/elongation_threshold, elongation_factor, strength_threshold, strengthening_factor, \
   //                    /*triggering particle changes*/max_rest_length, min_rest_length, max_modulus, min_modulus, \
-  //                    /*initial values for new bonds*/elastLim, default_rest_length, default_modulus, default_damping 
+  //                    /*initial values for new bonds*/elastLim, default_rest_length, default_modulus, default_damping
   //      };
   //      static float param[12];
         /*
         // triggering bond parameter changes
-        static float elongation_threshold   ;// = { 0.1, 0.1, 0.1}; // stress   fraction of elastlim 
+        static float elongation_threshold   ;// = { 0.1, 0.1, 0.1}; // stress   fraction of elastlim
         static float elongation_factor      ;// = { 0.1, 0.1, 0.1}; // length   fraction of restlength
         static float strength_threshold     ;// = { 0.1, 0.1, 0.1}; // stress   fraction of modulus
         static float strengthening_factor   ;// = { 0.1, 0.1, 0.1}; // modulus  fraction of current modulus
-        
+
         // triggering particle changes
         static float max_rest_length        ;// = { 0.8, 0.8, 0.8};
         static float min_rest_length        ;// = { 0.3, 0.3, 0.3};
         static float max_modulus            ;// = { 0.8, 0.8, 0.8};
         static float min_modulus            ;// = { 0.3, 0.3, 0.3};
-        
+
         // initial values for new bonds
         static float elastLim               ;// = {2,   0.55,  0.05 };// 400%, 10%, 1%
         static float default_rest_length    ;// = { 0.5, 0.5,    0.5  };
@@ -339,24 +346,24 @@
     // values from make demo
     // [1]elastLim	 [2]restLn	 [3]modulus	 [4]damping
     //    2	            0.5	        100000	    9.055386
-    
+
     ///////////////////////
-    // Genome 
-    // (common to most cells, copied to 'local' SMP memory on GPU) for each gene: 
+    // Genome
+    // (common to most cells, copied to 'local' SMP memory on GPU) for each gene:
     // (i) mutability,              - Not used during morphogenesis. Used for evolution.
     // (ii) delay/insulator,        - Needs to set an epigenetic counter
     // (iii) sensitivity to inputs  - Transcription factors/morphogens, stress/strain cycles (stored in a TF)
     //      (a) array of sensitivities to each TF/Morphogen => increment activity of the gene (recorded in the epigenetics)
-    // 
+    //
     // (iv)cell actions             - the function of the gene is called, with activation level as its parameter.
     //                              - only functions of active genes are called.
-    //      (a)secrete morphogen,        - the product of the gene 
-    //      (b)move,                     - exert force on neighbouring cells, according to concetration gradient of a morphogen 
+    //      (a)secrete morphogen,        - the product of the gene
+    //      (b)move,                     - exert force on neighbouring cells, according to concetration gradient of a morphogen
     //      (c)adhere,                   - form elastic bonds - to a particular cell type.
-    //      (d)divide                    - split/combine particles - NB elastic links. 
-    //      (e)secrete/resorb material   - change mass, radius, modulus, viscosity of particle. 
-    // NB we don't have a particle-wise viscosity param ...yet 
-    
+    //      (d)divide                    - split/combine particles - NB elastic links.
+    //      (e)secrete/resorb material   - change mass, radius, modulus, viscosity of particle.
+    // NB we don't have a particle-wise viscosity param ...yet
+
     struct FGenome{   // ## currently using fixed size genome for efficiency. NB Particle data size depends on genome size.
         uint mutability[NUM_GENES];
         uint delay[NUM_GENES];
@@ -367,27 +374,29 @@
         int secrete[NUM_GENES][2*NUM_TF+1];         // -ve secretion => active breakdown. Can be useful for pattern formation.
         int activate[NUM_GENES][2*NUM_GENES+1];
         //uint *function[NUM_GENES];                // cancelled// Hard code a case-switch that calls each gene's function iff the gene is active.
-        
-        enum {l_a, l_b, l_c, l_d,   s_a, s_b, s_c, s_d};   // tanh offset parameters for lengthening/shortening and stregthening/weakening bonds. // computed from params below. ? 
+
+        enum {l_a, l_b, l_c, l_d,   s_a, s_b, s_c, s_d};   // tanh offset parameters for lengthening/shortening and stregthening/weakening bonds. // computed from params below. ?
         //y-shift, y-scaling, x-scaling, x-shift
         float tanh_param[3][8];
-        
+
         enum {elastin,collagen,apatite};
                                                     //FBondParams fbondparams[3];   // 0=elastin, 1=collagen, 2=apatite
-        
+
         enum params{  /*triggering bond parameter changes*/ elongation_threshold,   elongation_factor,      strength_threshold,     strengthening_factor, \
                       /*triggering particle changes*/       max_rest_length,        min_rest_length,        max_modulus,            min_modulus, \
-                      /*initial values for new bonds*/      elastLim,               default_rest_length,    default_modulus,        default_damping 
+                      /*initial values for new bonds*/      elastLim,               default_rest_length,    default_modulus,        default_damping
         };
         float param[3][12];                         // TODO update all uses of FBondParams & test.
     };                                              // NB gene functions need to be in fluid_system_cuda.cu
-    
+
     ///////////////////////
-    // Multi-scale particles    
+    // Multi-scale particles
     // - use radius parameter in FELASTIDX buffer, 0=self UID, mass, radius.
     // - requires a split/combine kernel
     // 1st order - all spheres, not 2nd order - elipsoids with orientatoin and angular momentum.
-    // When finding particles in range for a small particle - consider (i) is the bin in range, (ii) iff particle x&y&z are in range 
-    // When combining particles - (i) similar type ?, (ii) gradients, (iii) significance to simulation. 
-    
+    // When finding particles in range for a small particle - consider (i) is the bin in range, (ii) iff particle x&y&z are in range
+    // When combining particles - (i) similar type ?, (ii) gradients, (iii) significance to simulation.
+
+
+
 #endif /*PARTICLE_H_*/

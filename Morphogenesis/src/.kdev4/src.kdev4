@@ -2,8 +2,8 @@
 BuildItems=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x01\x00\x00\x00\x0b\x00\x00\x00\x00\x01\x00\x00\x00\x06\x00s\x00r\x00c)
 
 [CMake]
-Build Directory Count=3
-Current Build Directory Index-Host System=2
+Build Directory Count=5
+Current Build Directory Index-Host System=4
 
 [CMake][CMake Build Directory 0]
 Build Directory Path=/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build
@@ -35,13 +35,43 @@ Extra Arguments=
 Install Directory=/usr/bin
 Runtime=Host System
 
+[CMake][CMake Build Directory 3]
+Build Directory Path=/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build
+Build Type=Debug
+CMake Binary=/usr/bin/cmake
+CMake Executable=/usr/bin/cmake
+Environment Profile=
+Extra Arguments=-DCMAKE_TOOLCHAIN_FILE=<path/to/your/toolchain/file>
+Install Directory=/usr/bin
+
+[CMake][CMake Build Directory 4]
+Build Directory Path=/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build
+Build Type=Debug
+CMake Binary=/usr/bin/cmake
+CMake Executable=/usr/bin/cmake
+Environment Profile=
+Extra Arguments=
+Install Directory=/usr/bin
+Runtime=Host System
+
+[CustomDefinesAndIncludes][ProjectPath0]
+Path=.
+parseAmbiguousAsCPP=true
+parserArguments=-ferror-limit=100 -fspell-checking -Wdocumentation -Wunused-parameter -Wunreachable-code -Wall -std=c++11
+parserArgumentsC=-ferror-limit=100 -fspell-checking -Wdocumentation -Wunused-parameter -Wunreachable-code -Wall -std=c99
+parserArgumentsCuda=-ferror-limit=100 -fspell-checking -Wdocumentation -Wunused-parameter -Wunreachable-code -Wall -std=c++11
+parserArgumentsOpenCL=-ferror-limit=100 -fspell-checking -Wdocumentation -Wunused-parameter -Wunreachable-code -Wall -cl-std=CL2.0
+
+[CustomDefinesAndIncludes][ProjectPath0][Compiler]
+Name=GCC
+
 [Launch]
-Launch Configurations=Launch Configuration 0
+Launch Configurations=Launch Configuration 0,Launch Configuration 1
 
 [Launch][Launch Configuration 0]
 Configured Launch Modes=execute
 Configured Launchers=nativeAppLauncher
-Name=DeviceInfo
+Name=MinimalSim
 Type=Native Application
 
 [Launch][Launch Configuration 0][Data]
@@ -49,7 +79,26 @@ Arguments=
 Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
 Dependency Action=Nothing
 EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/DeviceInfo
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/MinimalSim
+External Terminal=konsole --noclose --workdir %workdir -e %exe
+Kill Before Executing Again=4194304
+Project Target=src,MinimalSim
+Use External Terminal=false
+Working Directory=
+isExecutable=false
+
+[Launch][Launch Configuration 1]
+Configured Launch Modes=execute
+Configured Launchers=nativeAppLauncher
+Name=minimal_sim
+Type=Native Application
+
+[Launch][Launch Configuration 1][Data]
+Arguments=
+Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
+Dependency Action=Nothing
+EnvironmentGroup=
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/minimal_sim.cpp
 External Terminal=konsole --noclose --workdir %workdir -e %exe
 Kill Before Executing Again=4194304
 Project Target=src,DeviceInfo

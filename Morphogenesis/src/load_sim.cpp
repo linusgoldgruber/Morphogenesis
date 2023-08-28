@@ -60,8 +60,7 @@ int main ( int argc, const char** argv )
         printf ("remodelling = %c\n", remodelling );
     }
 std::cout <<"\nchk load_sim_0.1\n"<<std::flush;  
-<<<<<<< HEAD:Morphogenesis/src/load_sim.cpp
-=======
+
 
     //cuInit ( 0 );                                       // Initialize
     //int deviceCount = 0;
@@ -79,7 +78,6 @@ std::cout <<"\nchk load_sim_0.2\n"<<std::flush;
     CUcontext cuContext;
     cuCtxCreate ( &cuContext, 0, clDevice );
 std::cout <<"\nchk load_sim_0.3\n"<<std::flush;  
->>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/load_sim.cpp
     
     FluidSystem fluid;
     fluid.SetDebug ( debug );

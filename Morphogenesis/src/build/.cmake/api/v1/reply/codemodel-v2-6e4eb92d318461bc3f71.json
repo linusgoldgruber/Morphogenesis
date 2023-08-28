@@ -27,7 +27,7 @@
 					[
 						0
 					],
-					"name" : "DeviceInfo",
+					"name" : "MinimalSim",
 					"targetIndexes" : 
 					[
 						0
@@ -38,9 +38,9 @@
 			[
 				{
 					"directoryIndex" : 0,
-					"id" : "DeviceInfo::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-DeviceInfo-Debug-164e85b0a7d940abde66.json",
-					"name" : "DeviceInfo",
+					"id" : "MinimalSim::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-MinimalSim-Debug-5d68a7870ca6cf4a4a4f.json",
+					"name" : "MinimalSim",
 					"projectIndex" : 0
 				}
 			]

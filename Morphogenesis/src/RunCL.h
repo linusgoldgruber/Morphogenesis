@@ -1,7 +1,7 @@
 #ifndef RUNCL_H
 #define RUNCL_H
 
-#include <CL/opencl.hpp>	//<CL/cl.hpp>
+#include <CL/cl.h>	//or <CL/opencl.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
@@ -12,7 +12,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <jsoncpp/json/json.h>
-#include </home/goldi/opencv-4.x/modules/core/include/opencv2/core/hal/interface.h>
+#include </home/goldi/opencv-4.x/modules/core/include/opencv2/core/hal/interface.h> //not the right way to include, otherwise I get an error though
+#include "fluid.h"
 							// indices for float params passed to __const params_buf
 #define PIXELS			0	// TODO Can these be #included from a common header for both host and device code?
 #define ROWS			1
@@ -23,12 +24,61 @@
 #define INV_DEPTH_STEP	6
 #define ALPHA_G			7
 #define BETA_G			8	//  __kernel void CacheG4
-#define EPSILON 		9	//  __kernel void UpdateQD		// epsilon = 0.1
+//#define EPSILON 		9	//  __kernel void UpdateQD		// epsilon = 0.1		//This is a conflicting definition with fluid_system.h:6
 #define SIGMA_Q 		10									// sigma_q = 0.0559017
 #define SIGMA_D 		11
 #define THETA			12
 #define LAMBDA			13	//  __kernel void UpdateA2
 #define SCALE_EAUX		14
+
+#define FUNC_INSERT			0
+	#define	FUNC_COUNTING_SORT	1
+	#define FUNC_QUERY			2
+	#define FUNC_COMPUTE_PRESS	3
+	#define FUNC_COMPUTE_FORCE	4
+	#define FUNC_ADVANCE		5
+	#define FUNC_EMIT			6
+	#define FUNC_RANDOMIZE		7
+	#define FUNC_SAMPLE			8
+	#define FUNC_FPREFIXSUM		9
+	#define FUNC_FPREFIXUP	10
+	#define FUNC_TALLYLISTS     11
+	#define FUNC_COMPUTE_DIFFUSION          12
+	#define FUNC_COUNT_SORT_LISTS           13
+	#define FUNC_COMPUTE_GENE_ACTION        14
+	#define FUNC_TALLY_GENE_ACTION        35
+	#define FUNC_COMPUTE_BOND_CHANGES       15
+
+	#define FUNC_INSERT_CHANGES             16 //insertChanges
+	#define FUNC_PREFIXUP_CHANGES           17 //prefixFixupChanges
+	#define FUNC_PREFIXSUM_CHANGES          18 //prefixSumChanges
+	#define FUNC_TALLYLISTS_CHANGES         19 //tally_changelist_lengths
+	#define FUNC_COUNTING_SORT_CHANGES      20 //countingSortChanges
+	#define FUNC_COMPUTE_NERVE_ACTION       21 //computeNerveActivation
+
+	#define FUNC_COMPUTE_MUSCLE_CONTRACTION 22 //computeMuscleContraction
+	#define FUNC_HEAL                       23 //heal
+	#define FUNC_LENGTHEN_TISSUE            24 //lengthen_muscle
+	#define FUNC_LENGTHEN_MUSCLE            25 //lengthen_tissue
+	#define FUNC_SHORTEN_TISSUE             26 //shorten_muscle
+	#define FUNC_SHORTEN_MUSCLE             27 //shorten_tissue
+
+	#define FUNC_STRENGTHEN_TISSUE          28 //strengthen_muscle
+	#define FUNC_STRENGTHEN_MUSCLE          29 //strengthen_tissue
+	#define FUNC_WEAKEN_TISSUE              30 //weaken_muscle
+	#define FUNC_WEAKEN_MUSCLE              31 //weaken_tissue
+
+	#define FUNC_EXTERNAL_ACTUATION         32
+	#define FUNC_FIXED                      33
+	#define FUNC_CLEAN_BONDS                34
+
+	#define FUNC_INIT_FCURAND_STATE         36
+	#define FUNC_COUNTING_SORT_EPIGEN       37
+
+	#define	FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING     38
+	#define	FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING     39
+	#define	FUNC_INITIALIZE_BONDS                    40
+	#define FUNC_MAX			            41
 
 using namespace std;
 class RunCL
@@ -41,8 +91,8 @@ public:
 	cl_device_id		m_device_id;
 	cl_command_queue	m_queue, uload_queue, dload_queue, track_queue;
 	cl_program			m_program;
-	cl_kernel			cost_kernel, cache3_kernel, cache4_kernel, updateQD_kernel, updateA_kernel, insertParticlesCL_kernel, prefixFixup_kernel;
-	cl_mem				basemem, imgmem, cdatabuf, hdatabuf, k2kbuf, dmem, amem, basegraymem, gxmem, gymem, g1mem, qmem, lomem, himem, param_buf, img_sum_buf;
+	cl_kernel			m_Kern[FUNC_MAX];
+	cl_mem				m_FParamDevice, m_FluidDevice, m_FluidTempDevice, m_FGenomeDevice;		//GPU pointer containers
 
 	size_t  			global_work_size, local_work_size, image_size_bytes;
 	bool 				gpu, amdPlatform;
@@ -58,6 +108,7 @@ public:
 	void updateA ( float lambda, float theta );
 
 	void CleanUp();
+	void allocatemem(FParams fparam, FBufs *fbuf, FBufs *ftemp, FGenome fgenome);
 	void exit_(cl_int res);
 	~RunCL();
 
@@ -158,6 +209,46 @@ public:
 		}
 	}
 
+	void InitializeKernels(cl_program m_program) {
+	// Setup the array of kernels
+		m_Kern[FUNC_INSERT] = clCreateKernel(m_program, "insertParticles", NULL);
+		m_Kern[FUNC_COUNTING_SORT] = clCreateKernel(m_program, "countingSortFull", NULL);
+		m_Kern[FUNC_QUERY] = clCreateKernel(m_program, "computeQuery", NULL);
+		m_Kern[FUNC_COMPUTE_PRESS] = clCreateKernel(m_program, "computePressure", NULL);
+		m_Kern[FUNC_COMPUTE_FORCE] = clCreateKernel(m_program, "computeForce", NULL);
+		m_Kern[FUNC_ADVANCE] = clCreateKernel(m_program, "advanceParticles", NULL);
+		m_Kern[FUNC_EMIT] = clCreateKernel(m_program, "emitParticles", NULL);
+		m_Kern[FUNC_RANDOMIZE] = clCreateKernel(m_program, "randomInit", NULL);
+		m_Kern[FUNC_SAMPLE] = clCreateKernel(m_program, "sampleParticles", NULL);
+		m_Kern[FUNC_FPREFIXSUM] = clCreateKernel(m_program, "prefixSum", NULL);
+		m_Kern[FUNC_FPREFIXUP] = clCreateKernel(m_program, "prefixFixup", NULL);
+		m_Kern[FUNC_TALLYLISTS] = clCreateKernel(m_program, "tally_denselist_lengths", NULL);
+		m_Kern[FUNC_COMPUTE_DIFFUSION] = clCreateKernel(m_program, "computeDiffusion", NULL);
+		m_Kern[FUNC_COUNT_SORT_LISTS] = clCreateKernel(m_program, "countingSortDenseLists", NULL);
+		m_Kern[FUNC_COMPUTE_GENE_ACTION] = clCreateKernel(m_program, "computeGeneAction", NULL);
+		m_Kern[FUNC_TALLY_GENE_ACTION] = clCreateKernel(m_program, "tallyGeneAction", NULL);
+		m_Kern[FUNC_COMPUTE_BOND_CHANGES] = clCreateKernel(m_program, "computeBondChanges", NULL);
+		m_Kern[FUNC_COUNTING_SORT_CHANGES] = clCreateKernel(m_program, "countingSortChanges", NULL);
+		m_Kern[FUNC_COMPUTE_NERVE_ACTION] = clCreateKernel(m_program, "computeNerveActivation", NULL);
+		m_Kern[FUNC_COMPUTE_MUSCLE_CONTRACTION] = clCreateKernel(m_program, "computeMuscleContraction", NULL);
+		m_Kern[FUNC_CLEAN_BONDS] = clCreateKernel(m_program, "cleanBonds", NULL);
+		m_Kern[FUNC_HEAL] = clCreateKernel(m_program, "heal", NULL);
+		m_Kern[FUNC_LENGTHEN_MUSCLE] = clCreateKernel(m_program, "lengthen_muscle", NULL);
+		m_Kern[FUNC_LENGTHEN_TISSUE] = clCreateKernel(m_program, "lengthen_tissue", NULL);
+		m_Kern[FUNC_SHORTEN_MUSCLE] = clCreateKernel(m_program, "shorten_muscle", NULL);
+		m_Kern[FUNC_SHORTEN_TISSUE] = clCreateKernel(m_program, "shorten_tissue", NULL);
+		m_Kern[FUNC_STRENGTHEN_MUSCLE] = clCreateKernel(m_program, "strengthen_muscle", NULL);
+		m_Kern[FUNC_STRENGTHEN_TISSUE] = clCreateKernel(m_program, "strengthen_tissue", NULL);
+		m_Kern[FUNC_WEAKEN_MUSCLE] = clCreateKernel(m_program, "weaken_muscle", NULL);
+		m_Kern[FUNC_WEAKEN_TISSUE] = clCreateKernel(m_program, "weaken_tissue", NULL);
+		m_Kern[FUNC_EXTERNAL_ACTUATION] = clCreateKernel(m_program, "externalActuation", NULL);
+		m_Kern[FUNC_FIXED] = clCreateKernel(m_program, "fixedParticles", NULL);
+		m_Kern[FUNC_INIT_FCURAND_STATE] = clCreateKernel(m_program, "initialize_FCURAND_STATE", NULL);
+		m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
+		m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
+		m_Kern[FUNC_INITIALIZE_BONDS] = clCreateKernel(m_program, "initialize_bonds", NULL);
+	}
+	/*
 	void ReadOutput(uchar* outmat) {
 		ReadOutput(outmat, amem,  (width * height * sizeof(float)) );
 	}
@@ -181,7 +272,7 @@ public:
 															else if(verbosity>0) cout <<"\nclFlush(..)"<<flush;
 		status = clWaitForEvents(1, &readEvt); 			if (status != CL_SUCCESS) { cout << "\nclWaitForEvents status="			<< checkerror(status) <<"\n"<<flush; exit_(status);} 
 															else if(verbosity>0) cout <<"\nclWaitForEvents(..)"<<flush;
-	}
+	}*/
 };
 
 #endif /*RUNCL_H*/

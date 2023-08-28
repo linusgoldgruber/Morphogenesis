@@ -789,7 +789,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
     result += fscanf(points_file, "\n");
 //if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() line 1254: scanf result="<<result<<"\n"<<std::flush;     
     
-if (m_FParams.debug>1) std::cout<<"\n\n ReadPointsCSV2() starting loop: number_of_lines="<<number_of_lines<<"\n"<<std::flush;
+    if (m_FParams.debug>1) std::cout<<"\n\n ReadPointsCSV2() starting loop: number_of_lines="<<number_of_lines<<"\n"<<std::flush;
     ////////////////////
     int i, index, ret;
     for (i=1; i<number_of_lines; i++ ) {
