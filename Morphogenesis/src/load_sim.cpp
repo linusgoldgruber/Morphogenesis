@@ -176,14 +176,14 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
     if(debug>0) printf("\nCuda Memory, before cuCtxDestroy(clContext): free=%lu, total=%lu.\t",free1,total);
    // clCheck(clFinish(), "load_sim.cpp ", "clFinish", "before cuCtxDestroy(clContext)", 1/_*mbDebug*_/);
     
-    cl_int cl_intResult = cuCtxDestroy ( clContext ) ;
+    cl_int clResult = cuCtxDestroy ( clContext ) ;
 =======
     if(debug>0) printf("\nCuda Memory, before cuCtxDestroy(cuContext): free=%lu, total=%lu.\t",free1,total);
    // clCheck(clFinish(), "load_sim.cpp ", "clFinish", "before cuCtxDestroy(cuContext)", 1/_*mbDebug*_/);  
     
-    cl_int cl_intResult = cuCtxDestroy ( cuContext ) ;
+    cl_int clResult = cuCtxDestroy ( cuContext ) ;
 >>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/load_sim.cpp
-    if ( cl_intResult!=0 ) {printf ( "error closing, cl_intResult = %i \n",cl_intResult );}
+    if ( clResult!=0 ) {printf ( "error closing, clResult = %i \n",clResult );}
     
    // clCheck(clFinish(), "load_sim.cpp ", "clFinish", "after cudaDeviceReset()", 1/_*mbDebug*_/); 
     cudaMemGetInfo(&free2, &total);

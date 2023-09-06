@@ -10,7 +10,7 @@
 #include <math.h>
 #include <regex>
 #include <jsoncpp/json/json.h>
-#include "RunCL.h"
+//#include "RunCL.h"
 #include "fluid.h"
 #include "fluid_system.h"
 //#include "fluid_system.cpp"

@@ -30,7 +30,7 @@ float3 make_float3(float x, float y, float z)
 #include <jsoncpp/json/json.h>
 //#include <CL/cl.h>
 #define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
-#include "RunCL.h"
+//#include "RunCL.h"
 #include "fluid.h"
 #include "fluid_system.h"
 #include "fluid_system.cpp"
@@ -49,9 +49,8 @@ int main()
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
     obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
-    RunCL RunCLInstance(obj);
-    FluidSystem fluid;
-	fluid.Initialize(RunCLInstance);
+    FluidSystem fluid(obj);
+	fluid.Initialize();
 	//cout << "--allocatemem()--";
 }
 

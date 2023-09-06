@@ -37,6 +37,7 @@
 #include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
 
 
+
 __constant struct FParams	fparam  = {
         .debug = 0,
 		.numThreads = 0, .numBlocks = 0, .threadsPerBlock = 0,
@@ -45,6 +46,7 @@ __constant struct FParams	fparam  = {
 		.szGrid = 0,
 		.stride = 0, .pnum = 0, .pnumActive = 0, .maxPoints = 0,
         .freeze = 0,
+        .freezeBoolToInt = 0,
         .frame = 0,
 		.chk = 0,
 		.pdist = 0, .pmass = 0, .prest_dens = 0,
@@ -220,3 +222,218 @@ __kernel void countingSortFull(int pnum) {
             for (int a = 0; a < NUM_TF; a++) fbuf_conc[a] = ftemp_conc[a];
         }
 }
+
+float contributePressure (int i, float3 p, int cell, float *sum_p6k) {
+
+    if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return 0.0;                       // If the cell is empty, skip it.
+
+    float3 dist;
+    float dsq, r, q, b, c, sum = 0.0;
+    float d2 = fparam.psimscale * fparam.psimscale;
+    float r2 = fparam.r2;
+    float sr = fparam.psmoothradius;
+
+    int clast = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];
+
+    for (int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++) {
+        int pndx = bufI(&fbuf, FGRID)[cndx];
+        dist = p - bufF3(&fbuf, FPOS)[pndx];
+        dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
+
+        if (dsq < r2 && dsq > 0.0) {
+            r = sqrt(dsq);
+            q = r / sr;
+            b = (1 - q);
+            b *= b;
+            b *= b;
+            sum += b * (4 * q + 1);
+
+            c = (r2 - dsq) * d2;
+            sum_p6k[i] += c * c * c;
+        }
+    }
+    return sum;;
+}
+
+__kernel void computePressure ( int pnum ) {
+    int i = get_global_id(0); // particle index
+    if (i >= pnum) return;
+
+    // Get search cell
+    int nadj = (1 * fparam.gridRes.z + 1) * fparam.gridRes.x + 1;
+    uint gc = bufI(&fbuf, FGCELL)[i]; // get grid cell of the current particle.
+    if (gc == GRID_UNDEF) return;   // IF particle not in the simulation
+    gc -= nadj;
+
+    // Sum Pressures
+    float3 pos = bufF3(&fbuf, FPOS)[i];
+    float sum = 0.0;
+    float sum_p6k = 0.0;
+    for (int c = 0; c < fparam.gridAdjCnt; c++) {
+        sum += contributePressure(i, pos, gc + fparam.gridAdj[c], &sum_p6k);
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    // Compute Density & Pressure
+    sum = sum * fparam.pmass * fparam.wendlandC2kern;
+
+    if (sum == 0.0) sum = 1.0;
+    bufF(&fbuf, FPRESS)[i] = (sum - fparam.prest_dens) * fparam.pintstiff; // pressure = (diff from rest density) * stiffness
+    bufF(&fbuf, FDENSITY)[i] = 1.0f / sum;
+}
+
+float3 contributeForce ( int i, float3 ipos, float3 iveleval, float ipress, float idens, int cell)
+{
+	if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return (float3)(0,0,0);                                        // If the cell is empty, skip it.
+	float  dsq, sdist, c, r, sr=fparam.psmoothradius;//1.0;//
+    float3 pterm= (float3)(0,0,0), sterm= (float3)(0,0,0), vterm= (float3)(0,0,0), forcej= (float3)(0,0,0), delta_v= (float3)(0,0,0);                                                              // pressure, surface tension and viscosity terms.
+	float3 dist     = (float3)(0,0,0),      eterm = (float3)(0,0,0),    force = (float3)(0,0,0);
+	uint   j;
+	int    clast    = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];                                // index of last particle in this cell
+    uint k =0 ;
+    for (int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++ ) {                                     // For particles in this cell.
+        k++;
+		j           = bufI(&fbuf, FGRID)[ cndx ];
+		dist        = ( ipos - bufF3(&fbuf, FPOS)[ j ] );                                                     // dist in cm (Rama's comment)
+		dsq         = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);                                      // scalar distance squared
+		r           = sqrt(dsq);
+
+
+        if ( dsq < 1 /*fparam.rd2*/ && dsq > 0) {                                                           // IF in-range && not the same particle
+            float kern = pow((sr - r),3);                                                                   // used as a component of surface tension kernel AND directly in viscosity
+            sdist   = sqrt(dsq * fparam.d2);                                                                // smoothing distance
+            float press = 100*(ipress+bufF(&fbuf, FPRESS)[j]);///sdist
+
+            pterm = idens * bufF(&fbuf, FDENSITY)[j] *  100.0f* (dist/r) *(press*kern - (fparam.psurface_t/*0.4*/)*pow((sr - r),2));       // 1000 = hydroststic stiffness
+            delta_v = bufF3(&fbuf, FVEVAL)[j] - iveleval;
+            vterm =  100000.0f* delta_v * kern;// (1/2)*pow((sr - r),3) ; // 10000.0 gives fluid, 100000.0 gives visco-elastic behaviour.
+            //if (i==1) printf("\n contributeForce : fparam.psurface_t=%f,  fparam.sterm=%f, fparam.pvisc=%f, fparam.vterm=%f ", fparam.psurface_t, fparam.sterm, fparam.pvisc, fparam.vterm );
+            /*
+             sdist   = sqrt(dsq * fparam.d2);                                                                // smoothing distance = sqrt(dist^2 * sim_scale^2))
+             c       = ( fparam.psmoothradius - sdist );
+             pterm   = (dist/sdist) * pow((fparam.psmoothradius - sqrt(dsq)), 3) * (fparam.psmoothradius - dsq) ;
+             * fparam.psimscale * -0.5f * c * fparam.spikykern   * ( ipress + bufF(&fbuf, FPRESS)[ j ] )/ sdist )  ;       // pressure term
+            //sterm   = (dist/dsq) * fparam.sterm * cos(3*CUDART_PI_F*r/(2*fparam.psmoothradius));  // can we use sdist in placeof r ?  or in place od dsq? What about pressure?
+			//vterm   =  fparam.vterm * ( bufF3(&fbuf, FVEVAL)[ j ] - iveleval );  // make_float3(0,0,0);//
+			forcej  += ( pterm + sterm + vterm) * c * idens * (bufF(&fbuf, FDENSITY)[ j ] );  // fluid force
+            */
+            force   +=  pterm + vterm  ;
+            /*
+            if(fparam.debug>0 && i<5 && k<2)  printf("\ncontribForce : debug=%u. i=%u, r=,%f, sr=,%f, (sr-r)^3=,%f, delta_v=,(%f,%f,%f), vterm=(%f,%f,%f), pterm(%f,%f,%f), \t\t press=,%f, sdist=,%f, dsq=,%f, fparam.d2=,%f  kern=,%f, \t\t idens=%f,, bufF(&fbuf, FDENSITY)[j]=,%f, ",fparam.debug, i, r, sr, kern, delta_v.x,delta_v.y,delta_v.z, vterm.x,vterm.y,vterm.z, pterm.x,pterm.y,pterm.z, press, sdist, dsq, fparam.d2, kern, idens, bufF(&fbuf, FDENSITY)[j]);
+            */
+            /*
+            if(i<10) printf("\ncontribForce() : i=,%u, ,cell=,%u,  ,cndx=,%u, ,r=,%f, ,sqrt(fparam.rd2)=r_basis=,%f, ,fparam.psmoothradius=,%f,,sdist=,%f, ,(fparam.psmoothradius-sdist)= c =,%f, \t,ipress=,%f, ,jpress=,%f, ,idens=,%f, ,jdens=,%f,  press=,%f,     \t ,pterm=(,%f,%f,%f,),  ,sterm=(,%f,%f,%f,), ,vterm=(,%f,%f,%f,), ,forcej=(,%f,%f,%f,) ,  ,fparam.vterm=,%f, ,bufF3(&fbuf, FVEVAL)[ j ]=(,%f,%f,%f,), ,iveleval=(,%f,%f,%f,) ",
+                i, cell, cndx, r, sqrt(fparam.rd2), fparam.psmoothradius, sdist, c,  ipress, bufF(&fbuf, FPRESS)[j], idens, bufF(&fbuf, FDENSITY)[j], press,   pterm.x,pterm.y,pterm.z, sterm.x,sterm.y,sterm.z, vterm.x,vterm.y,vterm.z, forcej.x,forcej.y,forcej.z,
+                fparam.vterm, bufF3(&fbuf, FVEVAL)[j].x, bufF3(&fbuf, FVEVAL)[j].y, bufF3(&fbuf, FVEVAL)[j].z, iveleval.x, iveleval.y, iveleval.z
+            );
+            */
+        }                                                                                                   // end of: IF in-range && not the same particle
+    }                                                                                                       // end of loop round particles in this cell
+    //if(i<10)  printf("\ncontribForce : i=%u, force=(%f,%f,%f)  ",i, force.x,force.y,force.z  );
+    return force;                                                                                           // return fluid force && list of potential bonds fron this cell
+}
+
+__kernel void computeForce (int pnum, int freezeBoolToInt, uint frame) {
+    uint i = get_global_id(0);
+    if (i >= pnum) return;
+    uint gc = bufI(&fbuf, FGCELL)[i];
+    if (gc == GRID_UNDEF) return;
+
+    gc -= (1 * fparam.gridRes.z + 1) * fparam.gridRes.x + 1;
+    float3 force = (float3)(0, 0, 0);
+    float3 eterm = (float3)(0, 0, 0);
+    float3 dist = (float3)(0, 0, 0);
+    float dsq, abs_dist;
+    uint bondsToFill = 0;
+    uint bonds[BONDS_PER_PARTICLE][2];
+    float bond_dsq[BONDS_PER_PARTICLE];
+    for (int a = 0; a < BONDS_PER_PARTICLE; a++) {
+        bonds[a][0] = UINT_MAX;
+        bonds[a][1] = UINT_MAX;
+        bond_dsq[a] = fparam.rd2;
+    }
+    uint i_ID = bufI(&fbuf, FPARTICLE_ID)[i];
+
+    float3 pvel = bufF3(&fbuf, FVEVAL)[i];
+    bool hide;
+    bool long_bonds = false;
+    for (int a = 0; a < BONDS_PER_PARTICLE; a++) {
+        uint bond = i * BOND_DATA + a * DATA_PER_BOND;
+        uint j = bufI(&fbuf, FELASTIDX)[bond];
+        float restlength = bufF(&fbuf, FELASTIDX)[bond + 2];
+        if (j >= pnum || restlength < 0.000000001) {
+            hide = true;
+            continue;
+        } else hide = false;
+
+        float elastic_limit = bufF(&fbuf, FELASTIDX)[bond + 1];
+        float modulus = bufF(&fbuf, FELASTIDX)[bond + 3];
+        float damping_coeff = bufF(&fbuf, FELASTIDX)[bond + 4];
+        uint other_particle_ID = bufI(&fbuf, FELASTIDX)[bond + 5];
+        uint bondIndex = bufI(&fbuf, FELASTIDX)[bond + 6];
+
+        float3 j_pos = bufF3(&fbuf, FPOS)[j];
+
+        dist = (bufF3(&fbuf, FPOS)[i] - j_pos);
+        dsq = (dist.x * dist.x + dist.y * dist.y + dist.z * dist.z);
+        abs_dist = sqrt(dsq) + FLT_MIN;
+        float3 rel_vel = bufF3(&fbuf, FVEVAL)[j] - pvel;
+
+        float spring_strain = fmax(0.0f, (abs_dist - restlength) / restlength);
+        bufF(&fbuf, FELASTIDX)[bond + /*6*/strain_sq_integrator] = (bufF(&fbuf, FELASTIDX)[bond + /*6*/strain_sq_integrator] + spring_strain * spring_strain);
+        bufF(&fbuf, FELASTIDX)[bond + /*7*/strain_integrator] = (bufF(&fbuf, FELASTIDX)[bond + /*7*/strain_integrator] + spring_strain);
+
+        eterm = ((float)(abs_dist < elastic_limit)) * (((dist / abs_dist) * spring_strain * modulus) - damping_coeff * rel_vel) / (fparam.pmass);
+
+        if (fparam.debug > 0 && abs_dist > 1.5) {
+            long_bonds = true;
+            printf("\ncomputeForce() 1: frame=%u, i=%u, i_ID=%u, j=%u, j_ID=%u, other_particle_ID=%u, bond=%u, eterm=(%f,%f,%f) restlength=%f, modulus=%f , abs_dist=%f , spring_strain=%f , strain_integrator=%f, damping_coeff*rel_vel.z/fparam.pmass=%f, ((dist/abs_dist) * spring_strain * modulus) / fparam.pmass=%f ",
+                frame, i, i_ID, j, bufI(&fbuf, FPARTICLE_ID)[j], other_particle_ID, a, eterm.x, eterm.y, eterm.z, restlength, modulus, abs_dist, spring_strain, bufF(&fbuf, FELASTIDX)[bond + 7],
+                damping_coeff * rel_vel.z / fparam.pmass, (((dist.z / abs_dist) * spring_strain * modulus) / fparam.pmass)
+                );
+        }
+
+        if (isnan(eterm.x) || isnan(eterm.y) || isnan(eterm.z)) {
+            if (!hide) {
+                printf("\n#### i=%i, j=%i, bond=%i, eterm.x=%f, eterm.y=%f, eterm.z=%f \t####", i,j,a, eterm.x,eterm.y,eterm.z);
+                printf("\ncomputeForce() chk3: ParticleID=%u, bond=%u, restlength=%f, modulus=%f , abs_dist=%f , spring_strain=%f , strain_integrator=%f  ", bufI(&fbuf, FPARTICLE_ID)[i], a, restlength, modulus, abs_dist, spring_strain, bufF(&fbuf, FELASTIDX)[bond + 7]);
+            }
+        }else {
+            force -= eterm;
+            bufF3(&fbuf, FFORCE)[j].x += eterm.x;
+            bufF3(&fbuf, FFORCE)[j].y += eterm.y;
+            bufF3(&fbuf, FFORCE)[j].z += eterm.z;
+        }
+        if (abs_dist >= elastic_limit && freezeBoolToInt == 0) {
+            bufF(&fbuf, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 2] = 0.0;
+
+            uint bondIndex_ = bufI(&fbuf, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 6];
+            if (fparam.debug > 2) printf("\n#### Set to broken, i=%i, j=%i, b=%i, bufI(&fbuf, FPARTICLEIDX)[j*BONDS_PER_PARTICLE*2 + b]=UINT_MAX\t####", i,j,bondIndex_);
+            bondsToFill++;
+        }
+
+        barrier(CLK_LOCAL_MEM_FENCE);
+
+    }
+
+
+    bondsToFill = BONDS_PER_PARTICLE;
+    float3 fluid_force_sum = (float3)(0, 0, 0);
+    for (int c = 0; c < fparam.gridAdjCnt; c++) {
+        float3 fluid_force = (float3)(0, 0, 0);
+        fluid_force = contributeForce(i, bufF3(&fbuf, FPOS)[i], bufF3(&fbuf, FVEVAL)[i], bufF(&fbuf, FPRESS)[i], bufF(&fbuf, FDENSITY)[i], gc + fparam.gridAdj[c]);
+        fluid_force_sum += fluid_force;
+    }
+    force += fluid_force_sum * fparam.pmass;
+    if (fparam.debug > 0 && long_bonds == true) {
+        fluid_force_sum *= fparam.pmass;
+        printf("\nComputeForce 2: i=%u, fluid_force_sum=(%f,%f,%f) force=(%f,%f,%f)",
+            i, fluid_force_sum.x, fluid_force_sum.y, fluid_force_sum.z, force.x, force.y, force.z);
+    }
+
+    bufF3(&fbuf, FFORCE)[i].x += force.x;                                 // atomicAdd req due to other particles contributing forces via incomming bonds.
+    bufF3(&fbuf, FFORCE)[i].y += force.y;                                 // NB need to reset FFORCE to zero in  CountingSortFull(..)
+    bufF3(&fbuf, FFORCE)[i].z += force.z;                                 // temporary hack, ? better to write a float3 atomicAdd using atomicCAS ?  ########
+
+}
+

@@ -383,7 +383,7 @@ void FluidSystem::AllocateBuffer ( int buf_id, int stride, int cpucnt, int gpucn
 
         if (m_FParams.debug>1)printf("\nAfter allocation: free=%lu, total=%lu, this buffer=%lu.\n",free2,total,(free1-free2) );
     }
-
+}
 // Allocate particle memory
 void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // calls AllocateBuffer(..) for each buffer.  
 // Defaults in header : int gpu_mode = GPU_DUAL, int cpu_mode = CPU_YES
@@ -397,7 +397,7 @@ if (m_FParams.debug>1)std::cout<<"\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUA
     AllocateBuffer ( FAGE,		sizeof(uint),       cnt,    m_FParams.szPnts,	gpu_mode, cpu_mode );
     AllocateBuffer ( FPRESS,	sizeof(float),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSITY,	sizeof(float),		cnt, 	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FFORCE,	sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+    AllocateBuffer ( FFORCE,	sizeof(3*float),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
     AllocateBuffer ( FCLUSTER,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
     AllocateBuffer ( FGCELL,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
     AllocateBuffer ( FGNDX,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
@@ -1099,20 +1099,30 @@ void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
 
 void FluidSystem::setFreeze(bool freeze){
     m_FParams.freeze = freeze;
+
+    if (freeze == TRUE) {
+            m_FParams.freezeBoolToInt = 1;
+    }else{
+            m_FParams.freezeBoolToInt = 0;
+    }
     clCheck ( cuMemcpyHtoD ( clFParams,	&m_FParams,		sizeof(FParams) ), "FluidParamCL", "cuMemcpyHtoD", "clFParams", mbDebug);
 }
 
 
 void FluidSystem::Freeze (){
     m_FParams.freeze = true;
+    m_FParams.freezeBoolToInt = 1;
     Run();
     m_FParams.freeze = false;
+    m_FParams.freezeBoolToInt = 0;
 }
 
 void FluidSystem::Freeze (const char * relativePath, int frame, bool debug, bool gene_activity, bool remodelling  ){
     m_FParams.freeze = true;
+    m_FParams.freezeBoolToInt = 1;
     Run(relativePath, frame, debug, gene_activity, remodelling );
     m_FParams.freeze = false;
+    m_FParams.freezeBoolToInt = 0;
 }
 
 void FluidSystem::AdvanceTime () {  // may need to prune unused details from this fn.

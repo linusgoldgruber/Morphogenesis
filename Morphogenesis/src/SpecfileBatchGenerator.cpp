@@ -271,11 +271,11 @@ elongation_threshold,	elongation_factor,	strength_threshold,	strengthening_facto
     printf("\n\nCuda Memory, before cuCtxDestroy(clContext): free=%lu, total=%lu.\t",free1,total);
     
 <<<<<<< HEAD:Morphogenesis/src/SpecfileBatchGenerator.cpp
-    cl_int cl_intResult = cuCtxDestroy ( clContext ) ;
+    cl_int clResult = cuCtxDestroy ( clContext ) ;
 =======
-    cl_int cl_intResult = cuCtxDestroy ( cuContext ) ;
+    cl_int clResult = cuCtxDestroy ( cuContext ) ;
 >>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/SpecfileBatchGenerator.cpp
-    if ( cl_intResult!=0 ) {printf ( "error closing, cl_intResult = %i \n",cl_intResult );}
+    if ( clResult!=0 ) {printf ( "error closing, clResult = %i \n",clResult );}
     
     cudaMemGetInfo(&free2, &total);
     printf("\nAfter cuCtxDestroy(clContext): free=%lu, total=%lu, released=%lu.\n",free2,total,(free2-free1) );

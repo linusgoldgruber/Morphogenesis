@@ -78,11 +78,11 @@ int main ( int argc, const char** argv )
     printf("\n\nmake_demo2: Cuda Memory, before cuCtxDestroy(clContext): free=%lu, total=%lu.\t",free1,total);
     
 <<<<<<< HEAD:Morphogenesis/src/make_demo2.cpp
-    cl_int cl_intResult = cuCtxDestroy ( clContext ) ;
+    cl_int clResult = cuCtxDestroy ( clContext ) ;
 =======
-    cl_int cl_intResult = cuCtxDestroy ( cuContext ) ;
+    cl_int clResult = cuCtxDestroy ( cuContext ) ;
 >>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/make_demo2.cpp
-    if ( cl_intResult!=0 ) {printf ( "error closing, cl_intResult = %i \n",cl_intResult );}
+    if ( clResult!=0 ) {printf ( "error closing, clResult = %i \n",clResult );}
     
     cudaMemGetInfo(&free2, &total);
     printf("\nmake_demo2: After cuCtxDestroy(clContext): free=%lu, total=%lu, released=%lu.\n",free2,total,(free2-free1) );

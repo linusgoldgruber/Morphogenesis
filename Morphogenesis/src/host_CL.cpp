@@ -238,11 +238,9 @@ void FluidSystem::Init_FCURAND_STATE_CL (){ // designed to use to bootstrap itse
     
 }
 ///////////////////////////////// above here is all about setting up CUDA
-<<<<<<< HEAD:Morphogenesis/src/host_CUDA.cpp
-void FluidSystem::InsertParticles ( uint* gcell, uint* gndx, uint* gcnt ){   // first zero the counters
-=======
+
 void FluidSystem::InsertParticlesCL ( uint* gcell, uint* gndx, uint* gcnt ){   // first zero the counters
->>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/host_CUDA.cpp
+
     clCheck ( cuMemsetD8 ( m_Fluid.gpu(FGRIDCNT), 0,	m_GridTotal*sizeof(int) ), "InsertParticlesCL", "cuMemsetD8", "FGRIDCNT", mbDebug );
     clCheck ( cuMemsetD8 ( m_Fluid.gpu(FGRIDOFF), 0,	m_GridTotal*sizeof(int) ), "InsertParticlesCL", "cuMemsetD8", "FGRIDOFF", mbDebug );
     

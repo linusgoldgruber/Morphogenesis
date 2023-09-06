@@ -33,7 +33,7 @@
     //#include <../cuda-11.2/targets/x86_64-linux/include/curand_kernel.h>
     //#include <curand_kernel.h>
     #include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
-
+    //#include <CL/cl.h>
 
 	typedef	unsigned int		uint;
 	typedef	unsigned short int	ushort;
@@ -198,49 +198,25 @@
 	#endif		
 	
 
+    #ifdef CL_KERNEL
         typedef struct FBufs {
-                char* mcpu[MAX_BUF];
-            #ifdef CL_KERNEL
                 char* mgpu[MAX_BUF];
-            #else
-                char* mgpu[MAX_BUF];
-            #endif
+
         } FBufs;
 
-        #ifdef CL_KERNEL
             Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mgpu[n]; }
             float3* bufF3(__constant FBufs* fb, int n) { return (float3*) fb->mgpu[n]; }
             float*  bufF (__constant FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
+            //float*  bufAF (__global FBufs* fb, int n) { return (__global float*)  fb->mgpu[n]; }
+            //atomic_float* bufAF(__constant FBufs* fb, int n) { return (atomic_float*) fb ->mgpu[n];}
             uint*   bufI (__constant FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
             char*   bufC (__constant FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
             uint**  bufII (__constant FBufs* fb, int n) { return (uint**)  fb->mgpu[n]; }
             well512_state*  bufWell512State(__constant FBufs* fb, int n) { return (well512_state*) fb->mgpu[n]; }
             unsigned long long*  bufULL(__constant FBufs* fb, int n) { return (unsigned long long*) fb->mgpu[n]; }
 
-        #else
-            Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mcpu[n]; }
-            float3* bufF3(FBufs* fb, int n) { return (float3*) fb->mcpu[n]; }
-            float*  bufF (FBufs* fb, int n) { return (float*)  fb->mcpu[n]; }
-            uint*   bufI (FBufs* fb, int n) { return (uint*)   fb->mcpu[n]; }
-            char*   bufC (FBufs* fb, int n) { return (char*)   fb->mcpu[n]; }
-            uint**  bufII (FBufs* fb, int n) { return (uint**)  fb->mcpu[n]; }          // for elastIdx[][]
-            well512_state*  bufWell512State(FBufs* fb, int n) { return (well512_state*) fb->mcpu[n]; }
-            unsigned long long*  bufULL(FBufs* fb, int n) { return (unsigned long long*) fb->mcpu[n]; }
-        #endif
-
-        void setBuf(FBufs *fb, int n, char *buf) {
-            fb->mcpu[n] = buf;
-        }
-
-//         #ifdef CL_KERNEL
-//         #else
-//         cl_mem *gpu(FBufs *fb,int n){
-//             return fb->mgpu[n];
-//         }
-//         cl_mem int*gpuptr(FBufs *fb,int n){
-//             return &fb->mgpu[n];
-//         }
-//         #endif
+    #else
+    #endif
 
         /*float3*			mpos;			// particle buffers>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid.h
 
@@ -296,6 +272,7 @@
 		int				szPnts, szGrid;
 		int				stride, pnum, pnumActive, maxPoints;
         bool            freeze;
+        int             freezeBoolToInt;
         uint            frame;
 		int				chk;
 		float			pdist, pmass, prest_dens;
