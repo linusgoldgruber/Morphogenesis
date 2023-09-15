@@ -197,15 +197,15 @@
 		float* getPres ( int n )        { return &m_Fluid.bufF(FPRESS)[n];} 
 		float* getDensity ( int n )     { return &m_Fluid.bufF(FDENSITY)[n];} 
 		
-		uint* getAge ( int n )			{ return &m_Fluid.bufI(FAGE)[n]; }
-		uint* getClr ( int n )			{ return &m_Fluid.bufI(FCLR)[n]; }
-        uint* getElastIdx( int n )      { return &m_Fluid.bufI(FELASTIDX)[n*(BONDS_PER_PARTICLE * DATA_PER_BOND)]; }        //note #define FELASTIDX   14      
-        uint* getParticle_Idx( int n )  { return &m_Fluid.bufI(FPARTICLEIDX)[n*BONDS_PER_PARTICLE*2]; } 
-        uint* getParticle_ID(int n )    { return &m_Fluid.bufI(FPARTICLE_ID)[n]; }
-        uint* getMass_Radius(int n )    { return &m_Fluid.bufI(FMASS_RADIUS)[n]; }
-        uint* getNerveIdx( int n )      { return &m_Fluid.bufI(FNERVEIDX)[n]; }              //#define FNERVEIDX        15    //# uint
+		uint* getAge ( int n )			{ return &bufI(&m_Fluid, FAGE)[n]; }
+		uint* getClr ( int n )			{ return &bufI(&m_Fluid, FCLR)[n]; }
+        uint* getElastIdx( int n )      { return &bufI(&m_Fluid, FELASTIDX)[n*(BONDS_PER_PARTICLE * DATA_PER_BOND)]; }        //note #define FELASTIDX   14      
+        uint* getParticle_Idx( int n )  { return &bufI(&m_Fluid, FPARTICLEIDX)[n*BONDS_PER_PARTICLE*2]; } 
+        uint* getParticle_ID(int n )    { return &bufI(&m_Fluid, FPARTICLE_ID)[n]; }
+        uint* getMass_Radius(int n )    { return &bufI(&m_Fluid, FMASS_RADIUS)[n]; }
+        uint* getNerveIdx( int n )      { return &bufI(&m_Fluid, FNERVEIDX)[n]; }              //#define FNERVEIDX        15    //# uint
         float* getConc(int tf)          { return &m_Fluid.bufF(FCONC)[tf*mMaxPoints];}       //note #define FCONC       16    //# float[NUM_TF]        NUM_TF = num transcription factors & morphogens
-        uint* getEpiGen(int gene)       { return &m_Fluid.bufI(FEPIGEN)[gene*mMaxPoints];}   //note #define FEPIGEN     17    //# uint[NUM_GENES] // used in savePoints... 
+        uint* getEpiGen(int gene)       { return &bufI(&m_Fluid, FEPIGEN)[gene*mMaxPoints];}   //note #define FEPIGEN     17    //# uint[NUM_GENES] // used in savePoints... 
                                                                                              //NB int mMaxPoints is set even if FluidSetupCL(..) isn't called, e.g. in makedemo ..
 		// Setup
 		void SetupSPH_Kernels ();
@@ -378,7 +378,7 @@
 		m_Kern [FUNC_RANDOMIZE] = clCreateKernel(program, "randomInit", ret);
 		m_Kern [FUNC_SAMPLE] = clCreateKernel(program, "sampleParticles", ret);
 		m_Kern [FUNC_FPREFIXSUM] = clCreateKernel(program, "prefixSum", ret);
-		m_Kern [FUNC_FPREFIXFIXUP] = clCreateKernel(program, "prefixFixup", ret);
+		m_Kern [FUNC_FPREFIXUP] = clCreateKernel(program, "prefixFixup", ret);
 		m_Kern [FUNC_TALLYLISTS] = clCreateKernel(program, "tally_denselist_lengths", ret);
 		m_Kern [FUNC_COMPUTE_DIFFUSION] = clCreateKernel(program, "computeDiffusion", ret);
 		m_Kern [FUNC_COUNT_SORT_LISTS] = clCreateKernel(program, "countingSortDenseLists", ret);
@@ -408,7 +408,7 @@
 		// OpenCL Kernels(!)
 		cl_program					m_Program;
                                     // Array of kernel functions
-		cl_kernel					m_Kern[ FUNC_MAX ];
+		//cl_kernel					m_Kern[ FUNC_MAX ];
         
 		// Simulation Parameters                                //  NB MAX_PARAM = 50 
 		float						m_Param [ MAX_PARAM ];	    // 0-47 used.  see defines above. NB m_Param[1] = maximum number of points.

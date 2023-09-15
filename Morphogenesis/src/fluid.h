@@ -207,7 +207,7 @@
             Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mgpu[n]; }
             float3* bufF3(__constant FBufs* fb, int n) { return (float3*) fb->mgpu[n]; }
             float*  bufF (__constant FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
-            //float*  bufAF (__global FBufs* fb, int n) { return (__global float*)  fb->mgpu[n]; }
+            //atomic_float**  bufAF ( FBufs* fb, int n) { return (atomic_float**)  fb->mgpu[n]; }
             //atomic_float* bufAF(__constant FBufs* fb, int n) { return (atomic_float*) fb ->mgpu[n];}
             uint*   bufI (__constant FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
             char*   bufC (__constant FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
@@ -217,31 +217,6 @@
 
     #else
     #endif
-
-        /*float3*			mpos;			// particle buffers>>>>>>> 75eada6585054e07bf9262a150f34af03aa68428:src/fluid.h
-
-		float3*			mvel;
-		float3*			mveleval;
-		float3*			mforce;
-		float*			mpress;
-		float*			mdensity;
-		ushort*			mage;
-		uint*			mclr;
-		uint*			mgcell;
-		uint*			mgnext;
-		uint*			mnbrndx;
-		uint*			mnbrcnt;
-		uint*			mcluster;
-		char*			msortbuf;		// sorting buffer
-
-		uint*			mgrid;			// grid buffers
-		int*			mgridcnt;
-		int*			mgridoff;
-		int*			mgridactive;
-
-		char*			mstate;			// state buffer
-		float*			mbrick;*/
-
 
 	// Temporary sort buffer offsets
 	#define BUF_POS			0
@@ -266,6 +241,7 @@
 
 	// Fluid Parameters (stored on both host and device)
 	struct FParams {
+
         uint            debug;
 		int				numThreads, numBlocks, threadsPerBlock;
 		int				gridThreads, gridBlocks;
@@ -290,16 +266,44 @@
 		int				gridAdj[64];
         float           actuation_factor;
         float           actuation_period;
+
+
+        float3*			mpos;			// particle buffers
+
+		float3*			mvel;
+		float3*			mveleval;
+		float3*			mforce;
+		float*			mpress;
+		float*			mdensity;
+		ushort*			mage;
+		uint*			mclr;
+		uint*			mgcell;
+		uint*			mgnext;
+		uint*			mnbrndx;
+		uint*			mnbrcnt;
+		uint*			mcluster;
+		char*			msortbuf;		// sorting buffer
+
+		uint*			mgrid;			// grid buffers
+		int*			mgridcnt;
+		int*			mgridoff;
+		int*			mgridactive;
+
+		char*			mstate;			// state buffer
+		float*			mbrick;
+
+
 	};
 
     //////////////////////
-    // material parameters for bonds, used in remodelling
-  //  struct FBondParams{             //  0=elastin, 1=collagen, 2=apatite //
-  //      enum params{  /*triggering bond parameter changes*/elongation_threshold, elongation_factor, strength_threshold, strengthening_factor, \
-  //                    /*triggering particle changes*/max_rest_length, min_rest_length, max_modulus, min_modulus, \
-  //                    /*initial values for new bonds*/elastLim, default_rest_length, default_modulus, default_damping
-  //      };
-  //      static float param[12];
+    //material parameters for bonds, used in remodelling
+//    struct FBondParams{             //  0=elastin, 1=collagen, 2=apatite //
+//        enum params{  /*triggering bond parameter changes*/elongation_threshold, elongation_factor, strength_threshold, strengthening_factor, \
+//                      /*triggering particle changes*/max_rest_length, min_rest_length, max_modulus, min_modulus, \
+//                      /*initial values for new bonds*/elastLim, default_rest_length, default_modulus, default_damping
+//        };
+//        static float param[12];
+//    };
         /*
         // triggering bond parameter changes
         static float elongation_threshold   ;// = { 0.1, 0.1, 0.1}; // stress   fraction of elastlim
@@ -342,6 +346,7 @@
     // NB we don't have a particle-wise viscosity param ...yet
 
     struct FGenome{   // ## currently using fixed size genome for efficiency. NB Particle data size depends on genome size.
+
         uint mutability[NUM_GENES];
         uint delay[NUM_GENES];
         uint sensitivity[NUM_GENES][NUM_GENES];     // for each gene, its sensitivity to each TF or morphogen
@@ -366,6 +371,16 @@
         float param[3][12];                         // TODO update all uses of FBondParams & test.
     };                                              // NB gene functions need to be in fluid_system_cuda.cu
 
+
+    struct FPrefix{
+
+        int     t_numElem1;
+        int     zero_offsets;
+        size_t  offset_array0;
+        size_t  offset_scan0;
+
+
+    };
     ///////////////////////
     // Multi-scale particles
     // - use radius parameter in FELASTIDX buffer, 0=self UID, mass, radius.

@@ -20,6 +20,7 @@ float3 make_float3(float x, float y, float z)
 {
     float3 t; t.x = x; t.y = y; t.z = z; return t;
 }
+
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
@@ -33,7 +34,9 @@ float3 make_float3(float x, float y, float z)
 //#include "RunCL.h"
 #include "fluid.h"
 #include "fluid_system.h"
-#include "fluid_system.cpp"
+//#include "fluid_system.cpp"
+#include "host_CL.cpp"
+
 
 #define SDK_SUCCESS 0
 #define SDK_FAILURE 1
@@ -50,8 +53,18 @@ int main()
     obj["opencl_device"] = 0;
     obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
     FluidSystem fluid(obj);
+    fluid.FluidSystem;
 	fluid.Initialize();
-	//cout << "--allocatemem()--";
+    //fluid.launchParams.debug = 1;
+    fluid.InitializeOpenCL();
+    fluid.InsertParticlesCL ( 0x0, 0x0, 0x0 );
+
+
+    //fluid.Run2PhysicalSort();
+
+    //fluid.AllocateParticles(mMaxPoints, gpu_mode, cpu_mode);
+    //fluid.InsertParticlesCL( 0x0, 0x0, 0x0 );
+    //fluid.PrefixSumCellsCL(1); //Dependent on allocatemem!!
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

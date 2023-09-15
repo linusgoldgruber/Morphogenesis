@@ -1336,7 +1336,7 @@ extern "C" __device__ void addParticle (uint parent_Idx, uint &new_particle_Idx)
     /**/if (fparam.debug>2  && threadIdx.x==0) printf("\naddParticle()1:  parent_Idx=%u, new_particle_Idx=%u, bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx]=%u", parent_Idx, new_particle_Idx, bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx] );
     
     atomicCAS(&bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx /*_otherParticleBondIndex*/], UINT_MAX, parent_Idx);// this prevents colision between kernels if run concurrently. 
-    //NB cuMemsetD32 m_Fluid.gpu(FPARTICLEIDX) UINT_MAX in CountingSortFullCL(...), Run2PhyysicalSort()
+    //NB cuMemsetD32 gpuVar(&m_Fluid, FPARTICLEIDX) UINT_MAX in CountingSortFullCL(...), Run2PhyysicalSort()
     
     if(bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx]== parent_Idx){//   // problem causes failure pf particle adition
         bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx]= new_particle_Idx;

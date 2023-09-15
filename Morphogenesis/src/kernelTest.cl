@@ -77,6 +77,8 @@ __constant struct FBufs			fbuf = {};
 __constant struct FBufs			ftemp = {};			// GPU Particle buffers (sorted)
 
 __constant struct FGenome		fgenome = {};		// GPU Genome for particle automata behaviour. Also holds morphogen diffusability.
+
+__constant struct FPrefix       fprefix = {};
 //__constant_FBondParams    fbondparams;    // GPU copy of remodelling parameters.
 //__constant uint			gridActive;
 
@@ -86,6 +88,11 @@ __constant struct FGenome		fgenome = {};		// GPU Genome for particle automata be
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+__kernel void memset32d_kernel(__global int* buffer, const int value) {
+    int gid = get_global_id(0);
+    buffer[gid] = value;
+}
+
 __kernel void prefixFixup(__global uint *input, __global uint *aux, int len) {
 
     unsigned int t = get_local_id(0);
@@ -94,7 +101,15 @@ __kernel void prefixFixup(__global uint *input, __global uint *aux, int len) {
     if (start + SCAN_BLOCKSIZE < len)   input[start + SCAN_BLOCKSIZE] += aux[get_group_id(0)];
 }
 
-__kernel void prefixSum(__global uint *input, __global uint *output, __global uint *aux, int len, int zeroff)
+__kernel void prefixSum(
+        __global uint *input,
+        __global uint *output,
+        __global uint *aux,
+        __global size_t *offset_array0,
+        __global size_t *offset_scan0,
+        int len,
+        int zeroff
+        ) //, __constant size_t *offset_scan0)
 {
     __local uint scan_array[SCAN_BLOCKSIZE << 1];
     unsigned int t1 = get_local_id(0) + 2 * get_group_id(0) * SCAN_BLOCKSIZE;
@@ -131,7 +146,6 @@ __kernel void prefixSum(__global uint *input, __global uint *output, __global ui
         if (aux) aux[get_group_id(0)] = scan_array[2 * SCAN_BLOCKSIZE - 1];
     }
 }
-
 __kernel void tally_denselist_lengths(int num_lists, int fdense_list_lengths, int fgridcnt, int fgridoff )
 {
     uint list = get_group_id(0) * get_local_size(0) + get_local_id(0);
@@ -357,64 +371,64 @@ __kernel void computeForce (int pnum, int freezeBoolToInt, uint frame) {
     float3 pvel = bufF3(&fbuf, FVEVAL)[i];
     bool hide;
     bool long_bonds = false;
-    for (int a = 0; a < BONDS_PER_PARTICLE; a++) {
-        uint bond = i * BOND_DATA + a * DATA_PER_BOND;
-        uint j = bufI(&fbuf, FELASTIDX)[bond];
-        float restlength = bufF(&fbuf, FELASTIDX)[bond + 2];
-        if (j >= pnum || restlength < 0.000000001) {
-            hide = true;
-            continue;
-        } else hide = false;
-
-        float elastic_limit = bufF(&fbuf, FELASTIDX)[bond + 1];
-        float modulus = bufF(&fbuf, FELASTIDX)[bond + 3];
-        float damping_coeff = bufF(&fbuf, FELASTIDX)[bond + 4];
-        uint other_particle_ID = bufI(&fbuf, FELASTIDX)[bond + 5];
-        uint bondIndex = bufI(&fbuf, FELASTIDX)[bond + 6];
-
-        float3 j_pos = bufF3(&fbuf, FPOS)[j];
-
-        dist = (bufF3(&fbuf, FPOS)[i] - j_pos);
-        dsq = (dist.x * dist.x + dist.y * dist.y + dist.z * dist.z);
-        abs_dist = sqrt(dsq) + FLT_MIN;
-        float3 rel_vel = bufF3(&fbuf, FVEVAL)[j] - pvel;
-
-        float spring_strain = fmax(0.0f, (abs_dist - restlength) / restlength);
-        bufF(&fbuf, FELASTIDX)[bond + /*6*/strain_sq_integrator] = (bufF(&fbuf, FELASTIDX)[bond + /*6*/strain_sq_integrator] + spring_strain * spring_strain);
-        bufF(&fbuf, FELASTIDX)[bond + /*7*/strain_integrator] = (bufF(&fbuf, FELASTIDX)[bond + /*7*/strain_integrator] + spring_strain);
-
-        eterm = ((float)(abs_dist < elastic_limit)) * (((dist / abs_dist) * spring_strain * modulus) - damping_coeff * rel_vel) / (fparam.pmass);
-
-        if (fparam.debug > 0 && abs_dist > 1.5) {
-            long_bonds = true;
-            printf("\ncomputeForce() 1: frame=%u, i=%u, i_ID=%u, j=%u, j_ID=%u, other_particle_ID=%u, bond=%u, eterm=(%f,%f,%f) restlength=%f, modulus=%f , abs_dist=%f , spring_strain=%f , strain_integrator=%f, damping_coeff*rel_vel.z/fparam.pmass=%f, ((dist/abs_dist) * spring_strain * modulus) / fparam.pmass=%f ",
-                frame, i, i_ID, j, bufI(&fbuf, FPARTICLE_ID)[j], other_particle_ID, a, eterm.x, eterm.y, eterm.z, restlength, modulus, abs_dist, spring_strain, bufF(&fbuf, FELASTIDX)[bond + 7],
-                damping_coeff * rel_vel.z / fparam.pmass, (((dist.z / abs_dist) * spring_strain * modulus) / fparam.pmass)
-                );
-        }
-
-        if (isnan(eterm.x) || isnan(eterm.y) || isnan(eterm.z)) {
-            if (!hide) {
-                printf("\n#### i=%i, j=%i, bond=%i, eterm.x=%f, eterm.y=%f, eterm.z=%f \t####", i,j,a, eterm.x,eterm.y,eterm.z);
-                printf("\ncomputeForce() chk3: ParticleID=%u, bond=%u, restlength=%f, modulus=%f , abs_dist=%f , spring_strain=%f , strain_integrator=%f  ", bufI(&fbuf, FPARTICLE_ID)[i], a, restlength, modulus, abs_dist, spring_strain, bufF(&fbuf, FELASTIDX)[bond + 7]);
-            }
-        }else {
-            force -= eterm;
-            bufF3(&fbuf, FFORCE)[j].x += eterm.x;
-            bufF3(&fbuf, FFORCE)[j].y += eterm.y;
-            bufF3(&fbuf, FFORCE)[j].z += eterm.z;
-        }
-        if (abs_dist >= elastic_limit && freezeBoolToInt == 0) {
-            bufF(&fbuf, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 2] = 0.0;
-
-            uint bondIndex_ = bufI(&fbuf, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 6];
-            if (fparam.debug > 2) printf("\n#### Set to broken, i=%i, j=%i, b=%i, bufI(&fbuf, FPARTICLEIDX)[j*BONDS_PER_PARTICLE*2 + b]=UINT_MAX\t####", i,j,bondIndex_);
-            bondsToFill++;
-        }
-
-        barrier(CLK_LOCAL_MEM_FENCE);
-
-    }
+//     for (int a = 0; a < BONDS_PER_PARTICLE; a++) {
+//         uint bond = i * BOND_DATA + a * DATA_PER_BOND;
+//         uint j = bufI(&fbuf, FELASTIDX)[bond];
+//         float restlength = bufF(&fbuf, FELASTIDX)[bond + 2];
+//         if (j >= pnum || restlength < 0.000000001) {
+//             hide = true;
+//             continue;
+//         } else hide = false;
+//
+//         float elastic_limit = bufF(&fbuf, FELASTIDX)[bond + 1];
+//         float modulus = bufF(&fbuf, FELASTIDX)[bond + 3];
+//         float damping_coeff = bufF(&fbuf, FELASTIDX)[bond + 4];
+//         uint other_particle_ID = bufI(&fbuf, FELASTIDX)[bond + 5];
+//         uint bondIndex = bufI(&fbuf, FELASTIDX)[bond + 6];
+//
+//         float3 j_pos = bufF3(&fbuf, FPOS)[j];
+//
+//         dist = (bufF3(&fbuf, FPOS)[i] - j_pos);
+//         dsq = (dist.x * dist.x + dist.y * dist.y + dist.z * dist.z);
+//         abs_dist = sqrt(dsq) + FLT_MIN;
+//         float3 rel_vel = bufF3(&fbuf, FVEVAL)[j] - pvel;
+//
+//         float spring_strain = fmax(0.0f, (abs_dist - restlength) / restlength);
+//         bufF(&fbuf, FELASTIDX)[bond + /*6*/strain_sq_integrator] = (bufF(&fbuf, FELASTIDX)[bond + /*6*/strain_sq_integrator] + spring_strain * spring_strain);
+//         bufF(&fbuf, FELASTIDX)[bond + /*7*/strain_integrator] = (bufF(&fbuf, FELASTIDX)[bond + /*7*/strain_integrator] + spring_strain);
+//
+//         eterm = ((float)(abs_dist < elastic_limit)) * (((dist / abs_dist) * spring_strain * modulus) - damping_coeff * rel_vel) / (fparam.pmass);
+//
+//         if (fparam.debug > 0 && abs_dist > 1.5) {
+//             long_bonds = true;
+//             printf("\ncomputeForce() 1: frame=%u, i=%u, i_ID=%u, j=%u, j_ID=%u, other_particle_ID=%u, bond=%u, eterm=(%f,%f,%f) restlength=%f, modulus=%f , abs_dist=%f , spring_strain=%f , strain_integrator=%f, damping_coeff*rel_vel.z/fparam.pmass=%f, ((dist/abs_dist) * spring_strain * modulus) / fparam.pmass=%f ",
+//                 frame, i, i_ID, j, bufI(&fbuf, FPARTICLE_ID)[j], other_particle_ID, a, eterm.x, eterm.y, eterm.z, restlength, modulus, abs_dist, spring_strain, bufF(&fbuf, FELASTIDX)[bond + 7],
+//                 damping_coeff * rel_vel.z / fparam.pmass, (((dist.z / abs_dist) * spring_strain * modulus) / fparam.pmass)
+//                 );
+//         }
+//
+//         if (isnan(eterm.x) || isnan(eterm.y) || isnan(eterm.z)) {
+//             if (!hide) {
+//                 printf("\n#### i=%i, j=%i, bond=%i, eterm.x=%f, eterm.y=%f, eterm.z=%f \t####", i,j,a, eterm.x,eterm.y,eterm.z);
+//                 printf("\ncomputeForce() chk3: ParticleID=%u, bond=%u, restlength=%f, modulus=%f , abs_dist=%f , spring_strain=%f , strain_integrator=%f  ", bufI(&fbuf, FPARTICLE_ID)[i], a, restlength, modulus, abs_dist, spring_strain, bufF(&fbuf, FELASTIDX)[bond + 7]);
+//             }
+//         }else {
+//             force -= eterm;
+//             atomic_fetch_add(bufF3(&fbuf, FFORCE)[j].x += 1.0f);
+//             atomic_fetch_add(bufF3(&fbuf, FFORCE)[j].y += 1.0f);
+//             atomic_fetch_add(bufF3(&fbuf, FFORCE)[j].z += 1.0f);
+//         }
+//         if (abs_dist >= elastic_limit && freezeBoolToInt == 0) {
+//             bufF(&fbuf, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 2] = 0.0;
+//
+//             uint bondIndex_ = bufI(&fbuf, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 6];
+//             if (fparam.debug > 2) printf("\n#### Set to broken, i=%i, j=%i, b=%i, bufI(&fbuf, FPARTICLEIDX)[j*BONDS_PER_PARTICLE*2 + b]=UINT_MAX\t####", i,j,bondIndex_);
+//             bondsToFill++;
+//         }
+//
+//         barrier(CLK_LOCAL_MEM_FENCE);
+//
+//     }
 
 
     bondsToFill = BONDS_PER_PARTICLE;

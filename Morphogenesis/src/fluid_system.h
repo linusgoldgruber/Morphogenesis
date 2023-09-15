@@ -44,7 +44,7 @@
 	#include <sys/stat.h>
     #include <sys/types.h> 
 	#include <CL/cl.h>
-
+	#include "fluid.h"
 	
 // 	#include <vtk-9.0/vtkCellArray.h>
 //     #include <vtk-9.0/vtkPoints.h>
@@ -58,7 +58,6 @@
 //     #include <vtk-9.0/vtkFloatArray.h>
 //     #include <vtk-9.0/vtkPointData.h>
 //     #include <vtk-9.0/vtkCellData.h>
-	#include "fluid.h"
 
 	extern bool gProfileRend;
 
@@ -181,7 +180,8 @@
 	#define	FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING     39
 	#define	FUNC_INITIALIZE_BONDS                    40
 	#define	FUNC_CONTRIBUTE_PRESSURE                    41
-	#define FUNC_MAX			            42
+	#define	FUNC_MEMSET32D                    42
+	#define FUNC_MAX			            43
 
 using namespace std;
 class RunCL
@@ -251,106 +251,8 @@ public:
 // 		status = clReleaseEvent(*event); 	if (status != CL_SUCCESS) { cout << "\nclReleaseEvent status="  << status << ", " <<  checkerror(status) <<"\n" << flush; exit_(status); }
 // 		return status;
 // 	}
+
 //
-// 	string checkerror(int input) {
-// 		int errorCode = input;
-// 		switch (errorCode) {
-// 		case -9999:											return "Illegal read or write to a buffer";		// NVidia error code
-// 		case CL_DEVICE_NOT_FOUND:							return "CL_DEVICE_NOT_FOUND";
-// 		case CL_DEVICE_NOT_AVAILABLE:						return "CL_DEVICE_NOT_AVAILABLE";
-// 		case CL_COMPILER_NOT_AVAILABLE:						return "CL_COMPILER_NOT_AVAILABLE";
-// 		case CL_MEM_OBJECT_ALLOCATION_FAILURE:				return "CL_MEM_OBJECT_ALLOCATION_FAILURE";
-// 		case CL_OUT_OF_RESOURCES:							return "CL_OUT_OF_RESOURCES";
-// 		case CL_OUT_OF_HOST_MEMORY:							return "CL_OUT_OF_HOST_MEMORY";
-// 		case CL_PROFILING_INFO_NOT_AVAILABLE:				return "CL_PROFILING_INFO_NOT_AVAILABLE";
-// 		case CL_MEM_COPY_OVERLAP:							return "CL_MEM_COPY_OVERLAP";
-// 		case CL_IMAGE_FORMAT_MISMATCH:						return "CL_IMAGE_FORMAT_MISMATCH";
-// 		case CL_IMAGE_FORMAT_NOT_SUPPORTED:					return "CL_IMAGE_FORMAT_NOT_SUPPORTED";
-// 		case CL_BUILD_PROGRAM_FAILURE:						return "CL_BUILD_PROGRAM_FAILURE";
-// 		case CL_MAP_FAILURE:								return "CL_MAP_FAILURE";
-// 		case CL_MISALIGNED_SUB_BUFFER_OFFSET:				return "CL_MISALIGNED_SUB_BUFFER_OFFSET";
-// 		case CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST:	return "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST";
-// 		case CL_INVALID_VALUE:								return "CL_INVALID_VALUE";
-// 		case CL_INVALID_DEVICE_TYPE:						return "CL_INVALID_DEVICE_TYPE";
-// 		case CL_INVALID_PLATFORM:							return "CL_INVALID_PLATFORM";
-// 		case CL_INVALID_DEVICE:								return "CL_INVALID_DEVICE";
-// 		case CL_INVALID_CONTEXT:							return "CL_INVALID_CONTEXT";
-// 		case CL_INVALID_QUEUE_PROPERTIES:					return "CL_INVALID_QUEUE_PROPERTIES";
-// 		case CL_INVALID_COMMAND_QUEUE:						return "CL_INVALID_COMMAND_QUEUE";
-// 		case CL_INVALID_HOST_PTR:							return "CL_INVALID_HOST_PTR";
-// 		case CL_INVALID_MEM_OBJECT:							return "CL_INVALID_MEM_OBJECT";
-// 		case CL_INVALID_IMAGE_FORMAT_DESCRIPTOR:			return "CL_INVALID_IMAGE_FORMAT_DESCRIPTOR";
-// 		case CL_INVALID_IMAGE_SIZE:							return "CL_INVALID_IMAGE_SIZE";
-// 		case CL_INVALID_SAMPLER:							return "CL_INVALID_SAMPLER";
-// 		case CL_INVALID_BINARY:								return "CL_INVALID_BINARY";
-// 		case CL_INVALID_BUILD_OPTIONS:						return "CL_INVALID_BUILD_OPTIONS";
-// 		case CL_INVALID_PROGRAM:							return "CL_INVALID_PROGRAM";
-// 		case CL_INVALID_PROGRAM_EXECUTABLE:					return "CL_INVALID_PROGRAM_EXECUTABLE";
-// 		case CL_INVALID_KERNEL_NAME:						return "CL_INVALID_KERNEL_NAME";
-// 		case CL_INVALID_KERNEL_DEFINITION:					return "CL_INVALID_KERNEL_DEFINITION";
-// 		case CL_INVALID_KERNEL:								return "CL_INVALID_KERNEL";
-// 		case CL_INVALID_ARG_INDEX:							return "CL_INVALID_ARG_INDEX";
-// 		case CL_INVALID_ARG_VALUE:							return "CL_INVALID_ARG_VALUE";
-// 		case CL_INVALID_ARG_SIZE:							return "CL_INVALID_ARG_SIZE";
-// 		case CL_INVALID_KERNEL_ARGS:						return "CL_INVALID_KERNEL_ARGS";
-// 		case CL_INVALID_WORK_DIMENSION:						return "CL_INVALID_WORK_DIMENSION";
-// 		case CL_INVALID_WORK_GROUP_SIZE:					return "CL_INVALID_WORK_GROUP_SIZE";
-// 		case CL_INVALID_WORK_ITEM_SIZE:						return "CL_INVALID_WORK_ITEM_SIZE";
-// 		case CL_INVALID_GLOBAL_OFFSET:						return "CL_INVALID_GLOBAL_OFFSET";
-// 		case CL_INVALID_EVENT_WAIT_LIST:					return "CL_INVALID_EVENT_WAIT_LIST";
-// 		case CL_INVALID_EVENT:								return "CL_INVALID_EVENT";
-// 		case CL_INVALID_OPERATION:							return "CL_INVALID_OPERATION";
-// 		case CL_INVALID_GL_OBJECT:							return "CL_INVALID_GL_OBJECT";
-// 		case CL_INVALID_BUFFER_SIZE:						return "CL_INVALID_BUFFER_SIZE";
-// 		case CL_INVALID_MIP_LEVEL:							return "CL_INVALID_MIP_LEVEL";
-// 		case CL_INVALID_GLOBAL_WORK_SIZE:					return "CL_INVALID_GLOBAL_WORK_SIZE";
-// #if CL_HPP_MINIMUM_OPENCL_VERSION >= 200
-// 		case CL_INVALID_DEVICE_QUEUE:						return "CL_INVALID_DEVICE_QUEUE";
-// 		case CL_INVALID_PIPE_SIZE:							return "CL_INVALID_PIPE_SIZE";
-// #endif
-// 		default:											return "unknown error code";
-// 		}
-// 	}
-//
-// 	void InitializeKernels(cl_program m_program) {
-// 	// Setup the array of kernels
-// 		m_Kern[FUNC_INSERT] = clCreateKernel(m_program, "insertParticles", NULL);
-// 		m_Kern[FUNC_COUNTING_SORT] = clCreateKernel(m_program, "countingSortFull", NULL);
-// 		m_Kern[FUNC_QUERY] = clCreateKernel(m_program, "computeQuery", NULL);
-// 		m_Kern[FUNC_COMPUTE_PRESS] = clCreateKernel(m_program, "computePressure", NULL);
-// 		m_Kern[FUNC_COMPUTE_FORCE] = clCreateKernel(m_program, "computeForce", NULL);
-// 		m_Kern[FUNC_ADVANCE] = clCreateKernel(m_program, "advanceParticles", NULL);
-// 		m_Kern[FUNC_EMIT] = clCreateKernel(m_program, "emitParticles", NULL);
-// 		m_Kern[FUNC_RANDOMIZE] = clCreateKernel(m_program, "randomInit", NULL);
-// 		m_Kern[FUNC_SAMPLE] = clCreateKernel(m_program, "sampleParticles", NULL);
-// 		m_Kern[FUNC_FPREFIXSUM] = clCreateKernel(m_program, "prefixSum", NULL);
-// 		m_Kern[FUNC_FPREFIXUP] = clCreateKernel(m_program, "prefixFixup", NULL);
-// 		m_Kern[FUNC_TALLYLISTS] = clCreateKernel(m_program, "tally_denselist_lengths", NULL);
-// 		m_Kern[FUNC_COMPUTE_DIFFUSION] = clCreateKernel(m_program, "computeDiffusion", NULL);
-// 		m_Kern[FUNC_COUNT_SORT_LISTS] = clCreateKernel(m_program, "countingSortDenseLists", NULL);
-// 		m_Kern[FUNC_COMPUTE_GENE_ACTION] = clCreateKernel(m_program, "computeGeneAction", NULL);
-// 		m_Kern[FUNC_TALLY_GENE_ACTION] = clCreateKernel(m_program, "tallyGeneAction", NULL);
-// 		m_Kern[FUNC_COMPUTE_BOND_CHANGES] = clCreateKernel(m_program, "computeBondChanges", NULL);
-// 		m_Kern[FUNC_COUNTING_SORT_CHANGES] = clCreateKernel(m_program, "countingSortChanges", NULL);
-// 		m_Kern[FUNC_COMPUTE_NERVE_ACTION] = clCreateKernel(m_program, "computeNerveActivation", NULL);
-// 		m_Kern[FUNC_COMPUTE_MUSCLE_CONTRACTION] = clCreateKernel(m_program, "computeMuscleContraction", NULL);
-// 		m_Kern[FUNC_CLEAN_BONDS] = clCreateKernel(m_program, "cleanBonds", NULL);
-// 		m_Kern[FUNC_HEAL] = clCreateKernel(m_program, "heal", NULL);
-// 		m_Kern[FUNC_LENGTHEN_MUSCLE] = clCreateKernel(m_program, "lengthen_muscle", NULL);
-// 		m_Kern[FUNC_LENGTHEN_TISSUE] = clCreateKernel(m_program, "lengthen_tissue", NULL);
-// 		m_Kern[FUNC_SHORTEN_MUSCLE] = clCreateKernel(m_program, "shorten_muscle", NULL);
-// 		m_Kern[FUNC_SHORTEN_TISSUE] = clCreateKernel(m_program, "shorten_tissue", NULL);
-// 		m_Kern[FUNC_STRENGTHEN_MUSCLE] = clCreateKernel(m_program, "strengthen_muscle", NULL);
-// 		m_Kern[FUNC_STRENGTHEN_TISSUE] = clCreateKernel(m_program, "strengthen_tissue", NULL);
-// 		m_Kern[FUNC_WEAKEN_MUSCLE] = clCreateKernel(m_program, "weaken_muscle", NULL);
-// 		m_Kern[FUNC_WEAKEN_TISSUE] = clCreateKernel(m_program, "weaken_tissue", NULL);
-// 		m_Kern[FUNC_EXTERNAL_ACTUATION] = clCreateKernel(m_program, "externalActuation", NULL);
-// 		m_Kern[FUNC_FIXED] = clCreateKernel(m_program, "fixedParticles", NULL);
-// 		m_Kern[FUNC_INIT_FCURAND_STATE] = clCreateKernel(m_program, "initialize_FCURAND_STATE", NULL);
-// 		m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
-// 		m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
-// 		m_Kern[FUNC_INITIALIZE_BONDS] = clCreateKernel(m_program, "initialize_bonds", NULL);
-// 	}
 // 	/*
 // 	void ReadOutput(uchar* outmat) {
 // 		ReadOutput(outmat, amem,  (width * height * sizeof(float)) );
@@ -425,6 +327,10 @@ public:
 			return &fb->mgpu[n];
 		}
 
+		cl_mem bufI_cl(FBufs* fb, int n) {
+			return fb->mgpu[n];
+		}
+
 		class FluidSystem {
 	public:
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -433,16 +339,15 @@ public:
 		std::vector<cl_platform_id> m_platform_ids;
 		cl_context			m_context;
 		cl_device_id		m_device;
-		cl_command_queue	m_queue, uload_queue, dload_queue, track_queue;
+		cl_command_queue	m_queue , uload_queue, dload_queue, track_queue;
 		cl_program			m_program;
 		cl_kernel			m_Kern[FUNC_MAX];
-		cl_mem				m_FParamDevice, m_FluidDevice, m_FluidTempDevice, m_FGenomeDevice;		//GPU pointer containers
+		cl_mem				m_FParamDevice, m_FluidDevice, m_FluidTempDevice, m_FGenomeDevice, m_FPrefixDevice;		//GPU pointer containers
 
-		size_t  			global_work_size, local_work_size, image_size_bytes;
+		size_t  			global_work_size, local_work_size;
 		bool 				gpu, amdPlatform;
 		cl_device_id 		deviceId;
 		float 				params[16] = {0};
-		int 				width, height, costVolLayers, baseImage_type, count=0, keyFrameCount=0, costVolCount=0, QDcount=0, A_count=0;
 		std::map< std::string, std::filesystem::path > paths;
 
 
@@ -453,8 +358,9 @@ public:
 		void updateA ( float lambda, float theta );
 
 		void CleanUp();
-		void allocatemem(FParams fparam, FBufs *fbuf, FBufs *ftemp, FGenome fgenome);
+		void allocatemem(FParams fparam, FBufs *fbuf, FBufs *ftemp, FGenome fgenome, FPrefix fprefix);
 		void exit_(cl_int res);
+		cl_int clMemsetD32(cl_mem buffer, int value, size_t count);
 		~FluidSystem();
 
 		//void DownloadAndSaveVolume_3Channel(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show );
@@ -592,6 +498,7 @@ public:
 			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
 			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
 			m_Kern[FUNC_INITIALIZE_BONDS] = clCreateKernel(m_program, "initialize_bonds", NULL);
+			m_Kern[FUNC_MEMSET32D] = clCreateKernel(m_program, "memset32d_kernel", NULL);
 		}
 		/*
 		void ReadOutput(uchar* outmat) {
@@ -624,7 +531,7 @@ public:
 		//FluidSystem(RunCL& runCLInstance) : m_runCLInstance(runCLInstance) {}
 		void LoadKernel (int id, std::string kname );
 		void Initialize ();
-        void InitializeOpenCL ();                             // used for load_sim
+        void InitializeOpenCL ();
         void InitializeCL ();                             // used for load_sim
 
 		// Particle Utilities
@@ -704,6 +611,7 @@ public:
         void Init_FCURAND_STATE_CL ();
 		void InsertParticlesCL ( uint* gcell, uint* ccell, uint* gcnt );
 		void PrefixSumCellsCL ( int zero_offsets );
+		void PrefixSumCellsCL2 ( int zero_offsets );
 		void CountingSortFullCL ( Vector3DF* gpos );
         
         void InitializeBondsCL ();
@@ -762,13 +670,13 @@ public:
         
         
 		// Parameters
-		void UpdateParams (RunCL& runcl);
-		void SetParam (RunCL& runcl, int p, float v );//     { m_Param[p] = v; }           // NB must call UpdateParams() afterwards, to call FluidParamCL
+		void UpdateParams ();
+		void SetParam(int p, float v);//     { m_Param[p] = v; }           // NB must call UpdateParams() afterwards, to call FluidParamCL
 		//void SetParam (RunCL& runcl, int p, int v )		{ m_Param[p] = (float) v; }
 		float GetParam ( int p )			{ return (float) m_Param[p]; }
 
 		Vector3DF GetVec ( int p )			{ return m_Vec[p]; }
-		void SetVec (RunCL& runcl,  int p, Vector3DF v );
+		void SetVec(int p, Vector3DF v);
 		void SetDebug(uint b) { m_debug=b; m_FParams.debug=b; /*mbDebug = (bool)b;*/ 
             std::cout<<"\n\nSetDebug(uint b): b="<<b<<", m_FParams.debug = "<<m_FParams.debug<<", (m_FParams.debug>1)="<<(m_FParams.debug>1)<<"\n"<<std::flush;
         }
@@ -830,7 +738,7 @@ public:
 		cl_device_idptr				clFGenome;*/
 
 
-		// Acceleration Grid		
+		// Acceleration Grid
 		int						m_GridTotal;			// total # cells
 		Vector3DI				m_GridRes;				// resolution in each axis
 		Vector3DF				m_GridMin;				// volume of grid (may not match domain volume exactly)

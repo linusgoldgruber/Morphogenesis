@@ -6,7 +6,6 @@
 //#include <curand_kernel.h> //NOT REPLACED YET. POSSIBLE OPTIONS: https://acesse.dev/Y9Zcq
 #include <chrono>
 #include <cstring>
-#include "fluid_system.h"
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
@@ -16,7 +15,10 @@
 #include <jsoncpp/json/json.h>
 #define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
 #include "RunCL.h"
+#include "fluid_system.h"
 #include "fluid.h"
+
+
 
 using namespace std;
 
@@ -71,7 +73,7 @@ bool FluidSystem::clCheck (cl_int launch_stat, const char* method, const char* a
     cl_int kern_stat = CL_SUCCESS;
     
     if (bDebug) {
-        kern_stat = clFinish();
+        kern_stat = clFinish(m_queue);
     }
     if (kern_stat != CL_SUCCESS || launch_stat != CL_SUCCESS) {
         const char* launch_statmsg = "";
@@ -117,7 +119,7 @@ void FluidSystem::LoadKernel(int fid, std::string func) {
     }
 }
 
-
+/*
 void FluidSystem::Initialize(){             //Left aside for now, implement by copying from InitializeOpenCLused for CPU only for "check_demo".
 
     if (m_FParams.debug>1)std::cout << "FluidSystem::Initialize() \n";
@@ -139,7 +141,7 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
     mNumPoints = 0;			// reset count
 
     if (m_FParams.debug>1)std::cout << "Chk1.6 \n";
-}
+}*/
 //
 //
 ////////////////////////////////////////////////////////////////////25.07.23/////////////////////////////////////////////////////////////////
@@ -260,7 +262,7 @@ void FluidSystem::InitializeOpenCL(Json::Value obj_) {      //used for load_sim
     clCheck ( cuMemcpyHtoD ( cuFGenome,    &m_FGenome,        sizeof(FGenome), "FluidGenomeCUDA", "cuMemcpyHtoD", "clFGenome", mbDebug);
 }*/
 void FluidSystem::UpdateGenome (){              // Update Genome on GPU
-    clCheck ( clEnqueueWriteBuffer(queue, clFGenome, CL_TRUE, 0, sizeof(FGenome), &m_FGenome, 0, NULL, NULL), "FluidGenomeCUDA", "cuMemcpyHtoD", "clFGenome", mbDebug);
+    clCheck ( clEnqueueWriteBuffer(m_queue, clFGenome, CL_TRUE, 0, sizeof(FGenome), &m_FGenome, 0, NULL, NULL), "FluidGenomeCUDA", "cuMemcpyHtoD", "clFGenome", mbDebug);
 }
 
 FGenome	FluidSystem::GetGenome(){
@@ -305,15 +307,15 @@ void FluidSystem::Exit (){
     //clCheck(clFinish(), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
     for (int n=0; n < MAX_BUF; n++ ) {
         if (m_FParams.debug>0)std::cout << "\n n = " << n << std::flush;
-        if ( m_Fluid.bufC(n) != 0x0 )
-            free ( m_Fluid.bufC(n) );
+        if ( bufC(&m_Fluid, n) != 0x0 )
+            free ( bufC(&m_Fluid, n) );
     }
     //size_t   free1, free2, total;
     //cudaMemGetInfo(&free1, &total);
     cl_ulong free1, free2, total;
     clGetDeviceInfo(devices[0], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
 
-    // Free memory cant be checked so easily in OpenCl, need to implement the funtionailty manually, e.g. by a varialbe called AllocatedMem CUCLCUCL
+    // Free memory cant be checked so easily in OpenCl, need to implement the funtionality manually, e.g. by a varialbe called AllocatedMem CUCLCUCL
     if (m_FParams.debug>0)printf("\nCuda Memory, before cudaDeviceReset(): free=%lu, total=%lu.\t",free1,total);
     //clCheck(clFinish(), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
     if(program != 0x0){
@@ -338,8 +340,8 @@ void FluidSystem::Exit_no_CL (){
     // Free fluid buffers
     for (int n=0; n < MAX_BUF; n++ ) {
         if (m_FParams.debug>0)std::cout << "\n n = " << n << std::flush;
-        if ( m_Fluid.bufC(n) != 0x0 )
-            free ( m_Fluid.bufC(n) );
+        if ( bufC(&m_Fluid, n) != 0x0 )
+            free ( bufC(&m_Fluid, n) );
     }
     exit(0);
 }
@@ -349,10 +351,10 @@ void FluidSystem::AllocateBuffer ( int buf_id, int stride, int cpucnt, int gpucn
     bool rtn = true;
     if (m_FParams.debug>1)std::cout<<"\nAllocateBuffer ( int buf_id="<<buf_id<<", int stride="<<stride<<", int cpucnt="<<cpucnt<<", int gpucnt="<<gpucnt<<", int "<<gpumode<<", int "<<cpumode<<" )\t"<<std::flush;
     if (cpumode == CPU_YES) {
-        char* src_buf  = m_Fluid.bufC(buf_id);
+        char* src_buf  = bufC(&m_Fluid, buf_id);
         cl_mem dest_buf = clCreateBuffer(clContext, CL_MEM_READ_WRITE, cpucnt*stride, NULL, &err); //  ####  malloc the buffer   ####
         if (src_buf != 0x0) {
-            clEnqueueWriteBuffer(queue, dest_buf, CL_TRUE, 0, cpucnt*stride, src_buf, 0, NULL, NULL);
+            clEnqueueWriteBuffer(m_queue, dest_buf, CL_TRUE, 0, cpucnt*stride, src_buf, 0, NULL, NULL);
             free(src_buf);
         }
         m_Fluid.setCLBuf(buf_id, dest_buf); // stores pointer to buffer in mcpu[buf_id]
@@ -364,14 +366,14 @@ void FluidSystem::AllocateBuffer ( int buf_id, int stride, int cpucnt, int gpucn
         //if (m_FParams.debug>1)printf("\nOpenCL Memory: free=%lu, total=%lu.\t",free1,total);
 
         if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL )    {
-            if (m_Fluid.gpuptr(buf_id) != 0x0) clCheck(clReleaseMemObject(m_Fluid.gpu(buf_id)), "AllocateBuffer", "clReleaseMemObject", "Fluid.gpu", mbDebug);
+            if (m_Fluid.gpuptr(buf_id) != 0x0) clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject", "Fluid.gpu", mbDebug);
             m_Fluid.setGpu(buf_id, clCreateBuffer(clContext, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
-            if (m_FParams.debug>1)std::cout<<"\t\t m_Fluid.gpuptr("<<buf_id<<")'"<<m_Fluid.gpuptr(buf_id)<<",   m_Fluid.gpu("<<buf_id<<")="<<m_Fluid.gpu(buf_id)<<"\t"<<std::flush;
+            if (m_FParams.debug>1)std::cout<<"\t\t m_Fluid.gpuptr("<<buf_id<<")'"<<m_Fluid.gpuptr(buf_id)<<",   gpuVar(&m_Fluid, "<<buf_id<<")="<<gpuVar(&m_Fluid, buf_id)<<"\t"<<std::flush;
             if(err != CL_SUCCESS) FluidSystem::Exit();
         }
         if (gpumode == GPU_TEMP || gpumode == GPU_DUAL ) {
             if (m_FluidTemp.gpuptr(buf_id) != 0x0) {
-                clCheck(clReleaseMemObject(m_FluidTemp.gpu(buf_id)), "AllocateBuffer", "clReleaseMemObject", "FluidTemp.gpu", mbDebug);
+                clCheck(clReleaseMemObject(gpuVar(&m_FluidTemp, buf_id)), "AllocateBuffer", "clReleaseMemObject", "FluidTemp.gpu", mbDebug);
             }
             cl_int err;
             m_FluidTemp.setGpu(buf_id, clCreateBuffer(clContext, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
@@ -439,7 +441,7 @@ if (m_FParams.debug>1)std::cout<<"\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUA
     }
 }
 
-void FluidSystem::AllocateBufferDenseLists ( int buf_id, int stride, int gpucnt, int lists ) {    // mallocs a buffer - called by FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode)
+void FluidSystem::AllocateBufferDenseLists ( int buf_id, int stride, cl_mem gpucnt, int lists ) {    // mallocs a buffer - called by FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode)
 // Need to save "pointers to the allocated gpu buffers" in a cpu array, AND then cuMemcpyHtoD(...) that list of pointers into the device array.   
     // also called by FluidSystem::....()  to quadruple buffer as needed.
     clCheck(clFinish(), "AllocateBufferDenseLists ", "clFinish", "before 1st cudaMemGetInfo(&free1, &total)", mbDebug);
@@ -447,7 +449,7 @@ void FluidSystem::AllocateBufferDenseLists ( int buf_id, int stride, int gpucnt,
     cudaMemGetInfo(&free1, &total);
     if (m_FParams.debug>1)printf("\nCuda Memory: free=%lu, total=%lu.\t",free1,total);
     
-    cl_device_idptr*  listpointer = (cl_device_idptr*) &m_Fluid.bufC(lists)[buf_id * sizeof(cl_device_idptr)] ;
+    cl_device_idptr*  listpointer = (cl_device_idptr*) &bufC(&m_Fluid, lists)[buf_id * sizeof(cl_device_idptr)] ;
     
     //cl_device_idptr  listpointer2 = m_Fluid.gpuptr(lists)[buf_id]  ;
     if (m_FParams.debug>1)printf("\n*listpointer=%p, listpointer=%p,  lists=%i, buf_id=%i, \t", (cl_device_idptr* ) *listpointer, listpointer,  /*listpointer2,*/ lists, buf_id);/*listpointer2=%llu,*/
@@ -488,24 +490,24 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
     if (gpu_mode != GPU_OFF ) {
         /*if(gpu_mode == GPU_SINGLE || gpu_mode == GPU_DUAL )*/
         for(int i=0; i<NUM_GENES; i++){ //for each gene allocate intial buffer, write pointer and size to FDENSE_LISTS and FDENSE_LIST_LENGTHS
-            cl_device_idptr*  _listpointer = (cl_device_idptr*) &m_Fluid.bufC(FDENSE_LISTS)[i * sizeof(cl_device_idptr)] ;
+            cl_device_idptr*  _listpointer = (cl_device_idptr*) &bufC(&m_Fluid, FDENSE_LISTS)[i * sizeof(cl_device_idptr)] ;
             *_listpointer = 0x0;
             AllocateBufferDenseLists( i, sizeof(uint), INITIAL_BUFFSIZE_ACTIVE_GENES, FDENSE_LISTS);  // AllocateBuffer writes pointer to  m_Fluid.gpuptr(buf_id). 
-            m_Fluid.bufI(FDENSE_LIST_LENGTHS)[i] = 0;
-            m_Fluid.bufI(FDENSE_BUF_LENGTHS)[i]  = INITIAL_BUFFSIZE_ACTIVE_GENES;
+            bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[i] = 0;
+            bufI(&m_Fluid, FDENSE_BUF_LENGTHS)[i]  = INITIAL_BUFFSIZE_ACTIVE_GENES;
         }
         /*if(gpu_mode == GPU_SINGLE || gpu_mode == GPU_DUAL )*/
         for(int i=0; i<NUM_CHANGES; i++){ //Same for the changes lists
-            cl_device_idptr*  _listpointer = (cl_device_idptr*) &m_Fluid.bufC(FDENSE_LISTS_CHANGES)[i * sizeof(cl_device_idptr)] ;
+            cl_device_idptr*  _listpointer = (cl_device_idptr*) &bufC(&m_Fluid, FDENSE_LISTS_CHANGES)[i * sizeof(cl_device_idptr)] ;
             *_listpointer = 0x0; 
             AllocateBufferDenseLists( i, sizeof(uint), 2*INITIAL_BUFFSIZE_ACTIVE_GENES, FDENSE_LISTS_CHANGES); // NB buf[2][list_length] holding : particleIdx, bondIdx
-            m_Fluid.bufI(FDENSE_LIST_LENGTHS_CHANGES)[i] = 0;
-            m_Fluid.bufI(FDENSE_BUF_LENGTHS_CHANGES)[i]  = INITIAL_BUFFSIZE_ACTIVE_GENES;
+            bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES)[i] = 0;
+            bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES)[i]  = INITIAL_BUFFSIZE_ACTIVE_GENES;
         }
-        cuMemcpyHtoD(m_Fluid.gpu(FDENSE_LISTS),         m_Fluid.bufC(FDENSE_LISTS),          NUM_GENES * sizeof(cl_device_idptr)  );
-        cuMemcpyHtoD(m_Fluid.gpu(FDENSE_LISTS_CHANGES), m_Fluid.bufC(FDENSE_LISTS_CHANGES),  NUM_GENES * sizeof(cl_device_idptr)  );
-        cuMemcpyHtoD(m_Fluid.gpu(FDENSE_BUF_LENGTHS),   m_Fluid.bufC(FDENSE_BUF_LENGTHS),    NUM_GENES * sizeof(cl_device_idptr)  );
-        clCheck( cuMemcpyHtoD ( m_Fluid.gpu(FDENSE_BUF_LENGTHS_CHANGES), m_Fluid.bufI(FDENSE_BUF_LENGTHS_CHANGES),	sizeof(uint[NUM_CHANGES]) ), "AllocateGrid", "cuMemcpyHtoD", "FDENSE_BUF_LENGTHS_CHANGES", mbDebug);
+        cuMemcpyHtoD(gpuVar(&m_Fluid, FDENSE_LISTS),         bufC(&m_Fluid, FDENSE_LISTS),          NUM_GENES * sizeof(cl_device_idptr)  );
+        cuMemcpyHtoD(gpuVar(&m_Fluid, FDENSE_LISTS_CHANGES), bufC(&m_Fluid, FDENSE_LISTS_CHANGES),  NUM_GENES * sizeof(cl_device_idptr)  );
+        cuMemcpyHtoD(gpuVar(&m_Fluid, FDENSE_BUF_LENGTHS),   bufC(&m_Fluid, FDENSE_BUF_LENGTHS),    NUM_GENES * sizeof(cl_device_idptr)  );
+        clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES), bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES),	sizeof(uint[NUM_CHANGES]) ), "AllocateGrid", "cuMemcpyHtoD", "FDENSE_BUF_LENGTHS_CHANGES", mbDebug);
         
     
         clCheck(cuMemcpyHtoD(clFBuf, &m_Fluid, sizeof(FBufs)), "AllocateGrid", "cuMemcpyHtoD", "clFBuf", mbDebug);  // Update GPU access pointers
@@ -522,13 +524,13 @@ int FluidSystem::AddParticleMorphogenesis2 (Vector3DF* Pos, Vector3DF* Vel, uint
     (m_Fluid.bufV3(FFORCE) + n)->Set ( 0,0,0 );
     *(m_Fluid.bufF(FPRESS) + n) = 0;
     *(m_Fluid.bufF(FDENSITY) + n) = 0;
-    *(m_Fluid.bufI(FGNEXT) + n) = -1;
-    *(m_Fluid.bufI(FCLUSTER)  + n) = -1;
+    *(bufI(&m_Fluid, FGNEXT) + n) = -1;
+    *(bufI(&m_Fluid, FCLUSTER)  + n) = -1;
     *(m_Fluid.bufF(FSTATE) + n ) = (float) rand();
-    *(m_Fluid.bufI(FAGE) + n) = Age;
-    *(m_Fluid.bufI(FCLR) + n) = Clr;
+    *(bufI(&m_Fluid, FAGE) + n) = Age;
+    *(bufI(&m_Fluid, FCLR) + n) = Clr;
   //if (m_FParams.debug>1)printf("m_Fluid.bufV3(FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",m_Fluid.bufV3(FPOS)[n].x,m_Fluid.bufV3(FPOS)[n].y,m_Fluid.bufV3(FPOS)[n].z,Pos->x,Pos->y,Pos->z);
-    uint* ElastIdx = (m_Fluid.bufI(FELASTIDX) + n * BOND_DATA );
+    uint* ElastIdx = (bufI(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     float* ElastIdxFlt = (m_Fluid.bufF(FELASTIDX) + n * BOND_DATA );
     for (int i = 0; i<BONDS_PER_PARTICLE;i++){
   //if (m_FParams.debug>1)printf("\t%u",_ElastIdxU[i*DATA_PER_BOND+0]);
@@ -542,13 +544,13 @@ int FluidSystem::AddParticleMorphogenesis2 (Vector3DF* Pos, Vector3DF* Vel, uint
         ElastIdxFlt[i*DATA_PER_BOND+4] = _ElastIdxF[i*DATA_PER_BOND+4] ;
         ElastIdxFlt[i*DATA_PER_BOND+7] = _ElastIdxF[i*DATA_PER_BOND+7] ;
     }
-    uint* Particle_Idx = (m_Fluid.bufI(FPARTICLEIDX) + n * BONDS_PER_PARTICLE *2 );     // index of incoming bonds
+    uint* Particle_Idx = (bufI(&m_Fluid, FPARTICLEIDX) + n * BONDS_PER_PARTICLE *2 );     // index of incoming bonds
     for(int j=0; j<(BONDS_PER_PARTICLE *2); j++) {
         Particle_Idx[j] = _Particle_Idx[j] ;
     }
-    *(m_Fluid.bufI(FPARTICLE_ID) + n)   = Particle_ID;                                  // permanent ID of particle 
-    *(m_Fluid.bufI(FMASS_RADIUS) + n)   = Mass_Radius;
-    *(m_Fluid.bufI(FNERVEIDX) + n)      = NerveIdx;
+    *(bufI(&m_Fluid, FPARTICLE_ID) + n)   = Particle_ID;                                  // permanent ID of particle 
+    *(bufI(&m_Fluid, FMASS_RADIUS) + n)   = Mass_Radius;
+    *(bufI(&m_Fluid, FNERVEIDX) + n)      = NerveIdx;
     
     for(int j=0; j<(NUM_TF); j++) {
         float* Conc = getConc(j);
@@ -979,32 +981,32 @@ void FluidSystem::Run (const char * relativePath, int frame, bool debug, bool ge
 */
 }// 0:start, 1:InsertParticles, 2:PrefixSumCellsCL, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
 
-void FluidSystem::Run2PhysicalSort(){
-    if(m_FParams.debug>1)std::cout<<"\n####\nRun2PhysicalSort()start";
-    InsertParticlesCL ( 0x0, 0x0, 0x0 );
-    clCheck(clFinish(), "Run", "clFinish", "After InsertParticlesCL", mbDebug);
-    if(launchParams.debug>0){
-        std::cout<<"\nchk a"<<std::flush;
-        TransferFromCL ();
-        m_Debug_file++;
-        std::cout<<"\nchk b: launchParams.outPath="<<launchParams.outPath<<",  m_Frame+m_Debug_file=0;="<<m_Frame+m_Debug_file<<"\t"<<std::flush;
-        SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-        std::cout << "\n\nRun2PhysicalSort() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  InsertParticlesCL\n"<<std::flush;
-        //TransferFromTempCL(int buf_id, int sz );
-    }
-    PrefixSumCellsCL ( 1 );
-    clCheck(clFinish(), "Run", "clFinish", "After PrefixSumCellsCL", mbDebug);
-    if(launchParams.debug>0){
-        TransferFromCL ();
-        m_Debug_file++;
-        SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-        std::cout << "\n\nRun2PhysicalSort() Chk2, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  PrefixSumCellsCL\n"<<std::flush;
-        //TransferFromTempCL(int buf_id, int sz );
-    }
-    CountingSortFullCL ( 0x0 );
-    clCheck(clFinish(), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
-    if(m_FParams.debug>1)std::cout<<"\n####\nRun2PhysicalSort()end";
-}
+// void FluidSystem::Run2PhysicalSort(){
+//     if(m_FParams.debug>1)std::cout<<"\n####\nRun2PhysicalSort()start";
+//     InsertParticlesCL ( 0x0, 0x0, 0x0 );
+//     clCheck(clFinish(), "Run", "clFinish", "After InsertParticlesCL", mbDebug);
+//     if(launchParams.debug>0){
+//         std::cout<<"\nchk a"<<std::flush;
+//         TransferFromCL ();
+//         m_Debug_file++;
+//         std::cout<<"\nchk b: launchParams.outPath="<<launchParams.outPath<<",  m_Frame+m_Debug_file=0;="<<m_Frame+m_Debug_file<<"\t"<<std::flush;
+//         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
+//         std::cout << "\n\nRun2PhysicalSort() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  InsertParticlesCL\n"<<std::flush;
+//         //TransferFromTempCL(int buf_id, int sz );
+//     }
+//     PrefixSumCellsCL ( 1 );
+//     clCheck(clFinish(), "Run", "clFinish", "After PrefixSumCellsCL", mbDebug);
+//     if(launchParams.debug>0){
+//         TransferFromCL ();
+//         m_Debug_file++;
+//         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
+//         std::cout << "\n\nRun2PhysicalSort() Chk2, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  PrefixSumCellsCL\n"<<std::flush;
+//         //TransferFromTempCL(int buf_id, int sz );
+//     }
+//     CountingSortFullCL ( 0x0 );
+//     clCheck(clFinish(), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
+//     if(m_FParams.debug>1)std::cout<<"\n####\nRun2PhysicalSort()end";
+// }
 
 void FluidSystem::Run2InnerPhysicalLoop(){
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()start";
@@ -1095,8 +1097,6 @@ void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2Remodelling()end";
 }
 
-
-
 void FluidSystem::setFreeze(bool freeze){
     m_FParams.freeze = freeze;
 
@@ -1107,7 +1107,6 @@ void FluidSystem::setFreeze(bool freeze){
     }
     clCheck ( cuMemcpyHtoD ( clFParams,	&m_FParams,		sizeof(FParams) ), "FluidParamCL", "cuMemcpyHtoD", "clFParams", mbDebug);
 }
-
 
 void FluidSystem::Freeze (){
     m_FParams.freeze = true;

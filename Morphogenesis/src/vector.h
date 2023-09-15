@@ -52,35 +52,35 @@
 
 	//class Vector2DC;						// Forward Referencing
 	typedef struct {
-		double x, y;
+		unsigned char x, y;
 	} Vector2DC;
 	//class Vector2DI;
 	typedef struct {
-		double x, y;
+		int x, y;
 	} Vector2DI;
 	//class Vector2DF;
 	typedef struct {
-		double x, y;
+		float x, y;
 	} Vector2DF;
 	//class Vector3DC;
 	typedef struct {
-		double x, y, z;
+		unsigned char x, y, z;
 	} Vector3DC;
 	//class Vector3DI;
 	typedef struct {
-		double x, y, z;
+		int x, y, z;
 	} Vector3DI;
 	//class Vector3DF;
 	typedef struct {
-		double x, y, z;
+		float x, y, z;
 	} Vector3DF;
 	//class Vector4DC;
 	typedef struct {
-		double x, y, z;
+		unsigned char x, y, z;
 	} Vector4DC;
 	//class Vector4DF;
 	typedef struct {
-		double x, y, z, w;
+		float x, y, z, w;
 	} Vector4DF;
 	//class MatrixF;
 	//class Matrix4F;
@@ -1083,7 +1083,7 @@
 		// do nothing
 	}
 
-	Vector3DF Vector3DF_init_with_values(double xa, double ya, double za) {
+	Vector3DF Vector3DF_init_with_values(float xa, float ya, float za) {
 		Vector3DF v;
 		v.x = xa;
 		v.y = ya;
@@ -1197,9 +1197,9 @@
 	}
 
 	Vector3DF *Vector3DF_operator_equal_Vector3DI(Vector3DF *v, Vector3DI *op) {
-		v->x = op->x;
-		v->y = op->y;
-		v->z = op->z;
+		v->x = (float)op->x;
+		v->y = (float)op->y;
+		v->z = (float)op->z;
 		return v;
 	}
 
@@ -1612,6 +1612,7 @@
 		// implementation not provided
 		return 0;
 	}
+
 /*
 	VTYPE* Vector3DF_Data(Vector3DF *v) {
 		float re = v->x;
