@@ -1091,6 +1091,12 @@
 		return v;
 	}
 
+	void Set(Vector3DF* vec, float x, float y, float z) {
+		vec->x = x;
+		vec->y = y;
+		vec->z = z;
+	}
+
 	Vector3DF Vector3DF_init_with_Vector2DC(Vector2DI *op) {
 		Vector3DF v;
 		v.x = op->x;
@@ -1168,6 +1174,13 @@
 		return v;
 	}
 
+	Vector3DF *Vector3DF_operator_equal_float(Vector3DF *v, float op) {
+		v->x = op;
+		v->y = op;
+		v->z = op;
+		return v;
+	}
+
 	Vector3DF *Vector3DF_operator_equal_Vector2DC(Vector3DF *v, Vector2DI *op) {
 		v->x = op->x;
 		v->y = op->y;
@@ -1217,6 +1230,13 @@
 		return v;
 	}
 
+	Vector3DF Clamp(Vector3DF* vec, float a, float b) {
+		Vector3DF result;
+		result.x = (vec->x < a) ? a : ((vec->x > b) ? b : vec->x);
+		result.y = (vec->y < a) ? a : ((vec->y > b) ? b : vec->y);
+		result.z = (vec->z < a) ? a : ((vec->z > b) ? b : vec->z);
+		return result;
+	}
 	Vector3DF *Vector3DF_addInt(Vector3DF *vector, int op) {
     vector->x += op;
     vector->y += op;

@@ -1464,7 +1464,7 @@ extern "C" __device__ void find_potential_bonds (int i, float3 ipos, int cell, u
 }
 
 
-extern "C" __global__ void initialize_FCURAND_STATE (int pnum)  // designed to use to bootstrap itself. Set j=0 from host, call kernel repeatedly for 256^n threads, n=0-> to pnum threads.
+extern "C" __global__ void init_FCLRAND_STATE (int pnum)  // designed to use to bootstrap itself. Set j=0 from host, call kernel repeatedly for 256^n threads, n=0-> to pnum threads.
 {
     unsigned long long sequence=0, offset=1;//, seed=0;
     uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;                 // particle index

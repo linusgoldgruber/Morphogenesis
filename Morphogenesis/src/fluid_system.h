@@ -45,7 +45,7 @@
     #include <sys/types.h> 
 	#include <CL/cl.h>
 	#include "fluid.h"
-	
+
 // 	#include <vtk-9.0/vtkCellArray.h>
 //     #include <vtk-9.0/vtkPoints.h>
 //     #include <vtk-9.0/vtkXMLPolyDataWriter.h>
@@ -173,7 +173,7 @@
 	#define FUNC_FIXED                      33
 	#define FUNC_CLEAN_BONDS                34
 
-	#define FUNC_INIT_FCURAND_STATE         36
+	#define FUNC_INIT_RANDOMCL         36
 	#define FUNC_COUNTING_SORT_EPIGEN       37
 
 	#define	FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING     38
@@ -182,6 +182,7 @@
 	#define	FUNC_CONTRIBUTE_PRESSURE                    41
 	#define	FUNC_MEMSET32D                    42
 	#define FUNC_MAX			            43
+
 
 using namespace std;
 class RunCL
@@ -327,10 +328,6 @@ public:
 			return &fb->mgpu[n];
 		}
 
-		cl_mem bufI_cl(FBufs* fb, int n) {
-			return fb->mgpu[n];
-		}
-
 		class FluidSystem {
 	public:
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -462,43 +459,43 @@ public:
 
 		void InitializeKernels(cl_program m_program) {
 		// Setup the array of kernels
-			m_Kern[FUNC_INSERT] = clCreateKernel(m_program, "insertParticles", NULL);
-			m_Kern[FUNC_COUNTING_SORT] = clCreateKernel(m_program, "countingSortFull", NULL);
-			m_Kern[FUNC_QUERY] = clCreateKernel(m_program, "computeQuery", NULL);
-			m_Kern[FUNC_COMPUTE_PRESS] = clCreateKernel(m_program, "computePressure", NULL);
-			m_Kern[FUNC_COMPUTE_FORCE] = clCreateKernel(m_program, "computeForce", NULL);
-			m_Kern[FUNC_ADVANCE] = clCreateKernel(m_program, "advanceParticles", NULL);
-			m_Kern[FUNC_EMIT] = clCreateKernel(m_program, "emitParticles", NULL);
-			m_Kern[FUNC_RANDOMIZE] = clCreateKernel(m_program, "randomInit", NULL);
-			m_Kern[FUNC_SAMPLE] = clCreateKernel(m_program, "sampleParticles", NULL);
-			m_Kern[FUNC_FPREFIXSUM] = clCreateKernel(m_program, "prefixSum", NULL);
-			m_Kern[FUNC_FPREFIXUP] = clCreateKernel(m_program, "prefixFixup", NULL);
-			m_Kern[FUNC_TALLYLISTS] = clCreateKernel(m_program, "tally_denselist_lengths", NULL);
-			m_Kern[FUNC_COMPUTE_DIFFUSION] = clCreateKernel(m_program, "computeDiffusion", NULL);
-			m_Kern[FUNC_COUNT_SORT_LISTS] = clCreateKernel(m_program, "countingSortDenseLists", NULL);
-			m_Kern[FUNC_COMPUTE_GENE_ACTION] = clCreateKernel(m_program, "computeGeneAction", NULL);
-			m_Kern[FUNC_TALLY_GENE_ACTION] = clCreateKernel(m_program, "tallyGeneAction", NULL);
-			m_Kern[FUNC_COMPUTE_BOND_CHANGES] = clCreateKernel(m_program, "computeBondChanges", NULL);
-			m_Kern[FUNC_COUNTING_SORT_CHANGES] = clCreateKernel(m_program, "countingSortChanges", NULL);
-			m_Kern[FUNC_COMPUTE_NERVE_ACTION] = clCreateKernel(m_program, "computeNerveActivation", NULL);
-			m_Kern[FUNC_COMPUTE_MUSCLE_CONTRACTION] = clCreateKernel(m_program, "computeMuscleContraction", NULL);
-			m_Kern[FUNC_CLEAN_BONDS] = clCreateKernel(m_program, "cleanBonds", NULL);
-			m_Kern[FUNC_HEAL] = clCreateKernel(m_program, "heal", NULL);
-			m_Kern[FUNC_LENGTHEN_MUSCLE] = clCreateKernel(m_program, "lengthen_muscle", NULL);
-			m_Kern[FUNC_LENGTHEN_TISSUE] = clCreateKernel(m_program, "lengthen_tissue", NULL);
-			m_Kern[FUNC_SHORTEN_MUSCLE] = clCreateKernel(m_program, "shorten_muscle", NULL);
-			m_Kern[FUNC_SHORTEN_TISSUE] = clCreateKernel(m_program, "shorten_tissue", NULL);
-			m_Kern[FUNC_STRENGTHEN_MUSCLE] = clCreateKernel(m_program, "strengthen_muscle", NULL);
-			m_Kern[FUNC_STRENGTHEN_TISSUE] = clCreateKernel(m_program, "strengthen_tissue", NULL);
-			m_Kern[FUNC_WEAKEN_MUSCLE] = clCreateKernel(m_program, "weaken_muscle", NULL);
-			m_Kern[FUNC_WEAKEN_TISSUE] = clCreateKernel(m_program, "weaken_tissue", NULL);
-			m_Kern[FUNC_EXTERNAL_ACTUATION] = clCreateKernel(m_program, "externalActuation", NULL);
-			m_Kern[FUNC_FIXED] = clCreateKernel(m_program, "fixedParticles", NULL);
-			m_Kern[FUNC_INIT_FCURAND_STATE] = clCreateKernel(m_program, "initialize_FCURAND_STATE", NULL);
-			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
-			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
-			m_Kern[FUNC_INITIALIZE_BONDS] = clCreateKernel(m_program, "initialize_bonds", NULL);
-			m_Kern[FUNC_MEMSET32D] = clCreateKernel(m_program, "memset32d_kernel", NULL);
+			m_Kern[FUNC_INSERT] = 							clCreateKernel(m_program, "insertParticles", NULL);
+			m_Kern[FUNC_COUNTING_SORT] = 					clCreateKernel(m_program, "countingSortFull", NULL);
+			m_Kern[FUNC_QUERY] = 							clCreateKernel(m_program, "computeQuery", NULL);
+			m_Kern[FUNC_COMPUTE_PRESS] = 					clCreateKernel(m_program, "computePressure", NULL);
+			m_Kern[FUNC_COMPUTE_FORCE] = 					clCreateKernel(m_program, "computeForce", NULL);
+			m_Kern[FUNC_ADVANCE] = 							clCreateKernel(m_program, "advanceParticles", NULL);
+			m_Kern[FUNC_EMIT] = 							clCreateKernel(m_program, "emitParticles", NULL);
+			m_Kern[FUNC_RANDOMIZE] = 						clCreateKernel(m_program, "randomInit", NULL);
+			m_Kern[FUNC_SAMPLE] = 							clCreateKernel(m_program, "sampleParticles", NULL);
+			m_Kern[FUNC_FPREFIXSUM] = 						clCreateKernel(m_program, "prefixSum", NULL);
+			m_Kern[FUNC_FPREFIXUP] = 						clCreateKernel(m_program, "prefixFixup", NULL);
+			m_Kern[FUNC_TALLYLISTS] = 						clCreateKernel(m_program, "tally_denselist_lengths", NULL);
+			m_Kern[FUNC_COMPUTE_DIFFUSION] = 				clCreateKernel(m_program, "computeDiffusion", NULL);
+			m_Kern[FUNC_COUNT_SORT_LISTS] = 				clCreateKernel(m_program, "countingSortDenseLists", NULL);
+			m_Kern[FUNC_COMPUTE_GENE_ACTION] = 				clCreateKernel(m_program, "computeGeneAction", NULL);
+			m_Kern[FUNC_TALLY_GENE_ACTION] = 				clCreateKernel(m_program, "tallyGeneAction", NULL);
+			m_Kern[FUNC_COMPUTE_BOND_CHANGES] = 			clCreateKernel(m_program, "computeBondChanges", NULL);
+			m_Kern[FUNC_COUNTING_SORT_CHANGES] = 			clCreateKernel(m_program, "countingSortChanges", NULL);
+			m_Kern[FUNC_COMPUTE_NERVE_ACTION] = 			clCreateKernel(m_program, "computeNerveActivation", NULL);
+			m_Kern[FUNC_COMPUTE_MUSCLE_CONTRACTION] = 		clCreateKernel(m_program, "computeMuscleContraction", NULL);
+			m_Kern[FUNC_CLEAN_BONDS] = 						clCreateKernel(m_program, "cleanBonds", NULL);
+			m_Kern[FUNC_HEAL] = 							clCreateKernel(m_program, "heal", NULL);
+			m_Kern[FUNC_LENGTHEN_MUSCLE] = 					clCreateKernel(m_program, "lengthen_muscle", NULL);
+			m_Kern[FUNC_LENGTHEN_TISSUE] = 					clCreateKernel(m_program, "lengthen_tissue", NULL);
+			m_Kern[FUNC_SHORTEN_MUSCLE] = 					clCreateKernel(m_program, "shorten_muscle", NULL);
+			m_Kern[FUNC_SHORTEN_TISSUE] = 					clCreateKernel(m_program, "shorten_tissue", NULL);
+			m_Kern[FUNC_STRENGTHEN_MUSCLE] = 				clCreateKernel(m_program, "strengthen_muscle", NULL);
+			m_Kern[FUNC_STRENGTHEN_TISSUE] = 				clCreateKernel(m_program, "strengthen_tissue", NULL);
+			m_Kern[FUNC_WEAKEN_MUSCLE] = 					clCreateKernel(m_program, "weaken_muscle", NULL);
+			m_Kern[FUNC_WEAKEN_TISSUE] = 					clCreateKernel(m_program, "weaken_tissue", NULL);
+			m_Kern[FUNC_EXTERNAL_ACTUATION] = 				clCreateKernel(m_program, "externalActuation", NULL);
+			m_Kern[FUNC_FIXED] = 							clCreateKernel(m_program, "fixedParticles", NULL);
+			m_Kern[FUNC_INIT_RANDOMCL] = 					clCreateKernel(m_program, "init_RandCL", NULL);
+			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = 	clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
+			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = 	clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
+			m_Kern[FUNC_INITIALIZE_BONDS] = 				clCreateKernel(m_program, "initialize_bonds", NULL);
+			m_Kern[FUNC_MEMSET32D] = 						clCreateKernel(m_program, "memset32d_kernel", NULL);
 		}
 		/*
 		void ReadOutput(uchar* outmat) {
@@ -608,7 +605,7 @@ public:
 		void FluidSetupCL ( int num, int gsrch, int3 res, float3 size, float3 delta, float3 gmin, float3 gmax, int total, int chk );
 		void FluidParamCL(float ss, float sr, float pr, float mass, float rest, float3 bmin, float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p);
 
-        void Init_FCURAND_STATE_CL ();
+        void Init_CLRand ();
 		void InsertParticlesCL ( uint* gcell, uint* ccell, uint* gcnt );
 		void PrefixSumCellsCL ( int zero_offsets );
 		void PrefixSumCellsCL2 ( int zero_offsets );

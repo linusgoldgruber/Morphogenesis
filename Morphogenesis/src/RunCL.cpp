@@ -126,7 +126,7 @@ RunCL::~RunCL()
 // 	status = clReleaseKernel(m_Kern[FUNC_WEAKEN_TISSUE]);					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_WEAKEN_TISSUE status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_EXTERNAL_ACTUATION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_EXTERNAL_ACTUATION status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_FIXED]);							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FIXED status = " << checkerror(status) << "\n" << flush;}
-// 	status = clReleaseKernel(m_Kern[FUNC_INIT_FCURAND_STATE]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INIT_FCURAND_STATE status = " << checkerror(status) << "\n" << flush;}
+// 	status = clReleaseKernel(m_Kern[FUNC_INIT_RANDOMCL]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INIT_RANDOMCL status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING]);	if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING]);	if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_INITIALIZE_BONDS]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INITIALIZE_BONDS status = " << checkerror(status) << "\n" << flush;}

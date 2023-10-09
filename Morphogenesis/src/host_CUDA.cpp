@@ -13,9 +13,9 @@ int iDivUp (int a, int b) {
     return (a % b != 0) ? (a / b + 1) : (a / b);
 }
 
-void computeNumBlocks (int numPnts, int minThreads, int &numBlocks, int &numThreads){
-    numThreads = min( minThreads, numPnts );
-    numBlocks = (numThreads==0) ? 1 : iDivUp ( numPnts, numThreads );
+void computeNumBlocks (int numPnts, int minThreads, int &numGroups, int &numItems){
+    numItems = min( minThreads, numPnts );
+    numGroups = (numItems==0) ? 1 : iDivUp ( numPnts, numItems );
 }
 
 void FluidSystem::TransferToTempCL ( int buf_id, int sz ){
@@ -53,13 +53,13 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, int3 res, float3 size, floa
                 m_FParams.gridAdj [ cell++]  = ( y * m_FParams.gridRes.z+ z )*m_FParams.gridRes.x +  x ;
 
     // Compute number of blocks and threads
-    m_FParams.threadsPerBlock = 512;                    //TODO probe hardware to set m_FParams.threadsPerBlock
+    m_FParams.itemsPerGroup = 512;                    //TODO probe hardware to set m_FParams.itemsPerGroup
 
-    computeNumBlocks ( m_FParams.pnum, m_FParams.threadsPerBlock, m_FParams.numBlocks, m_FParams.numThreads);				// particles
-    computeNumBlocks ( m_FParams.gridTotal, m_FParams.threadsPerBlock, m_FParams.gridBlocks, m_FParams.gridThreads);		// grid cell
+    computeNumBlocks ( m_FParams.pnum, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);				// particles
+    computeNumBlocks ( m_FParams.gridTotal, m_FParams.itemsPerGroup, m_FParams.gridBlocks, m_FParams.gridThreads);		// grid cell
 
     // Compute particle buffer & grid dimensions
-    m_FParams.szPnts = (m_FParams.numBlocks  * m_FParams.numThreads);
+    m_FParams.szPnts = (m_FParams.numGroups  * m_FParams.numItems);
 }
 
 // void FluidSystem::FluidParamCL ( float ss, float sr, float pr, float mass, float rest, float3 bmin, float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p ){
@@ -179,67 +179,69 @@ void FluidSystem::TransferFromCL (){
     clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FPARTICLE_ID),	gpuVar(&m_Fluid, FPARTICLE_ID),	mMaxPoints *sizeof(uint) ),                            "TransferFromCL", "cuMemcpyDtoH", "FPARTICLE_ID", mbDebug);
     clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FMASS_RADIUS),	gpuVar(&m_Fluid, FMASS_RADIUS),	mMaxPoints *sizeof(uint) ),                            "TransferFromCL", "cuMemcpyDtoH", "FMASS_RADIUS", mbDebug);
     clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FNERVEIDX),	gpuVar(&m_Fluid, FNERVEIDX),	    mMaxPoints *sizeof(uint) ),                            "TransferFromCL", "cuMemcpyDtoH", "FNERVEIDX",    mbDebug);
-    clCheck( cuMemcpyDtoH ( m_Fluid.bufF(FCONC),	    gpuVar(&m_Fluid, FCONC),	        mMaxPoints *sizeof(float[NUM_TF]) ),                   "TransferFromCL", "cuMemcpyDtoH", "FCONC",        mbDebug);
+    clCheck( cuMemcpyDtoH ( bufF(&m_Fluid, FCONC),	    gpuVar(&m_Fluid, FCONC),	        mMaxPoints *sizeof(float[NUM_TF]) ),                   "TransferFromCL", "cuMemcpyDtoH", "FCONC",        mbDebug);
     clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FEPIGEN),	    gpuVar(&m_Fluid, FEPIGEN),	    mMaxPoints *sizeof(uint[NUM_GENES]) ),                 "TransferFromCL", "cuMemcpyDtoH", "FEPIGEN",      mbDebug);
 }   // NB found FEPIGEN needed bufI and mMaxPoints, otherwise produced garbled files.
 
-//CUDAs random number generator
-void FluidSystem::Init_FCURAND_STATE_CL (){ // designed to use to bootstrap itself. Set j=0 from host, call kernel repeatedly for 256^n threads, n=0-> to pnum threads.
-    unsigned long long  seed=0; // sequence=0, offset=1,
-    srand (time(NULL));
-    for (int i=0;i<mNumPoints;i++){ // generate seeds
-        seed = rand();
-        //seed = seed << 32;
-        //seed += rand();
-        //seed = clock(); 
-        bufI(&m_Fluid, FCURAND_SEED)[i] = seed;
-        //curand_init(seed, sequence, offset, &m_Fluid.bufCuRNDST(FCURAND_STATE)[i]);
-        //if (m_FParams.debug>1)printf("\n(2:seed=%llu,(FCURAND_SEED)[i]=%llu, rand()=%u), ",seed, m_Fluid.bufULL(FCURAND_SEED)[i], rand() );
-        //if (m_FParams.debug>1) cout<<"\t(seed="<<seed<<",(FCURAND_SEED)[i]="<<bufI(&m_Fluid, FCURAND_SEED)[i]<<"), "<<std::flush;
-       
-    }
-    // transfer to cuda
-    //clCheck( cuMemcpyDtoH ( gcell,	gpuVar(&m_Fluid, FGCELL),	mNumPoints *sizeof(uint) ), "InsertParticlesCL", "cuMemcpyDtoH", "FGCELL", mbDebug );
-    //clCheck( cuMemcpyDtoH ( m_Fluid.bufCuRNDST(FCURAND_STATE),	gpuVar(&m_Fluid, FCURAND_STATE),	mNumPoints *sizeof(curandState_t) ),
-    //         "Init_FCURAND_STATE_CL", "cuMemcpyDtoH", "FCURAND_STATE", mbDebug );
-    
-    clCheck( cuMemcpyHtoD (gpuVar(&m_Fluid, FCURAND_SEED), bufC(&m_Fluid, FCURAND_SEED), mNumPoints *sizeof(uint) ),
-             "Init_FCURAND_STATE_CL", "cuMemcpyDtoH", "FCURAND_SEED", mbDebug );
-    
-    if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_2.0\n\n"<<std::flush;
-    /*
-    int n=0;
-    void* args[1] = {&n};
-    int numBlocks_=1, numThreads_=1;
-    if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_1.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<",\t mNumPoints="<<mNumPoints<<", mMaxPoints="<<mMaxPoints<<"  \n"<<std::flush;
-    
-    do {
-        computeNumBlocks ( pow(256,n), m_FParams.threadsPerBlock, numBlocks_, numThreads_);
-        
-        if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_2.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<
-        "\t numBlocks_="<<numBlocks_<<", numThreads_="<<numThreads_<<"  \n"<<std::flush;
-        
-        clCheck(clFinish(), "Init_FCURAND_STATE_CL", "clFinish", "Before m_Kern[FUNC_INIT_FCURAND_STATE], in do-while loop", 1);
-        
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_INIT_FCURAND_STATE],  numBlocks_, 1, 1, numThreads_, 1, 1, 0, NULL, args, NULL), "Init_FCURAND_STATE_CL", "cuLaunch", "FUNC_INIT_FCURAND_STATE", mbDebug);
-        
-        n++;
-    } while (pow(256,n) < mNumPoints/256) ;
-    
-    if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_3.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<
-    "\t m_FParams.numBlocks="<<m_FParams.numBlocks<<",  m_FParams.numThreads="<<m_FParams.numThreads<<".  \n"<<std::flush;
-        
-    */
-    void* args[1] = {&mNumPoints};
-    
-    clCheck(clFinish(), "Init_FCURAND_STATE_CL", "clFinish", "Before m_Kern[FUNC_INIT_FCURAND_STATE], after do-while loop", 1);
-    
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_INIT_FCURAND_STATE],  m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL), "Init_FCURAND_STATE_CL", "cuLaunch", "FUNC_INIT_FCURAND_STATE", mbDebug);
 
-    clCheck(clFinish(), "Init_FCURAND_STATE_CL", "clFinish", "After cuMemcpyDtoH FCURAND_STATE, before 1st timestep", 1);
-    if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_4.0\n"<<std::flush;
-    
-}
+
+//CUDAs random number generator
+// void FluidSystem::Init_FCURAND_STATE_CL (){ // designed to use to bootstrap itself. Set j=0 from host, call kernel repeatedly for 256^n threads, n=0-> to pnum threads.
+//     unsigned long long  seed=0; // sequence=0, offset=1,
+//     srand (time(NULL));
+//     for (int i=0;i<mNumPoints;i++){ // generate seeds
+//         seed = rand();
+//         //seed = seed << 32;
+//         //seed += rand();
+//         //seed = clock();
+//         bufI(&m_Fluid, FCURAND_SEED)[i] = seed;
+//         //curand_init(seed, sequence, offset, &m_Fluid.bufCuRNDST(FCURAND_STATE)[i]);
+//         //if (m_FParams.debug>1)printf("\n(2:seed=%llu,(FCURAND_SEED)[i]=%llu, rand()=%u), ",seed, m_Fluid.bufULL(FCURAND_SEED)[i], rand() );
+//         //if (m_FParams.debug>1) cout<<"\t(seed="<<seed<<",(FCURAND_SEED)[i]="<<bufI(&m_Fluid, FCURAND_SEED)[i]<<"), "<<std::flush;
+//
+//     }
+//     // transfer to cuda
+//     //clCheck( cuMemcpyDtoH ( gcell,	gpuVar(&m_Fluid, FGCELL),	mNumPoints *sizeof(uint) ), "InsertParticlesCL", "cuMemcpyDtoH", "FGCELL", mbDebug );
+//     //clCheck( cuMemcpyDtoH ( m_Fluid.bufCuRNDST(FCURAND_STATE),	gpuVar(&m_Fluid, FCURAND_STATE),	mNumPoints *sizeof(curandState_t) ),
+//     //         "Init_FCURAND_STATE_CL", "cuMemcpyDtoH", "FCURAND_STATE", mbDebug );
+//
+//     clCheck( cuMemcpyHtoD (gpuVar(&m_Fluid, FCURAND_SEED), bufC(&m_Fluid, FCURAND_SEED), mNumPoints *sizeof(uint) ),
+//              "Init_FCURAND_STATE_CL", "cuMemcpyDtoH", "FCURAND_SEED", mbDebug );
+//
+//     if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_2.0\n\n"<<std::flush;
+//     /*
+//     int n=0;
+//     void* args[1] = {&n};
+//     int numGroups_=1, numItems_=1;
+//     if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_1.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<",\t mNumPoints="<<mNumPoints<<", mMaxPoints="<<mMaxPoints<<"  \n"<<std::flush;
+//
+//     do {
+//         computeNumBlocks ( pow(256,n), m_FParams.itemsPerGroup, numGroups_, numItems_);
+//
+//         if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_2.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<
+//         "\t numGroups_="<<numGroups_<<", numItems_="<<numItems_<<"  \n"<<std::flush;
+//
+//         clCheck(clFinish(), "Init_FCURAND_STATE_CL", "clFinish", "Before m_Kern[FUNC_INIT_RANDOMCL], in do-while loop", 1);
+//
+//         clCheck ( cuLaunchKernel ( m_Kern[FUNC_INIT_RANDOMCL],  numGroups_, 1, 1, numItems_, 1, 1, 0, NULL, args, NULL), "Init_FCURAND_STATE_CL", "cuLaunch", "FUNC_INIT_RANDOMCL", mbDebug);
+//
+//         n++;
+//     } while (pow(256,n) < mNumPoints/256) ;
+//
+//     if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_3.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<
+//     "\t m_FParams.numGroups="<<m_FParams.numGroups<<",  m_FParams.numItems="<<m_FParams.numItems<<".  \n"<<std::flush;
+//
+//     */
+//     void* args[1] = {&mNumPoints};
+//
+//     clCheck(clFinish(), "Init_FCURAND_STATE_CL", "clFinish", "Before m_Kern[FUNC_INIT_RANDOMCL], after do-while loop", 1);
+//
+//     clCheck ( cuLaunchKernel ( m_Kern[FUNC_INIT_RANDOMCL],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "Init_FCURAND_STATE_CL", "cuLaunch", "FUNC_INIT_RANDOMCL", mbDebug);
+//
+//     clCheck(clFinish(), "Init_FCURAND_STATE_CL", "clFinish", "After cuMemcpyDtoH FCURAND_STATE, before 1st timestep", 1);
+//     if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_4.0\n"<<std::flush;
+//
+// }
 ///////////////////////////////// above here is all about setting up CUDA
 /*
 void FluidSystem::InsertParticlesCL ( uint* gcell, uint* gndx, uint* gcnt ){   // first zero the counters
@@ -251,13 +253,13 @@ void FluidSystem::InsertParticlesCL ( uint* gcell, uint* gndx, uint* gcnt ){   /
     clCheck ( cuMemsetD8 ( gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES), 0,	m_GridTotal *sizeof(uint[NUM_GENES]) ), "InsertParticlesCL", "cuMemsetD8", "FGRIDOFF", mbDebug );
     
     // Set long list to sort all particles.
-    computeNumBlocks ( m_FParams.pnum, m_FParams.threadsPerBlock, m_FParams.numBlocks, m_FParams.numThreads);				// particles
+    computeNumBlocks ( m_FParams.pnum, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);				// particles
     // launch kernel "InsertParticles"
     void* args[1] = { &mMaxPoints };  //&mNumPoints
-    clCheck(cuLaunchKernel(m_Kern[FUNC_INSERT], m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL),
+    clCheck(cuLaunchKernel(m_Kern[FUNC_INSERT], m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL),
             "InsertParticlesCL", "cuLaunch", "FUNC_INSERT", mbDebug);
     if (m_FParams.debug>1) cout<<"\n########\nCalling InsertParticles kernel: args[1] = {"<<mNumPoints<<"}, mMaxPoints="<<mMaxPoints
-        <<"\t m_FParams.numBlocks="<<m_FParams.numBlocks<<", m_FParams.numThreads="<<m_FParams.numThreads<<" \t"<<std::flush;
+        <<"\t m_FParams.numGroups="<<m_FParams.numGroups<<", m_FParams.numItems="<<m_FParams.numItems<<" \t"<<std::flush;
 
     // Transfer data back if requested (for validation)
     if (gcell != 0x0) {
@@ -283,7 +285,7 @@ void FluidSystem::InsertParticlesCL ( uint* gcell, uint* gndx, uint* gcnt ){
     clEnqueueFillBuffer(queue, gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES), 0, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]), 0, NULL, NULL);
 
     // Set long list to sort all particles.
-    computeNumBlocks (m_FParams.pnum, m_FParams.threadsPerBlock, m_FParams.numBlocks, m_FParams.numThreads);
+    computeNumBlocks (m_FParams.pnum, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);
     // launch kernel "InsertParticles"
     size_t global_work_size = ...;
 
@@ -291,7 +293,7 @@ void FluidSystem::InsertParticlesCL ( uint* gcell, uint* gndx, uint* gcnt ){
     clEnqueueNDRangeKernel(queue,m_Kern[FUNC_INSERT],1,NULL,&global_work_size,NULL ,0,NULL,NULL);
 
     if (m_FParams.debug>1) cout<<"\n########\nCalling InsertParticles kernel: args[1] = {"<<mNumPoints<<"}, mMaxPoints="<<mMaxPoints
-        <<"\t m_FParams.numBlocks="<<m_FParams.numBlocks<<", m_FParams.numThreads="<<m_FParams.numThreads<<" \t"<<std::flush;
+        <<"\t m_FParams.numGroups="<<m_FParams.numGroups<<", m_FParams.numItems="<<m_FParams.numItems<<" \t"<<std::flush;
 
     // Transfer data back if requested (for validation)
     if (gcell != 0x0) {
@@ -548,9 +550,9 @@ void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
     //cout<<"\nCountingSortFullCL: m_Vec[PVOLMAX]=("<<m_Vec[PVOLMAX].x<<", "<<m_Vec[PVOLMAX].y<<", "<<m_Vec[PVOLMAX].z<<"),  max_pos = "<< max_pos <<std::flush;
     // NB resetting  gpuVar(&m_Fluid, FPOS)  ensures no zombie particles. ?hopefully?
     
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FELASTIDX),    UINT_MAX,  mMaxPoints * BOND_DATA              ),  "CountingSortFullCL", "cuMemsetD32", "FELASTIDX",    mbDebug);
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPARTICLEIDX), UINT_MAX,  mMaxPoints * BONDS_PER_PARTICLE *2  ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPARTICLE_ID), UINT_MAX,  mMaxPoints                          ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
+    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FELASTIDX),    UINT_MAXSIZE,  mMaxPoints * BOND_DATA              ),  "CountingSortFullCL", "cuMemsetD32", "FELASTIDX",    mbDebug);
+    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPARTICLEIDX), UINT_MAXSIZE,  mMaxPoints * BONDS_PER_PARTICLE *2  ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
+    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPARTICLE_ID), UINT_MAXSIZE,  mMaxPoints                          ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FFORCE),      (uint)0.0,  mMaxPoints * 3 /* ie num elements */),  "CountingSortFullCL", "cuMemsetD32", "FFORCE",       mbDebug);
     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FCONC),             0.0,  mMaxPoints * NUM_TF                 ),  "CountingSortFullCL", "cuMemsetD32", "FCONC",        mbDebug);
     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FEPIGEN),     (uint)0.0,  mMaxPoints * NUM_GENES              ),  "CountingSortFullCL", "cuMemsetD32", "FEPIGEN",      mbDebug);
@@ -559,12 +561,12 @@ void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
     // Reset grid cell IDs
     // clCheck(cuMemsetD32(gpuVar(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "cuMemsetD32(Sort)");
     void* args[1] = { &mMaxPoints };
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNTING_SORT], m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL),
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNTING_SORT], m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL),
               "CountingSortFullCL5", "cuLaunch", "FUNC_COUNTING_SORT", mbDebug );
 
     // Having sorted the particle data, we can start using a shortened list of particles.
     // NB have to reset to long list at start of time step. 
-    computeNumBlocks ( m_FParams.pnumActive, m_FParams.threadsPerBlock, m_FParams.numBlocks, m_FParams.numThreads);				// particles
+    computeNumBlocks ( m_FParams.pnumActive, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);				// particles
     
     if (m_FParams.debug>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_LISTS\n"<<std::flush;
     // countingSortDenseLists ( int pnum ) // NB launch on bins not particles.
@@ -573,7 +575,7 @@ void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
     int numElem2 = 2*  int( numElem1 / blockSize ) + 1;  
     int threads = SCAN_BLOCKSIZE/2;
     clFinish ();
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNT_SORT_LISTS], /*m_FParams.numBlocks*/ numElem2, 1, 1, /*m_FParams.numThreads/2*/ threads , 1, 1, 0, NULL, args, NULL),
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNT_SORT_LISTS], /*m_FParams.numGroups*/ numElem2, 1, 1, /*m_FParams.numItems/2*/ threads , 1, 1, 0, NULL, args, NULL),
               "CountingSortFullCL7", "cuLaunch", "FUNC_COUNT_SORT_LISTS", mbDebug );                                   // NB threads/2 required on GTX970m
     clFinish ();
     
@@ -631,7 +633,7 @@ void FluidSystem::CountingSortChangesCL ( ){
                change_list, densebuff_len[change_list], denselist_len[change_list], threads, numElem2,  m_GridTotal );
         clFinish ();
         if(m_FParams.debug>0){
-            uint fDenseList2[1000000] = {UINT_MAX};//TODO make this array size safe!  NB 10* num particles.
+            uint fDenseList2[1000000] = {UINT_MAXSIZE};//TODO make this array size safe!  NB 10* num particles.
             cl_device_idptr*  _list2pointer = (cl_device_idptr*) &bufC(&m_Fluid, FDENSE_LISTS_CHANGES)[change_list*sizeof(cl_device_idptr)];
                                                                                                                 // Get device pointer to FDENSE_LISTS_CHANGES[change_list].
             clCheck( cuMemcpyDtoH ( fDenseList2, *_list2pointer,	2*sizeof(uint[densebuff_len[change_list]]) ), "PrefixSumChangesCL", "cuMemcpyDtoH", "FGRIDCNT", mbDebug);
@@ -650,30 +652,30 @@ void FluidSystem::InitializeBondsCL (){
     uint gene           = 1;                                                            // solid  (has springs)
     uint list_length    = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
     void* args[3]       = { &m_FParams.pnumActive, &list_length, &gene};                //initialize_bonds (int ActivePoints, uint list_length, uint gene)
-    int numBlocks, numThreads;
-    computeNumBlocks (list_length, m_FParams.threadsPerBlock, numBlocks, numThreads);
-    
-    if (m_FParams.debug>1)cout << "\nInitializeBondsCL (): list_length="<<list_length<<", m_FParams.threadsPerBlock="<<m_FParams.threadsPerBlock<<", numBlocks="<<numBlocks<<", numThreads="<<numThreads<<" \t args{m_FParams.pnumActive="<<m_FParams.pnumActive<<", list_length="<<list_length<<", gene="<<gene<<"}"<<std::flush;
-    
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_INITIALIZE_BONDS],  m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL), "ComputePressureCL", "cuLaunch", "FUNC_COMPUTE_PRESS", mbDebug);
+    int numGroups, numItems;
+    computeNumBlocks (list_length, m_FParams.itemsPerGroup, numGroups, numItems);
+
+    if (m_FParams.debug>1)cout << "\nInitializeBondsCL (): list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<numGroups<<", numItems="<<numItems<<" \t args{m_FParams.pnumActive="<<m_FParams.pnumActive<<", list_length="<<list_length<<", gene="<<gene<<"}"<<std::flush;
+
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_INITIALIZE_BONDS],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "ComputePressureCL", "cuLaunch", "FUNC_COMPUTE_PRESS", mbDebug);
 }
 
 void FluidSystem::ComputePressureCL (){
     void* args[1] = { &mActivePoints };
     //cout<<"\nComputePressureCL: mActivePoints="<<mActivePoints<<std::flush;
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_PRESS],  m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL), "ComputePressureCL", "cuLaunch", "FUNC_COMPUTE_PRESS", mbDebug);
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_PRESS],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "ComputePressureCL", "cuLaunch", "FUNC_COMPUTE_PRESS", mbDebug);
 }
 
 void FluidSystem::ComputeDiffusionCL(){
     //if (m_FParams.debug>1) std::cout << "\n\nRunning ComputeDiffusionCL()" << std::endl;
     void* args[1] = { &mActivePoints };
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_DIFFUSION],  m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL), "ComputeDiffusionCL", "cuLaunch", "FUNC_COMPUTE_DIFFUSION", mbDebug);
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_DIFFUSION],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "ComputeDiffusionCL", "cuLaunch", "FUNC_COMPUTE_DIFFUSION", mbDebug);
 }
 
 void FluidSystem::ComputeForceCL (){
     //if (m_FParams.debug>1)printf("\n\nFluidSystem::ComputeForceCL (),  m_FParams.freeze=%s",(m_FParams.freeze==true) ? "true" : "false");
     void* args[3] = { &m_FParams.pnumActive ,  &m_FParams.freeze, &m_FParams.frame};
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_FORCE],  m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL), "ComputeForceCL", "cuLaunch", "FUNC_COMPUTE_FORCE", mbDebug);
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_FORCE],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "ComputeForceCL", "cuLaunch", "FUNC_COMPUTE_FORCE", mbDebug);
 }
 
 void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the dese list for that gene
@@ -683,26 +685,26 @@ void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the de
     for (int gene=0;gene<NUM_GENES;gene++) {
         uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
         void* args[3] = { &m_FParams.pnumActive, &gene, &list_length };
-        int numBlocks, numThreads;
-        computeNumBlocks ( list_length , m_FParams.threadsPerBlock, numBlocks, numThreads);
+        int numGroups, numItems;
+        computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
         
-        if (m_FParams.debug>1) std::cout<<"\nComputeGenesCL (): gene ="<<gene<<", list_length="<<list_length<<", m_FParams.threadsPerBlock="<<m_FParams.threadsPerBlock<<", numBlocks="<<numBlocks<<",  numThreads="<<numThreads<<". args={mNumPoints="<<mNumPoints<<", list_length="<<list_length<<", gene ="<<gene<<"}"<<std::flush;
+        if (m_FParams.debug>1) std::cout<<"\nComputeGenesCL (): gene ="<<gene<<", list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<numGroups<<",  numItems="<<numItems<<". args={mNumPoints="<<mNumPoints<<", list_length="<<list_length<<", gene ="<<gene<<"}"<<std::flush;
         
-        if( numBlocks>0 && numThreads>0){
-            //std::cout<<"\nCalling m_Kern[FUNC_COMPUTE_GENE_ACTION], list_length="<<list_length<<", numBlocks="<<numBlocks<<", numThreads="<<numThreads<<"\n"<<std::flush;
-            clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_GENE_ACTION],  numBlocks, 1, 1, numThreads, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_COMPUTE_GENE_ACTION", mbDebug);
+        if( numGroups>0 && numItems>0){
+            //std::cout<<"\nCalling m_Kern[FUNC_COMPUTE_GENE_ACTION], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
+            clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_GENE_ACTION],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_COMPUTE_GENE_ACTION", mbDebug);
         }
     }
     clCheck(clFinish(), "ComputeGenesCL", "clFinish", "After FUNC_COMPUTE_GENE_ACTION & before FUNC_TALLY_GENE_ACTION", mbDebug);
     for (int gene=0;gene<NUM_GENES;gene++) {
         uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
         void* args[3] = { &m_FParams.pnumActive, &gene, &list_length };
-        int numBlocks, numThreads;
-        computeNumBlocks ( list_length , m_FParams.threadsPerBlock, numBlocks, numThreads);
+        int numGroups, numItems;
+        computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
         
-        if( numBlocks>0 && numThreads>0){
-            if (m_FParams.debug>1) std::cout<<"\nCalling m_Kern[FUNC_TALLY_GENE_ACTION], gene="<<gene<<", list_length="<<list_length<<", numBlocks="<<numBlocks<<", numThreads="<<numThreads<<"\n"<<std::flush;
-            clCheck ( cuLaunchKernel ( m_Kern[FUNC_TALLY_GENE_ACTION],  numBlocks, 1, 1, numThreads, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_TALLY_GENE_ACTION", mbDebug);
+        if( numGroups>0 && numItems>0){
+            if (m_FParams.debug>1) std::cout<<"\nCalling m_Kern[FUNC_TALLY_GENE_ACTION], gene="<<gene<<", list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
+            clCheck ( cuLaunchKernel ( m_Kern[FUNC_TALLY_GENE_ACTION],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_TALLY_GENE_ACTION", mbDebug);
         }
     }
 }
@@ -712,20 +714,20 @@ void FluidSystem::AssembleFibresCL (){  //kernel: void assembleMuscleFibres ( in
     uint gene = 7; // muscle
     uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
     void* args[3] = { &m_FParams.pnumActive, &gene, &list_length };
-    int numBlocks, numThreads;
-    computeNumBlocks ( list_length , m_FParams.threadsPerBlock, numBlocks, numThreads);
+    int numGroups, numItems;
+    computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
     
     /*
-    if( numBlocks>0 && numThreads>0){
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING],  numBlocks, 1, 1, numThreads, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_COMPUTE_GENE_ACTION", mbDebug);
+    if( numGroups>0 && numItems>0){
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_COMPUTE_GENE_ACTION", mbDebug);
     }
     */
     
     clCheck(clFinish(), "Run", "clFinish", "In AssembleFibresCL, after OUTGOING", mbDebug); 
     
     /*
-    if( numBlocks>0 && numThreads>0){
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING],  numBlocks, 1, 1, numThreads, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_COMPUTE_GENE_ACTION", mbDebug);
+    if( numGroups>0 && numItems>0){
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_COMPUTE_GENE_ACTION", mbDebug);
     }
     clCheck(clFinish(), "Run", "clFinish", "In AssembleFibresCL, after OUTGOING", mbDebug); 
     */
@@ -748,14 +750,14 @@ void FluidSystem::ComputeBondChangesCL (uint steps_per_InnerPhysicalLoop){// Giv
     
     uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[2];    // call for dense list of living cells (gene'2'living/telomere (has genes))
     void* args[3] = { &mActivePoints, &list_length, &steps_per_InnerPhysicalLoop};
-    int numBlocks, numThreads;
-    computeNumBlocks (list_length, m_FParams.threadsPerBlock, numBlocks, numThreads);
+    int numGroups, numItems;
+    computeNumBlocks (list_length, m_FParams.itemsPerGroup, numGroups, numItems);
     
     //std::cout<<"\n\nComputeBondChangesCL (): m_FParams.debug = "<<m_FParams.debug<<", (m_FParams.debug>1)="<<(m_FParams.debug>1)<<"\n"<<std::flush;
     
-    if (m_FParams.debug>1) std::cout<<"\n\nComputeBondChangesCL (): list_length="<<list_length<<", m_FParams.threadsPerBlock="<<m_FParams.threadsPerBlock<<", numBlocks="<<numBlocks<<",  numThreads="<<numThreads<<". \t\t args={mActivePoints="<<mActivePoints<<", list_length="<<list_length<<"}\n\n"<<std::flush;
+    if (m_FParams.debug>1) std::cout<<"\n\nComputeBondChangesCL (): list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<numGroups<<",  numItems="<<numItems<<". \t\t args={mActivePoints="<<mActivePoints<<", list_length="<<list_length<<"}\n\n"<<std::flush;
     
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_BOND_CHANGES],  m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL), "computeBondChanges", "cuLaunch", "FUNC_COMPUTE_BOND_CHANGES", mbDebug);
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_BOND_CHANGES],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "computeBondChanges", "cuLaunch", "FUNC_COMPUTE_BOND_CHANGES", mbDebug);
 }
 
 void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to execute particle changes. NB Must run concurrently without interfering => no clFinish()
@@ -778,12 +780,12 @@ void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to exe
         }//
     
         void* args[5] = {&mActivePoints, &list_length, &change_list, &startNewPoints, &mMaxPoints};
-        int numThreads, numBlocks;
+        int numItems, numGroups;
         
-        //int numThreads = 1;//m_FParams.threadsPerBlock;
-        //int numBlocks  = 1;//iDivUp ( list_length, numThreads );
+        //int numItems = 1;//m_FParams.itemsPerGroup;
+        //int numGroups  = 1;//iDivUp ( list_length, numItems );
         
-        computeNumBlocks (list_length, m_FParams.threadsPerBlock, numBlocks, numThreads);
+        computeNumBlocks (list_length, m_FParams.itemsPerGroup, numGroups, numItems);
         
         if (m_FParams.debug>2) std::cout
             <<"\nComputeParticleChangesCL ():"
@@ -791,27 +793,27 @@ void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to exe
             <<", mActivePoints="            <<mActivePoints
             <<", change_list ="             <<change_list
             <<", list_length="              <<list_length
-            <<", m_FParams.threadsPerBlock="<<m_FParams.threadsPerBlock
-            <<", numBlocks="                <<numBlocks
-            <<", numThreads="               <<numThreads
+            <<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup
+            <<", numGroups="                <<numGroups
+            <<", numItems="               <<numItems
             <<". args={mActivePoints="      <<mActivePoints
             <<", list_length="              <<list_length
             <<", change_list="              <<change_list
             <<", startNewPoints="           <<startNewPoints
             <<"\t"<<std::flush;
         
-        if( (list_length>0) && (numBlocks>0) && (numThreads>0)){
+        if( (list_length>0) && (numGroups>0) && (numItems>0)){
             if (m_FParams.debug>0) std::cout
                 <<"\nComputeParticleChangesCL ():"
                 <<"\tCalling m_Kern[FUNC_HEAL+"             <<change_list
                 <<"], list_length="                         <<list_length
-                <<", numBlocks="                            <<numBlocks
-                <<", numThreads="                           <<numThreads
-                <<",\t m_FParams.threadsPerBlock="          <<m_FParams.threadsPerBlock
-                <<", numBlocks*m_FParams.threadsPerBlock="  <<numBlocks*m_FParams.threadsPerBlock
+                <<", numGroups="                            <<numGroups
+                <<", numItems="                           <<numItems
+                <<",\t m_FParams.itemsPerGroup="          <<m_FParams.itemsPerGroup
+                <<", numGroups*m_FParams.itemsPerGroup="  <<numGroups*m_FParams.itemsPerGroup
                 <<"\t"<<std::flush;
             
-            clCheck ( cuLaunchKernel ( m_Kern[FUNC_HEAL+change_list], numBlocks, 1, 1, numThreads, 1, 1, 0, NULL, args, NULL), 
+            clCheck ( cuLaunchKernel ( m_Kern[FUNC_HEAL+change_list], numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL),
                   "ComputeParticleChangesCL", "cuLaunch", "FUNC_HEAL+change_list", mbDebug);
         }
         clCheck(clFinish(), "ComputeParticleChangesCL", "clFinish", "In ComputeParticleChangesCL", mbDebug);
@@ -836,14 +838,14 @@ void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to exe
 
 void FluidSystem::CleanBondsCL (){
     void* args[3] = { &m_FParams.pnumActive};
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_CLEAN_BONDS],  m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL), "CleanBondsCL", "cuLaunch", "FUNC_CLEAN_BONDS", mbDebug);
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_CLEAN_BONDS],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "CleanBondsCL", "cuLaunch", "FUNC_CLEAN_BONDS", mbDebug);
 }
 
-void FluidSystem::TransferPosVelVeval (){
-    TransferToTempCL ( FPOS,		mMaxPoints *sizeof(Vector3DF) );    // NB if some points have been removed, then the existing list is no longer dense,  
-    TransferToTempCL ( FVEL,		mMaxPoints *sizeof(Vector3DF) );    // hence must use mMaxPoints, not mNumPoints
-    TransferToTempCL ( FVEVAL,	mMaxPoints *sizeof(Vector3DF) );
-}
+// void FluidSystem::TransferPosVelVeval (){
+//     TransferToTempCL ( FPOS,		mMaxPoints *sizeof(Vector3DF) );    // NB if some points have been removed, then the existing list is no longer dense,
+//     TransferToTempCL ( FVEL,		mMaxPoints *sizeof(Vector3DF) );    // hence must use mMaxPoints, not mNumPoints
+//     TransferToTempCL ( FVEVAL,	mMaxPoints *sizeof(Vector3DF) );
+// }
 
 void FluidSystem::TransferPosVelVevalFromTemp (){
     TransferFromTempCL ( FPOS,	mMaxPoints *sizeof(Vector3DF) );    // NB if some points have been removed, then the existing list is no longer dense,  
@@ -860,7 +862,7 @@ void FluidSystem::ZeroVelCL (){                                       // Used to
 
 void FluidSystem::AdvanceCL ( float tm, float dt, float ss ){
     void* args[4] = { &tm, &dt, &ss, &m_FParams.pnumActive };
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_ADVANCE],  m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL), "AdvanceCL", "cuLaunch", "FUNC_ADVANCE", mbDebug);
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_ADVANCE],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "AdvanceCL", "cuLaunch", "FUNC_ADVANCE", mbDebug);
     //cout<<"\nAdvanceCL: m_FParams.pnumActive="<<m_FParams.pnumActive<<std::flush;
 }
 
@@ -868,31 +870,31 @@ void FluidSystem::SpecialParticlesCL (float tm, float dt, float ss){   // For in
     int gene = 12;                                                           // 'externally actuated' particles
     uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
     void* args[5] = {&list_length, &tm, &dt, &ss, &m_FParams.pnumActive};         // void externalActuation (uint list_len,  float time, float dt, float ss, int numPnts )
-    int numBlocks, numThreads;
-    computeNumBlocks ( list_length , m_FParams.threadsPerBlock, numBlocks, numThreads);
+    int numGroups, numItems;
+    computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
     
-    if (m_FParams.debug>1) std::cout<<"\nSpecialParticlesCL:EXTERNAL_ACTUATION: list_length="<<list_length<<" , m_FParams.threadsPerBlock="<< m_FParams.threadsPerBlock <<", numBlocks="<< numBlocks <<", numThreads="<< numThreads <<", args{m_FParams.pnum="<< m_FParams.pnum <<",  gene="<< gene <<", list_length="<< list_length <<"  }  \n"<<std::flush;
+    if (m_FParams.debug>1) std::cout<<"\nSpecialParticlesCL:EXTERNAL_ACTUATION: list_length="<<list_length<<" , m_FParams.itemsPerGroup="<< m_FParams.itemsPerGroup <<", numGroups="<< numGroups <<", numItems="<< numItems <<", args{m_FParams.pnum="<< m_FParams.pnum <<",  gene="<< gene <<", list_length="<< list_length <<"  }  \n"<<std::flush;
     
-    if( numBlocks>0 && numThreads>0){
-        if (m_FParams.debug>1) std::cout<<"\nCalling m_Kern[FUNC_EXTERNAL_ACTUATION], list_length="<<list_length<<", numBlocks="<<numBlocks<<", numThreads="<<numThreads<<"\n"<<std::flush;
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_EXTERNAL_ACTUATION],  numBlocks, 1, 1, numThreads, 1, 1, 0, NULL, args, NULL), "SpecialParticlesCL", "cuLaunch", "FUNC_EXTERNAL_ACTUATION", mbDebug);
+    if( numGroups>0 && numItems>0){
+        if (m_FParams.debug>1) std::cout<<"\nCalling m_Kern[FUNC_EXTERNAL_ACTUATION], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_EXTERNAL_ACTUATION],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "SpecialParticlesCL", "cuLaunch", "FUNC_EXTERNAL_ACTUATION", mbDebug);
     }
     gene =11;                                                                // 'fixed' particles
     list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
     args[0] = &list_length;                                                 // void fixedParticles (uint list_len, int numPnts )
     args[1] = &m_FParams.pnum;
-    computeNumBlocks ( list_length , m_FParams.threadsPerBlock, numBlocks, numThreads);
+    computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
     
-    if (m_FParams.debug>1) std::cout<<"\nSpecialParticlesCL:FIXED: list_length="<<list_length<<" , m_FParams.threadsPerBlock="<< m_FParams.threadsPerBlock <<", numBlocks="<< numBlocks <<", numThreads="<< numThreads <<", args{m_FParams.pnum="<< m_FParams.pnum <<",  gene="<< gene <<", list_length="<< list_length <<"  }  \n"<<std::flush;
+    if (m_FParams.debug>1) std::cout<<"\nSpecialParticlesCL:FIXED: list_length="<<list_length<<" , m_FParams.itemsPerGroup="<< m_FParams.itemsPerGroup <<", numGroups="<< numGroups <<", numItems="<< numItems <<", args{m_FParams.pnum="<< m_FParams.pnum <<",  gene="<< gene <<", list_length="<< list_length <<"  }  \n"<<std::flush;
     
-    if( numBlocks>0 && numThreads>0){
-        if (m_FParams.debug>1) std::cout<<"\nCalling m_Kern[FUNC_FIXED], list_length="<<list_length<<", numBlocks="<<numBlocks<<", numThreads="<<numThreads<<"\n"<<std::flush;
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FIXED],  numBlocks, 1, 1, numThreads, 1, 1, 0, NULL, args, NULL), "SpecialParticlesCL", "cuLaunch", "FUNC_FIXED", mbDebug);
+    if( numGroups>0 && numItems>0){
+        if (m_FParams.debug>1) std::cout<<"\nCalling m_Kern[FUNC_FIXED], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FIXED],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "SpecialParticlesCL", "cuLaunch", "FUNC_FIXED", mbDebug);
     }
 }
 
 void FluidSystem::EmitParticlesCL ( float tm, int cnt ){
     void* args[3] = { &tm, &cnt, &m_FParams.pnum };
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_EMIT],  m_FParams.numBlocks, 1, 1, m_FParams.numThreads, 1, 1, 0, NULL, args, NULL), "EmitParticlesCL", "cuLaunch", "FUNC_EMIT", mbDebug);
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_EMIT],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "EmitParticlesCL", "cuLaunch", "FUNC_EMIT", mbDebug);
 }
 

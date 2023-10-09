@@ -31,6 +31,10 @@
 #define GRID_UNDEF			4294967295
 //#define FLT_MIN  0.000000001              // set here as 2^(-30) //REDEFINED
 //#define UINT_MAX 65535    //REDEFINED
+#define A 48271
+#define M 2147483647
+#define Q (M / A)
+#define R (M % A)
 
 #include "fluid_system_opencl.h"
 #include "fluid.h"
@@ -39,8 +43,8 @@
 
 
 __constant struct FParams	fparam  = {
-        .debug = 0,
-		.numThreads = 0, .numBlocks = 0, .threadsPerBlock = 0,
+        .debug = 2,
+		.numItems = 0, .numGroups = 0, .itemsPerGroup = 0,
 		.gridThreads = 0, .gridBlocks = 0,
 		.szPnts = 0,
 		.szGrid = 0,
@@ -88,12 +92,59 @@ __constant struct FPrefix       fprefix = {};
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__kernel void memset32d_kernel(__global int* buffer, const int value) {
+__kernel void memset32d_kernel(
+
+    __global int* buffer,
+    const int value
+    )
+{
     int gid = get_global_id(0);
     buffer[gid] = value;
 }
 
-__kernel void prefixFixup(__global uint *input, __global uint *aux, int len) {
+// __kernel void insertParticlesCL (
+//
+//     int pnum
+//     )
+// {
+//     uint i = get_global_id(0);
+//     if ( i >= pnum ) return;
+//
+//     float3  gridMin     =  fparam.gridMin;
+//     float3  gridDelta   =  fparam.gridDelta;
+//     int3    gridRes     =  fparam.gridRes;
+//     int3    gridScan    =  fparam.gridScanMax;
+//     int     gridTot     =  fparam.gridTotal;
+//
+//     int     gs;
+//     float3  gcf;
+//     int3    gc;
+//
+//     gcf = (bufF3(&fbuf, FPOS)[i] - gridMin) * gridDelta;
+//     gc  = (int3)(gcf.x, gcf.y, gcf.z);
+//     gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
+//
+//     if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
+//         bufI(&fbuf, FGCELL)[i] = gs;
+//         bufI(&fbuf, FGNDX)[i] = atomic_add(&bufI(&fbuf, FGRIDCNT)[gs], 1);
+//
+//         for(int gene=0; gene<NUM_GENES; gene++){
+//             if (bufI(&fbuf, FEPIGEN)[i + gene*fparam.maxPoints] > 0){
+//                 atomic_add(&bufI(&fbuf, FGRIDCNT_ACTIVE_GENES)[gene*gridTot + gs], 1);
+//             }
+//         }
+//     } else {
+//         bufI(&fbuf, FGCELL)[i] = GRID_UNDEF;
+//     }
+// }
+
+__kernel void prefixFixup(
+
+    __global uint *input,
+    __global uint *aux,
+    int len
+    )
+{
 
     unsigned int t = get_local_id(0);
     unsigned int start = t + 2 * get_group_id(0) * SCAN_BLOCKSIZE;
@@ -102,13 +153,14 @@ __kernel void prefixFixup(__global uint *input, __global uint *aux, int len) {
 }
 
 __kernel void prefixSum(
-        __global uint *input,
-        __global uint *output,
-        __global uint *aux,
-        __global size_t *offset_array0,
-        __global size_t *offset_scan0,
-        int len,
-        int zeroff
+
+    __global uint *input,
+    __global uint *output,
+    __global uint *aux,
+    __global size_t *offset_array0,
+    __global size_t *offset_scan0,
+    int len,
+    int zeroff
         ) //, __constant size_t *offset_scan0)
 {
     __local uint scan_array[SCAN_BLOCKSIZE << 1];
@@ -146,7 +198,12 @@ __kernel void prefixSum(
         if (aux) aux[get_group_id(0)] = scan_array[2 * SCAN_BLOCKSIZE - 1];
     }
 }
-__kernel void tally_denselist_lengths(int num_lists, int fdense_list_lengths, int fgridcnt, int fgridoff )
+__kernel void tally_denselist_lengths(
+    int num_lists,
+    int fdense_list_lengths,
+    int fgridcnt,
+    int fgridoff
+    )
 {
     uint list = get_group_id(0) * get_local_size(0) + get_local_id(0);
     if ( list >= num_lists ) return;
@@ -451,3 +508,39 @@ __kernel void computeForce (int pnum, int freezeBoolToInt, uint frame) {
 
 }
 
+// __kernel void init_FCLRAND_STATE (
+//
+//     int pnum,
+//     __global clrngMrg31k3pHostStream* streams) {
+//     int i = get_global_id(0); // global thread index
+//
+//     if (i >= pnum) return;
+//
+//     // Initialize RNG stream
+//     clrngMrg31k3pStream private_stream;
+//     clrngMrg31k3pCreateStreams(NULL, 1, NULL, NULL);
+//
+//     // Generate a seed by calling the RNG twice and combining the results
+//     ulong seed = clrngMrg31k3pRandomU01(&private_stream);
+//     seed = seed << 32;
+//     seed += clrngMrg31k3pRandomU01(&private_stream);
+//
+//     // Store the generated seed
+//     seeds[i] = seed;
+// }
+
+
+__kernel void init_RandCL (
+     uint num,
+     global long* seed,
+     global uint* res
+     )
+{
+uint gid = get_global_id(0);
+uint gsize = get_global_size(0);
+well512_state state;
+well512_seed(&state, seed [gid]);
+    for (uint i = gid; i < num; i += gsize) {
+        res [i] = well512_uint (state);
+    }
+}

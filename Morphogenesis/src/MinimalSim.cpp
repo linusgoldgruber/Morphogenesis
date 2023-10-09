@@ -3,29 +3,29 @@
 #define CL_TARGET_OPENCL_VERSION 300
 
 //float3 type definition
-typedef struct {
-    float x;
-    float y;
-    float z;
-} float3;
+// typedef struct {
+//     float x;
+//     float y;
+//     float z;
+// } float3;
 
 //int3 type definition
-typedef struct {
-	int x;
-	int y;
-	int z;
-} int3;
+// typedef struct {
+// 	int x;
+// 	int y;
+// 	int z;
+// } int3;
 
-float3 make_float3(float x, float y, float z)
-{
-    float3 t; t.x = x; t.y = y; t.z = z; return t;
-}
+
 
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <vector>
+#include <vector_types.h>
+
+
 #include <math.h>
 #include <regex>
 #include <jsoncpp/json/json.h>
@@ -36,6 +36,8 @@ float3 make_float3(float x, float y, float z)
 #include "fluid_system.h"
 //#include "fluid_system.cpp"
 #include "host_CL.cpp"
+#include <CL/cl.h>
+#include <CL/opencl.h>
 
 
 #define SDK_SUCCESS 0
@@ -43,8 +45,13 @@ float3 make_float3(float x, float y, float z)
 
 using namespace std;
 
-int main()
-{
+int main() {
+
+    uint num_particles, demoType, simSpace, debug;
+    debug = 2;
+    const char input_folder[256] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo";
+    char output_folder[256];
+    float spacing, x_dim, y_dim, z_dim;
     Json::Reader reader;
     Json::Value obj_;
     Json::Value obj;
@@ -52,19 +59,45 @@ int main()
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
     obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
+
+    num_particles = 4000;
+    printf ( "- num_particles = %u\n", num_particles );
+
+    spacing = 1.0;
+    printf ( "- spacing = %f\n", spacing );
+
+    x_dim = 10.0;
+    printf ( "- x_dim = %f\n", x_dim );
+
+    y_dim = 10.0;
+    printf ( "- y_dim = %f\n", y_dim );
+
+    z_dim = 3;
+    printf ( "- z_dim = %f\n", z_dim );
+
+    demoType = 0;
+    printf ( "- demoType = %u, (0:free falling, 1: remodelling & actuation, 2: diffusion & epigenetics.)\n", demoType );
+
+    simSpace = 7;
+    printf ( "- simSpace = %u, (0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
+        6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n\n", simSpace );
+
     FluidSystem fluid(obj);
-    fluid.FluidSystem;
+
 	fluid.Initialize();
-    //fluid.launchParams.debug = 1;
+
     fluid.InitializeOpenCL();
-    fluid.InsertParticlesCL ( 0x0, 0x0, 0x0 );
+
+    fluid.Init_CLRand();
+
+    fluid.ReadSpecificationFile ( input_folder );
+
+    fluid.WriteDemoSimParams("/demo", GPU_SINGLE, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/
+
+    fluid.Run2PhysicalSort();
 
 
-    //fluid.Run2PhysicalSort();
 
-    //fluid.AllocateParticles(mMaxPoints, gpu_mode, cpu_mode);
-    //fluid.InsertParticlesCL( 0x0, 0x0, 0x0 );
-    //fluid.PrefixSumCellsCL(1); //Dependent on allocatemem!!
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

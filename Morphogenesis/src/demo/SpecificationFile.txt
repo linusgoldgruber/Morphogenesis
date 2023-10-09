@@ -1,0 +1,81 @@
+num_particles = 10000
+ demoType = 1
+ simSpace = 7
+ 
+m_Time = 0.000000
+ m_DT = 0.001000
+ 
+gridsize = 1.000
+ spacing = 1.000000
+ 
+simscale = 1.0
+ smooth_radius = 1.0
+ 
+visc = 0.100000
+ surface_t = 0.100000
+ 
+mass = 0.000405
+ radius = 1.000000
+ 
+int_stiff = 1.000000
+ ext_stiff = 50000.000000
+ ext_damp = 100.000000
+ 
+accel_limit = 20833.35
+ vel_limit = 83.3334
+ 
+grav = 2.000000
+ slope = 0.100000
+ 
+force_min = 0.000000
+ force_max = 0.000000
+ force_freq = 16.000000
+ 
+x_dim = 4.000000
+ y_dim = 4.000000
+ z_dim = 30.000000
+ 
+pos_x = 0.000000
+ pos_y = 0.000000
+ pos_z = 0.000000
+ 
+volmin_x = 0.000000
+ volmin_y = 0.000000
+ volmin_z = 0.000000
+ 
+volmax_x = 20.000000
+ volmax_y = 20.000000
+ volmax_z = 50.000000
+ 
+initmin_x = 3.000000
+ initmin_y = 3.000000
+ initmin_z = 3.000000
+ 
+initmax_x = 10.000000
+ initmax_y = 20.000000
+ initmax_z = 30.000000
+ 
+paramsPath = demo/SimParams.txt
+ pointsPath = demo
+ genomePath = demo/genome.csv
+ outPath = out
+ 
+num_files = 3000
+ steps_per_InnerPhysicalLoop = 3
+ steps_per_file = 6
+ freeze_steps = 20
+ 
+debug = 1
+ file_num = 0
+ 
+save_ply = n
+ save_csv = n
+ save_vtp = y
+ 
+gene_activity = n
+ remodelling = n
+ read_genome = y
+ 
+actuation_factor = 0.020000
+ actuation_period = 200.000000
+ 

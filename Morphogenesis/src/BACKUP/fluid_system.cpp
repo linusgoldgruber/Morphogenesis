@@ -247,7 +247,7 @@ void FluidSystem::InitializeOpenCL(Json::Value obj_) {      //used for load_sim
     cl_kernel FUNC_WEAKEN_TISSUE = clCreateKernel(m_program, "weaken_tissue", ret);
     cl_kernel FUNC_EXTERNAL_ACTUATION = clCreateKernel(m_program, "externalActuation", ret);
     cl_kernel FUNC_FIXED = clCreateKernel(m_program, "fixedParticles", ret);
-    cl_kernel FUNC_INIT_FCURAND_STATE = clCreateKernel(m_program, "initialize_FCURAND_STATE", ret);
+    cl_kernel FUNC_INIT_RANDOMCL = clCreateKernel(m_program, "initialize_FCURAND_STATE", ret);
     cl_kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING = clCreateKernel(m_program, "assembleMuscleFibresOutGoing", ret);
     cl_kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING = clCreateKernel(m_program, "assembleMuscleFibresInComing", ret);
     cl_kernel FUNC_INITIALIZE_BONDS = clCreateKernel(m_program, "initialize_bonds", ret);
@@ -321,7 +321,7 @@ void FluidSystem::Exit (){
     if(program != 0x0){
         if (m_FParams.debug>0)printf("\nclRelease()\n");
         //cudaDeviceReset(); // Destroy all allocations and reset all state on the current device in the current process. // must only operate if we have a cuda instance.
-        clReleaseMemObject(clFBuf);
+        clReleaseMemObject(m_FluidDevice);
         clReleaseMemObject(clFTemp);
         clReleaseMemObject(clFParams);
         clReleaseMemObject(clFGenome);
@@ -346,100 +346,100 @@ void FluidSystem::Exit_no_CL (){
     exit(0);
 }
 
-void FluidSystem::AllocateBuffer ( int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode ){   // mallocs a buffer - called by FluidSystem::Initialize(), AllocateParticles, and AllocateGrid()
-//also called by WriteDemoSimParams(..)
-    bool rtn = true;
-    if (m_FParams.debug>1)std::cout<<"\nAllocateBuffer ( int buf_id="<<buf_id<<", int stride="<<stride<<", int cpucnt="<<cpucnt<<", int gpucnt="<<gpucnt<<", int "<<gpumode<<", int "<<cpumode<<" )\t"<<std::flush;
-    if (cpumode == CPU_YES) {
-        char* src_buf  = bufC(&m_Fluid, buf_id);
-        cl_mem dest_buf = clCreateBuffer(clContext, CL_MEM_READ_WRITE, cpucnt*stride, NULL, &err); //  ####  malloc the buffer   ####
-        if (src_buf != 0x0) {
-            clEnqueueWriteBuffer(m_queue, dest_buf, CL_TRUE, 0, cpucnt*stride, src_buf, 0, NULL, NULL);
-            free(src_buf);
-        }
-        m_Fluid.setCLBuf(buf_id, dest_buf); // stores pointer to buffer in mcpu[buf_id]
-}
-
-    if(gpumode == GPU_SINGLE || gpumode == GPU_DUAL || gpumode == GPU_TEMP){
-        cl_ulong free1, free2, total;
-        clGetDeviceInfo(devices[0], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
-        //if (m_FParams.debug>1)printf("\nOpenCL Memory: free=%lu, total=%lu.\t",free1,total);
-
-        if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL )    {
-            if (m_Fluid.gpuptr(buf_id) != 0x0) clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject", "Fluid.gpu", mbDebug);
-            m_Fluid.setGpu(buf_id, clCreateBuffer(clContext, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
-            if (m_FParams.debug>1)std::cout<<"\t\t m_Fluid.gpuptr("<<buf_id<<")'"<<m_Fluid.gpuptr(buf_id)<<",   gpuVar(&m_Fluid, "<<buf_id<<")="<<gpuVar(&m_Fluid, buf_id)<<"\t"<<std::flush;
-            if(err != CL_SUCCESS) FluidSystem::Exit();
-        }
-        if (gpumode == GPU_TEMP || gpumode == GPU_DUAL ) {
-            if (m_FluidTemp.gpuptr(buf_id) != 0x0) {
-                clCheck(clReleaseMemObject(gpuVar(&m_FluidTemp, buf_id)), "AllocateBuffer", "clReleaseMemObject", "FluidTemp.gpu", mbDebug);
-            }
-            cl_int err;
-            m_FluidTemp.setGpu(buf_id, clCreateBuffer(clContext, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
-            if (err != CL_SUCCESS) {
-                FluidSystem::Exit();
-            }
-        }
-        //no clFinish needed, as EnqueueWriteBuffer function gets called with blocking_wirte set to CL_TRUE
-
-        if (m_FParams.debug>1)printf("\nAfter allocation: free=%lu, total=%lu, this buffer=%lu.\n",free2,total,(free1-free2) );
-    }
-}
+// void FluidSystem::AllocateBuffer ( int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode ){   // mallocs a buffer - called by FluidSystem::Initialize(), AllocateParticles, and AllocateGrid()
+// //also called by WriteDemoSimParams(..)
+//     bool rtn = true;
+//     if (m_FParams.debug>1)std::cout<<"\nAllocateBuffer ( int buf_id="<<buf_id<<", int stride="<<stride<<", int cpucnt="<<cpucnt<<", int gpucnt="<<gpucnt<<", int "<<gpumode<<", int "<<cpumode<<" )\t"<<std::flush;
+//     if (cpumode == CPU_YES) {
+//         char* src_buf  = bufC(&m_Fluid, buf_id);
+//         cl_mem dest_buf = clCreateBuffer(clContext, CL_MEM_READ_WRITE, cpucnt*stride, NULL, &err); //  ####  malloc the buffer   ####
+//         if (src_buf != 0x0) {
+//             clEnqueueWriteBuffer(m_queue, dest_buf, CL_TRUE, 0, cpucnt*stride, src_buf, 0, NULL, NULL);
+//             free(src_buf);
+//         }
+//         m_Fluid.setCLBuf(buf_id, dest_buf); // stores pointer to buffer in mcpu[buf_id]
+// }
+//
+//     if(gpumode == GPU_SINGLE || gpumode == GPU_DUAL || gpumode == GPU_TEMP){
+//         cl_ulong free1, free2, total;
+//         clGetDeviceInfo(devices[0], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
+//         //if (m_FParams.debug>1)printf("\nOpenCL Memory: free=%lu, total=%lu.\t",free1,total);
+//
+//         if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL )    {
+//             if (m_Fluid.gpuptr(buf_id) != 0x0) clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject", "Fluid.gpu", mbDebug);
+//             m_Fluid.setGpu(buf_id, clCreateBuffer(clContext, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
+//             if (m_FParams.debug>1)std::cout<<"\t\t m_Fluid.gpuptr("<<buf_id<<")'"<<m_Fluid.gpuptr(buf_id)<<",   gpuVar(&m_Fluid, "<<buf_id<<")="<<gpuVar(&m_Fluid, buf_id)<<"\t"<<std::flush;
+//             if(err != CL_SUCCESS) FluidSystem::Exit();
+//         }
+//         if (gpumode == GPU_TEMP || gpumode == GPU_DUAL ) {
+//             if (m_FluidTemp.gpuptr(buf_id) != 0x0) {
+//                 clCheck(clReleaseMemObject(gpuVar(&m_FluidTemp, buf_id)), "AllocateBuffer", "clReleaseMemObject", "FluidTemp.gpu", mbDebug);
+//             }
+//             cl_int err;
+//             m_FluidTemp.setGpu(buf_id, clCreateBuffer(clContext, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
+//             if (err != CL_SUCCESS) {
+//                 FluidSystem::Exit();
+//             }
+//         }
+//         //no clFinish needed, as EnqueueWriteBuffer function gets called with blocking_wirte set to CL_TRUE
+//
+//         if (m_FParams.debug>1)printf("\nAfter allocation: free=%lu, total=%lu, this buffer=%lu.\n",free2,total,(free1-free2) );
+//     }
+// }
 // Allocate particle memory
-void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // calls AllocateBuffer(..) for each buffer.  
-// Defaults in header : int gpu_mode = GPU_DUAL, int cpu_mode = CPU_YES
-// Called by FluidSystem::ReadPointsCSV(..), and FluidSystem::WriteDemoSimParams(...), cnt = mMaxPoints.
-if (m_FParams.debug>1)std::cout<<"\n\nAllocateParticles ( int cnt="<<cnt<<", int "<<gpu_mode<<", int "<<cpu_mode<<" ), debug="<<m_FParams.debug<<", launchParams.debug="<<launchParams.debug<<"\t";//<<std::flush;
-if (m_FParams.debug>1)std::cout<<"\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUAL=3, CPU_OFF=4, CPU_YES=5"<<std::flush;
-    AllocateBuffer ( FPOS,		sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FCLR,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FVEL,		sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FVEVAL,	sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FAGE,		sizeof(uint),       cnt,    m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FPRESS,	sizeof(float),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FDENSITY,	sizeof(float),		cnt, 	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FFORCE,	sizeof(3*float),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FCLUSTER,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FGCELL,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FGNDX,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FGNEXT,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FNBRNDX,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FNBRCNT,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FSTATE,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    // extra buffers for morphogenesis
-    AllocateBuffer ( FELASTIDX,	    sizeof(uint[BOND_DATA]),             cnt,   m_FParams.szPnts,	gpu_mode, cpu_mode ); 
-    AllocateBuffer ( FPARTICLEIDX,	sizeof(uint[BONDS_PER_PARTICLE *2]), cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FPARTICLE_ID,	sizeof(uint),		                 cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FMASS_RADIUS,	sizeof(uint),		                 cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FNERVEIDX,	    sizeof(uint),		                 cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FCONC,	        sizeof(float[NUM_TF]),		         cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FEPIGEN,	    sizeof(uint[NUM_GENES]),	         cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FCURAND_STATE,	sizeof(curandState_t),	             cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FCURAND_SEED,	sizeof(unsigned long long),	         cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
-    
-    // Update GPU access pointers
-    if (gpu_mode != GPU_OFF ) {
-        clCheck( cuMemcpyHtoD(clFBuf, &m_Fluid, sizeof(FBufs)),			"AllocateParticles", "cuMemcpyHtoD", "clFBuf", mbDebug);
-        clCheck( cuMemcpyHtoD(clFTemp, &m_FluidTemp, sizeof(FBufs)),	"AllocateParticles", "cuMemcpyHtoD", "clFTemp", mbDebug);
-        clCheck( cuMemcpyHtoD(clFParams, &m_FParams, sizeof(FParams)),  "AllocateParticles", "cuMemcpyHtoD", "clFParams", mbDebug);
-        clCheck( cuMemcpyHtoD(clFGenome, &m_FGenome, sizeof(FGenome)),  "AllocateParticles", "cuMemcpyHtoD", "clFGenome", mbDebug);
-        clCheck(clFinish(), "AllocateParticles", "clFinish", "", mbDebug );
-    }
-
-    // Allocate auxiliary buffers (prefix sums)
-    int blockSize = SCAN_BLOCKSIZE << 1;
-    int numElem1 = m_GridTotal;
-    int numElem2 = int ( numElem1 / blockSize ) + 1;
-    int numElem3 = int ( numElem2 / blockSize ) + 1;
-
-    if (gpu_mode != GPU_OFF ) {
-        AllocateBuffer ( FAUXARRAY1,	sizeof(uint),		0,	numElem2, GPU_SINGLE, CPU_OFF );
-        AllocateBuffer ( FAUXSCAN1,	    sizeof(uint),		0,	numElem2, GPU_SINGLE, CPU_OFF );
-        AllocateBuffer ( FAUXARRAY2,	sizeof(uint),		0,	numElem3, GPU_SINGLE, CPU_OFF );
-        AllocateBuffer ( FAUXSCAN2,	    sizeof(uint),		0,	numElem3, GPU_SINGLE, CPU_OFF );
-    }
-}
+// void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // calls AllocateBuffer(..) for each buffer.
+// // Defaults in header : int gpu_mode = GPU_DUAL, int cpu_mode = CPU_YES
+// // Called by FluidSystem::ReadPointsCSV(..), and FluidSystem::WriteDemoSimParams(...), cnt = mMaxPoints.
+// if (m_FParams.debug>1)std::cout<<"\n\nAllocateParticles ( int cnt="<<cnt<<", int "<<gpu_mode<<", int "<<cpu_mode<<" ), debug="<<m_FParams.debug<<", launchParams.debug="<<launchParams.debug<<"\t";//<<std::flush;
+// if (m_FParams.debug>1)std::cout<<"\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUAL=3, CPU_OFF=4, CPU_YES=5"<<std::flush;
+//     AllocateBuffer ( FPOS,		sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FCLR,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FVEL,		sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FVEVAL,	sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FAGE,		sizeof(uint),       cnt,    m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FPRESS,	sizeof(float),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FDENSITY,	sizeof(float),		cnt, 	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FFORCE,	sizeof(3*float),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FCLUSTER,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FGCELL,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FGNDX,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FGNEXT,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FNBRNDX,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FNBRCNT,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FSTATE,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     // extra buffers for morphogenesis
+//     AllocateBuffer ( FELASTIDX,	    sizeof(uint[BOND_DATA]),             cnt,   m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FPARTICLEIDX,	sizeof(uint[BONDS_PER_PARTICLE *2]), cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FPARTICLE_ID,	sizeof(uint),		                 cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FMASS_RADIUS,	sizeof(uint),		                 cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FNERVEIDX,	    sizeof(uint),		                 cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FCONC,	        sizeof(float[NUM_TF]),		         cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FEPIGEN,	    sizeof(uint[NUM_GENES]),	         cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FCURAND_STATE,	sizeof(curandState_t),	             cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//     AllocateBuffer ( FCURAND_SEED,	sizeof(unsigned long long),	         cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+//
+//     // Update GPU access pointers
+//     if (gpu_mode != GPU_OFF ) {
+//         clCheck( cuMemcpyHtoD(m_FluidDevice, &m_Fluid, sizeof(FBufs)),			"AllocateParticles", "cuMemcpyHtoD", "m_FluidDevice", mbDebug);
+//         clCheck( cuMemcpyHtoD(clFTemp, &m_FluidTemp, sizeof(FBufs)),	"AllocateParticles", "cuMemcpyHtoD", "clFTemp", mbDebug);
+//         clCheck( cuMemcpyHtoD(clFParams, &m_FParams, sizeof(FParams)),  "AllocateParticles", "cuMemcpyHtoD", "clFParams", mbDebug);
+//         clCheck( cuMemcpyHtoD(clFGenome, &m_FGenome, sizeof(FGenome)),  "AllocateParticles", "cuMemcpyHtoD", "clFGenome", mbDebug);
+//         clCheck(clFinish(), "AllocateParticles", "clFinish", "", mbDebug );
+//     }
+//
+//     // Allocate auxiliary buffers (prefix sums)
+//     int blockSize = SCAN_BLOCKSIZE << 1;
+//     int numElem1 = m_GridTotal;
+//     int numElem2 = int ( numElem1 / blockSize ) + 1;
+//     int numElem3 = int ( numElem2 / blockSize ) + 1;
+//
+//     if (gpu_mode != GPU_OFF ) {
+//         AllocateBuffer ( FAUXARRAY1,	sizeof(uint),		0,	numElem2, GPU_SINGLE, CPU_OFF );
+//         AllocateBuffer ( FAUXSCAN1,	    sizeof(uint),		0,	numElem2, GPU_SINGLE, CPU_OFF );
+//         AllocateBuffer ( FAUXARRAY2,	sizeof(uint),		0,	numElem3, GPU_SINGLE, CPU_OFF );
+//         AllocateBuffer ( FAUXSCAN2,	    sizeof(uint),		0,	numElem3, GPU_SINGLE, CPU_OFF );
+//     }
+// }
 
 void FluidSystem::AllocateBufferDenseLists ( int buf_id, int stride, cl_mem gpucnt, int lists ) {    // mallocs a buffer - called by FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode)
 // Need to save "pointers to the allocated gpu buffers" in a cpu array, AND then cuMemcpyHtoD(...) that list of pointers into the device array.   
@@ -510,7 +510,7 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
         clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES), bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES),	sizeof(uint[NUM_CHANGES]) ), "AllocateGrid", "cuMemcpyHtoD", "FDENSE_BUF_LENGTHS_CHANGES", mbDebug);
         
     
-        clCheck(cuMemcpyHtoD(clFBuf, &m_Fluid, sizeof(FBufs)), "AllocateGrid", "cuMemcpyHtoD", "clFBuf", mbDebug);  // Update GPU access pointers
+        clCheck(cuMemcpyHtoD(m_FluidDevice, &m_Fluid, sizeof(FBufs)), "AllocateGrid", "cuMemcpyHtoD", "m_FluidDevice", mbDebug);  // Update GPU access pointers
         clCheck(clFinish(), "AllocateParticles", "clFinish", "", mbDebug);
     }
 }
@@ -518,20 +518,20 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
 int FluidSystem::AddParticleMorphogenesis2 (Vector3DF* Pos, Vector3DF* Vel, uint Age, uint Clr, uint *_ElastIdxU, float *_ElastIdxF, uint *_Particle_Idx, uint Particle_ID, uint Mass_Radius, uint NerveIdx, float* _Conc, uint* _EpiGen ){  // called by :ReadPointsCSV2 (...) where :    uint Particle_Idx[BONDS_PER_PARTICLE * 2];  AND SetupAddVolumeMorphogenesis2(....)
     if ( mNumPoints >= mMaxPoints ) return -1;
     int n = mNumPoints;
-    (m_Fluid.bufV3(FPOS) + n)->Set ( Pos->x,Pos->y,Pos->z );
-    (m_Fluid.bufV3(FVEL) + n)->Set ( Vel->x,Vel->y,Vel->z );
-    (m_Fluid.bufV3(FVEVAL) + n)->Set ( 0,0,0 );
-    (m_Fluid.bufV3(FFORCE) + n)->Set ( 0,0,0 );
-    *(m_Fluid.bufF(FPRESS) + n) = 0;
-    *(m_Fluid.bufF(FDENSITY) + n) = 0;
+    (bufV3(&m_Fluid, FPOS) + n)->Set ( Pos->x,Pos->y,Pos->z );
+    (bufV3(&m_Fluid, FVEL) + n)->Set ( Vel->x,Vel->y,Vel->z );
+    (bufV3(&m_Fluid, FVEVAL) + n)->Set ( 0,0,0 );
+    (bufV3(&m_Fluid, FFORCE) + n)->Set ( 0,0,0 );
+    *(bufF(&m_Fluid, FPRESS) + n) = 0;
+    *(bufF(&m_Fluid, FDENSITY) + n) = 0;
     *(bufI(&m_Fluid, FGNEXT) + n) = -1;
     *(bufI(&m_Fluid, FCLUSTER)  + n) = -1;
-    *(m_Fluid.bufF(FSTATE) + n ) = (float) rand();
+    *(bufF(&m_Fluid, FSTATE) + n ) = (float) rand();
     *(bufI(&m_Fluid, FAGE) + n) = Age;
     *(bufI(&m_Fluid, FCLR) + n) = Clr;
-  //if (m_FParams.debug>1)printf("m_Fluid.bufV3(FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",m_Fluid.bufV3(FPOS)[n].x,m_Fluid.bufV3(FPOS)[n].y,m_Fluid.bufV3(FPOS)[n].z,Pos->x,Pos->y,Pos->z);
+  //if (m_FParams.debug>1)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
     uint* ElastIdx = (bufI(&m_Fluid, FELASTIDX) + n * BOND_DATA );
-    float* ElastIdxFlt = (m_Fluid.bufF(FELASTIDX) + n * BOND_DATA );
+    float* ElastIdxFlt = (bufF(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     for (int i = 0; i<BONDS_PER_PARTICLE;i++){
   //if (m_FParams.debug>1)printf("\t%u",_ElastIdxU[i*DATA_PER_BOND+0]);
         ElastIdx[i*DATA_PER_BOND+0] = _ElastIdxU[i*DATA_PER_BOND+0] ;
@@ -592,15 +592,15 @@ void FluidSystem::AddNullPoints (){// fills unallocated particles with null data
     Vel.x = 0; 
     Vel.y = 0; 
     Vel.z = 0;
-    Age   = UINT_MAX; // oldest active particles have lowest "age".
+    Age   = UINT_MAXSIZE; // oldest active particles have lowest "age".
     Clr   = 0; 
-    for (int j=0;j<BOND_DATA;j++)               ElastIdxU[j]     = UINT_MAX;
+    for (int j=0;j<BOND_DATA;j++)               ElastIdxU[j]     = UINT_MAXSIZE;
     ElastIdxU[8] = 0;
     for (int j=0;j<BOND_DATA;j++)               ElastIdxF[j]     = 0.0;
-    for (int j=0;j<2*BONDS_PER_PARTICLE;j++)    Particle_Idx[j] = UINT_MAX;
-    Particle_ID = UINT_MAX;
+    for (int j=0;j<2*BONDS_PER_PARTICLE;j++)    Particle_Idx[j] = UINT_MAXSIZE;
+    Particle_ID = UINT_MAXSIZE;
     Mass_Radius = 0;
-    NerveIdx    = UINT_MAX;
+    NerveIdx    = UINT_MAXSIZE;
     for (int j=0;j<NUM_TF;j++)      Conc[j]     = 0;
     for (int j=0;j<NUM_GENES;j++)   EpiGen[j]   = 0;
     
@@ -661,11 +661,11 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
                 mod_len = ( modulus <<16 | length ); // NB should mask length to prevent it exceeding 16bits, i.e. 255*255
                 
                 for (int i = 0; i<BONDS_PER_PARTICLE;i++){ 
-                    for (int j = 0; j< DATA_PER_BOND; j++){ ElastIdxU[i*DATA_PER_BOND +j] = UINT_MAX; ElastIdxF[i*DATA_PER_BOND +j] = 0; } 
+                    for (int j = 0; j< DATA_PER_BOND; j++){ ElastIdxU[i*DATA_PER_BOND +j] = UINT_MAXSIZE; ElastIdxF[i*DATA_PER_BOND +j] = 0; }
                     ElastIdxU[i*DATA_PER_BOND +8] = 0;
                 }
                 //NB #define DATA_PER_BOND 6 //6 : [0]current index, [1]elastic limit, [2]restlength, [3]modulus, [4]damping coeff, [5]particle ID, [6]bond index
-                for (int i = 0; i<BONDS_PER_PARTICLE*2;i++) { Particle_Idx[i] = UINT_MAX; }
+                for (int i = 0; i<BONDS_PER_PARTICLE*2;i++) { Particle_Idx[i] = UINT_MAXSIZE; }
                 if (Particle_ID % 10 == 0){NerveIdx = Particle_ID/10;} else {NerveIdx = 0;} // Every 10th particle has nerve connection
                 
                 // Mass & radius of particles
@@ -1251,8 +1251,8 @@ void FluidSystem::SetupExampleParams (uint spacing){
     Vector3DF min, max;
     m_Param [ PSPACING ] = spacing;
     
-    //std::cout<<"\nSetupExampleParams()1: m_Param[PEXAMPLE] = "<<m_Param[PEXAMPLE]<<"\n"<<std::flush;
-    //std::cout<<"\nSetupExampleParams()2: launchParams.genomePath = "<<launchParams.genomePath<<"\n"<<std::flush;
+    std::cout<<"\nSetupExampleParams()1: m_Param[PEXAMPLE] = "<<m_Param[PEXAMPLE]<<"\n"<<std::flush;
+    std::cout<<"\nSetupExampleParams()2: launchParams.genomePath = "<<launchParams.genomePath<<"\n"<<std::flush;
     
     switch ( (int) m_Param[PEXAMPLE] ) {
     
@@ -1542,54 +1542,54 @@ void FluidSystem::SetupExampleGenome()  {   // need to set up a demo genome
 }
 
 //////////////////////////////////////////////////////
-void FluidSystem::SetupSpacing (){
-    m_Param [ PSIMSIZE ] = m_Param [ PSIMSCALE ] * (m_Vec[PVOLMAX].z - m_Vec[PVOLMIN].z);
+// void FluidSystem::SetupSpacing (){
+//     m_Param [ PSIMSIZE ] = m_Param [ PSIMSCALE ] * (m_Vec[PVOLMAX].z - m_Vec[PVOLMIN].z);
+//
+//     if ( m_Param[PSPACING] == 0 ) {
+//         // Determine spacing from density
+//         m_Param [PDIST] = pow ( (float) m_Param[PMASS] / m_Param[PRESTDENSITY], 1/3.0f );
+//         m_Param [PSPACING] = m_Param [ PDIST ]*0.87f / m_Param[ PSIMSCALE ];
+//     } else {
+//         // Determine density from spacing
+//         m_Param [PDIST] = m_Param[PSPACING] * m_Param[PSIMSCALE] / 0.87f;
+//         m_Param [PRESTDENSITY] = m_Param[PMASS] / pow ( (float) m_Param[PDIST], 3.0f );
+//     }
+//     if (m_FParams.debug>0)printf ( "\nSetupSpacing: Density=,%f, Spacing=,%f, PDist=,%f\n\n", m_Param[PRESTDENSITY], m_Param[PSPACING], m_Param[PDIST] );
+//
+//     // Particle Boundaries
+//     m_Vec[PBOUNDMIN] = m_Vec[PVOLMIN];
+//     m_Vec[PBOUNDMIN] += 2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE]);
+//     m_Vec[PBOUNDMAX] = m_Vec[PVOLMAX];
+//     m_Vec[PBOUNDMAX] -= 2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE]);
+// }
 
-    if ( m_Param[PSPACING] == 0 ) {
-        // Determine spacing from density
-        m_Param [PDIST] = pow ( (float) m_Param[PMASS] / m_Param[PRESTDENSITY], 1/3.0f );
-        m_Param [PSPACING] = m_Param [ PDIST ]*0.87f / m_Param[ PSIMSCALE ];
-    } else {
-        // Determine density from spacing
-        m_Param [PDIST] = m_Param[PSPACING] * m_Param[PSIMSCALE] / 0.87f;
-        m_Param [PRESTDENSITY] = m_Param[PMASS] / pow ( (float) m_Param[PDIST], 3.0f );
-    }
-    if (m_FParams.debug>0)printf ( "\nSetupSpacing: Density=,%f, Spacing=,%f, PDist=,%f\n", m_Param[PRESTDENSITY], m_Param[PSPACING], m_Param[PDIST] );
-
-    // Particle Boundaries
-    m_Vec[PBOUNDMIN] = m_Vec[PVOLMIN];
-    m_Vec[PBOUNDMIN] += 2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE]);
-    m_Vec[PBOUNDMAX] = m_Vec[PVOLMAX];
-    m_Vec[PBOUNDMAX] -= 2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE]);
-}
-
-void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * relativePath, int gpu_mode, int cpu_mode
-     // Allocate buffers for points
-    //std::cout<<"\nSetupSimulation chk1, m_FParams.debug="<<m_FParams.debug<<std::flush;
-    m_Param [PNUM] = launchParams.num_particles;                             // NB there is a line of text above the particles, hence -1.
-    mMaxPoints = m_Param [PNUM];
-    m_Param [PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
-    //std::cout<<"\nSetupSimulation chk2, m_FParams.debug="<<m_FParams.debug<<std::flush;
-    
-    SetupSPH_Kernels ();
-    SetupSpacing ();
-    SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
-    //std::cout<<"\nSetupSimulation chk3, m_FParams.debug="<<m_FParams.debug<<std::flush;
-    
-    if (gpu_mode != GPU_OFF) {     // create CUDA instance etc.. 
-        FluidSetupCL ( mMaxPoints, m_GridSrch, *(int3*)& m_GridRes, *(float3*)& m_GridSize, *(float3*)& m_GridDelta, *(float3*)& m_GridMin, *(float3*)& m_GridMax, m_GridTotal, 0 );
-        UpdateParams();            //  sends simulation params to device.
-        UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
-    }
-    if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk4, mMaxPoints="<<mMaxPoints<<", gpu_mode="<<gpu_mode<<", cpu_mode="<<cpu_mode<<", m_FParams.debug="<<m_FParams.debug<<std::flush;
-    
-    AllocateParticles ( mMaxPoints, gpu_mode, cpu_mode );  // allocates only cpu buffer for particles
-    if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk5 "<<std::flush;
-    
-    AllocateGrid(gpu_mode, cpu_mode);
-    if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk6 "<<std::flush;
-    
-}
+// void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * relativePath, int gpu_mode, int cpu_mode
+//      // Allocate buffers for points
+//     //std::cout<<"\nSetupSimulation chk1, m_FParams.debug="<<m_FParams.debug<<std::flush;
+//     m_Param [PNUM] = launchParams.num_particles;                             // NB there is a line of text above the particles, hence -1.
+//     mMaxPoints = m_Param [PNUM];
+//     m_Param [PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
+//     //std::cout<<"\nSetupSimulation chk2, m_FParams.debug="<<m_FParams.debug<<std::flush;
+//
+//     SetupSPH_Kernels ();
+//     SetupSpacing ();
+//     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
+//     //std::cout<<"\nSetupSimulation chk3, m_FParams.debug="<<m_FParams.debug<<std::flush;
+//
+//     if (gpu_mode != GPU_OFF) {     // create CUDA instance etc..
+//         FluidSetupCL ( mMaxPoints, m_GridSrch, *(int3*)& m_GridRes, *(float3*)& m_GridSize, *(float3*)& m_GridDelta, *(float3*)& m_GridMin, *(float3*)& m_GridMax, m_GridTotal, 0 );
+//         UpdateParams();            //  sends simulation params to device.
+//         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
+//     }
+//     if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk4, mMaxPoints="<<mMaxPoints<<", gpu_mode="<<gpu_mode<<", cpu_mode="<<cpu_mode<<", m_FParams.debug="<<m_FParams.debug<<std::flush;
+//
+//     AllocateParticles ( mMaxPoints, gpu_mode, cpu_mode );  // allocates only cpu buffer for particles
+//     if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk5 "<<std::flush;
+//
+//     AllocateGrid(gpu_mode, cpu_mode);
+//     if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk6 "<<std::flush;
+//
+// }
 
 void FluidSystem::RunSimulation (){
     //std::cout<<"\nRunSimulation chk1 "<<std::flush;

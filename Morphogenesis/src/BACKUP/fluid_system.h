@@ -149,7 +149,7 @@
     #define FUNC_FIXED                      33
     #define FUNC_CLEAN_BONDS                34
 
-    #define FUNC_INIT_FCURAND_STATE         36
+    #define FUNC_INIT_RANDOMCL         36
     #define FUNC_COUNTING_SORT_EPIGEN       37
 
     #define	FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING     38
@@ -189,13 +189,13 @@
 		int NumPoints ()				{ return mNumPoints; }
 		int MaxPoints ()                { return mMaxPoints; }
 		int ActivePoints ()             { return mActivePoints; }
-		Vector3DF* getPos ( int n )	    { return &m_Fluid.bufV3(FPOS)[n]; }
-		Vector3DF* getVel ( int n )	    { return &m_Fluid.bufV3(FVEL)[n]; }
-		Vector3DF* getVeval ( int n )   { return &m_Fluid.bufV3(FVEVAL)[n]; }
-		Vector3DF* getForce ( int n )   { return &m_Fluid.bufV3(FFORCE)[n]; }
+		Vector3DF* getPos ( int n )	    { return &bufV3(&m_Fluid, FPOS)[n]; }
+		Vector3DF* getVel ( int n )	    { return &bufV3(&m_Fluid, FVEL)[n]; }
+		Vector3DF* getVeval ( int n )   { return &bufV3(&m_Fluid, FVEVAL)[n]; }
+		Vector3DF* getForce ( int n )   { return &bufV3(&m_Fluid, FFORCE)[n]; }
 		
-		float* getPres ( int n )        { return &m_Fluid.bufF(FPRESS)[n];} 
-		float* getDensity ( int n )     { return &m_Fluid.bufF(FDENSITY)[n];} 
+		float* getPres ( int n )        { return &bufF(&m_Fluid, FPRESS)[n];} 
+		float* getDensity ( int n )     { return &bufF(&m_Fluid, FDENSITY)[n];} 
 		
 		uint* getAge ( int n )			{ return &bufI(&m_Fluid, FAGE)[n]; }
 		uint* getClr ( int n )			{ return &bufI(&m_Fluid, FCLR)[n]; }
@@ -204,7 +204,7 @@
         uint* getParticle_ID(int n )    { return &bufI(&m_Fluid, FPARTICLE_ID)[n]; }
         uint* getMass_Radius(int n )    { return &bufI(&m_Fluid, FMASS_RADIUS)[n]; }
         uint* getNerveIdx( int n )      { return &bufI(&m_Fluid, FNERVEIDX)[n]; }              //#define FNERVEIDX        15    //# uint
-        float* getConc(int tf)          { return &m_Fluid.bufF(FCONC)[tf*mMaxPoints];}       //note #define FCONC       16    //# float[NUM_TF]        NUM_TF = num transcription factors & morphogens
+        float* getConc(int tf)          { return &bufF(&m_Fluid, FCONC)[tf*mMaxPoints];}       //note #define FCONC       16    //# float[NUM_TF]        NUM_TF = num transcription factors & morphogens
         uint* getEpiGen(int gene)       { return &bufI(&m_Fluid, FEPIGEN)[gene*mMaxPoints];}   //note #define FEPIGEN     17    //# uint[NUM_GENES] // used in savePoints... 
                                                                                              //NB int mMaxPoints is set even if FluidSetupCL(..) isn't called, e.g. in makedemo ..
 		// Setup
@@ -400,7 +400,7 @@
 		m_Kern [FUNC_WEAKEN_TISSUE] = clCreateKernel(program, "weaken_tissue", ret);
 		m_Kern [FUNC_EXTERNAL_ACTUATION] = clCreateKernel(program, "externalActuation", ret);
 		m_Kern [FUNC_FIXED] = clCreateKernel(program, "fixedParticles", ret);
-		m_Kern [FUNC_INIT_FCURAND_STATE] = clCreateKernel(program, "initialize_FCURAND_STATE", ret);
+		m_Kern [FUNC_INIT_RANDOMCL] = clCreateKernel(program, "initialize_FCURAND_STATE", ret);
 		m_Kern [FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = clCreateKernel(program, "assembleMuscleFibresOutGoing", ret);
 		m_Kern [FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = clCreateKernel(program, "assembleMuscleFibresInComing", ret);
 		m_Kern [FUNC_INITIALIZE_BONDS] = clCreateKernel(program, "initialize_bonds", ret);
@@ -426,11 +426,11 @@
 		FParams					m_FParams;				// Fluid parameters struct - that apply to all particles 
 		FGenome					m_FGenome;				// Genome struct of arrays for genne params
 /*
-		cl_mem				clFBuf;					// GPU pointer containers
+		cl_mem				m_FluidDevice;					// GPU pointer containers
 		cl_mem				clFTemp;
 		cl_mem				clFParams;
 		cl_mem				clFGenome;
-		cl_device_idptr				clFBuf;					// GPU pointer containers
+		cl_device_idptr				m_FluidDevice;					// GPU pointer containers
 		cl_device_idptr				clFTemp;
 		cl_device_idptr				clFParams;
 		cl_device_idptr				clFGenome;*/

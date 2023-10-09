@@ -72,7 +72,7 @@
 // 	#define FUNC_FIXED                      33
 // 	#define FUNC_CLEAN_BONDS                34
 //
-// 	#define FUNC_INIT_FCURAND_STATE         36
+// 	#define FUNC_INIT_RANDOMCL         36
 // 	#define FUNC_COUNTING_SORT_EPIGEN       37
 //
 // 	#define	FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING     38
@@ -243,7 +243,7 @@
 // 		m_Kern[FUNC_WEAKEN_TISSUE] = clCreateKernel(m_program, "weaken_tissue", NULL);
 // 		m_Kern[FUNC_EXTERNAL_ACTUATION] = clCreateKernel(m_program, "externalActuation", NULL);
 // 		m_Kern[FUNC_FIXED] = clCreateKernel(m_program, "fixedParticles", NULL);
-// 		m_Kern[FUNC_INIT_FCURAND_STATE] = clCreateKernel(m_program, "initialize_FCURAND_STATE", NULL);
+// 		m_Kern[FUNC_INIT_RANDOMCL] = clCreateKernel(m_program, "initialize_FCURAND_STATE", NULL);
 // 		m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
 // 		m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
 // 		m_Kern[FUNC_INITIALIZE_BONDS] = clCreateKernel(m_program, "initialize_bonds", NULL);

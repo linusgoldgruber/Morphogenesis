@@ -83,8 +83,8 @@ std::cout <<"\nchk load_sim_0.3\n"<<std::flush;
     fluid.SetDebug ( debug );
     fluid.InitializeOpenCL();
 
-    size_t global_work_size = numBlocks * numThreads;
-    size_t local_work_size = numThreads;
+    size_t global_work_size = numGroups * numItems;
+    size_t local_work_size = numItems;
 
 std::cout <<"\nchk load_sim_0.2\n"<<std::flush;
     

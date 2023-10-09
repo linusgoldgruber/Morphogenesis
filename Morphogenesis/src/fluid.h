@@ -20,9 +20,20 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
+
 #ifndef DEF_FLUID
 	#define DEF_FLUID
-	
+
+    float3 make_float3(float x, float y, float z)
+    {
+        float3 t; t.x = x; t.y = y; t.z = z; return t;
+    }
+
+    int3 make_int3(int x, int y, int z)
+    {
+        int3 t; t.x = x; t.y = y; t.z = z; return t;
+    }
+
 	//#include <cuda.h>
     //#include <CL/opencl.h>
     //#include <CL/cl.h>
@@ -32,8 +43,9 @@
     #include "masks.h"
     //#include <../cuda-11.2/targets/x86_64-linux/include/curand_kernel.h>
     //#include <curand_kernel.h>
-    #include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
     //#include <CL/cl.h>
+    #include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
+
 
 	typedef	unsigned int		uint;
 	typedef	unsigned short int	ushort;
@@ -122,71 +134,73 @@
     // 4M/card =  1,600,000,000, max Bracewell, => 1,169 particles per side of cube.
 
     //                                  bits    4*96 + 2*32 + 8*16 = 576bits/particle : fluid only
-	#define FPOS		0		//# 3DF   96  particle buffers //list of meaninful defines for the array of pointers in FBufs below.
-	#define FVEL		1       //# 3DF        velocity
-	#define FVEVAL		2       //# 3DF        half step in velocity - used in numerical integration
-	#define FFORCE		3       //# 3DF        force 
-	#define FPRESS		4       //# F      32  pressure
-	#define FDENSITY	5       //# F          density
-	#define FAGE		6       //# Ushort 16  particle age. 
-	#define FCLR		7       //# uint   16  colour
-	#define FGCELL		8       //# uint       grid cell
-	#define FGNDX		9       //# uint       grid index
-	#define FGNEXT		10      //# uint
-	#define FNBRNDX		11		//# uint       particle neighbors index (optional)
-	#define FNBRCNT		12      //# uint       particle neighbors count
-	#define FCLUSTER	13	    //# uint
+	#define FPOS		                 0		//# 3DF   96  particle buffers //list of meaninful defines for the array of pointers in FBufs below.
+	#define FVEL		                 1       //# 3DF        velocity
+	#define FVEVAL		                 2       //# 3DF        half step in velocity - used in numerical integration
+	#define FFORCE		                 3       //# 3DF        force
+	#define FPRESS		                 4       //# F      32  pressure
+	#define FDENSITY	                 5       //# F          density
+	#define FAGE		                 6       //# Ushort 16  particle age.
+	#define FCLR		                 7       //# uint   16  colour
+	#define FGCELL		                 8       //# uint       grid cell
+	#define FGNDX		                 9       //# uint       grid index
+	#define FGNEXT		                10      //# uint
+	#define FNBRNDX		                11		//# uint       particle neighbors index (optional)
+	#define FNBRCNT		                12      //# uint       particle neighbors count
+	#define FCLUSTER	                13	    //# uint
 
     // additional buffers for morphogenesis   
-    #define FELASTIDX   14      //# currently [0]current index, [1]elastic limit, [2]restlength, [3]modulus, [4]damping coeff, [5]particle ID, [6]bond index [7]stress integrator [8]change-type binary indicator
-	enum {/*0*/current_index, /*1*/elastic_limit, /*2*/rest_length, /*3*/modulus, /*4*/damping_coeff, /*5*/particle_ID, /*6 bond_index*/ strain_sq_integrator, /*7*/strain_integrator, /*8*/change_type};//FELASTIDX    
-                                //old : BOND_DATA = BONDS_PER_PARTICLE*3 = 12 //uint[BONDS_PER_PARTICLE * 2 = 8 ]  particleID, modulus, elastic limit    
-                                /* old old : 0=self UID, mass, radius. >0= modulus & particle UID */
-    #define FPARTICLEIDX 29    //# uint[BONDS_PER_PARTICLE *2]  list of other particles' bonds connecting to this particle AND their indices // NB risk of overwriting race condition, when making bonds.   
-    #define FPARTICLE_ID 30     //# uint original pnum, used for bonds between particles. 32bit, track upto 4Bn particles.
-    #define FMASS_RADIUS 31     //# uint holding modulus 16bit and limit 16bit.      
-    //#define FELASTMOD         //# uint[BONDS_PER_PARTICLE +1]  modulus of bond (use a standard length) //not required
-    #define FNERVEIDX   15      //# uint
-    #define FCONC       16      //# float[NUM_TF]        NUM_TF = num transcription factors & morphogens
-    #define FEPIGEN     17      //# uint[NUM_GENES]  holds epigenetic state. if cast as int, let -ve values indicate inactive or silenced genes.
-                                // NB if data is ordered FEPIGEN[gene][particle], then contiguious read writes by synchronous kernels are favoured. 
+    #define FELASTIDX                   14      //# currently [0]current index, [1]elastic limit, [2]restlength, [3]modulus, [4]damping coeff, [5]particle ID, [6]bond index [7]stress integrator [8]change-type binary indicator
+	enum                                       {/*0*/current_index, /*1*/elastic_limit, /*2*/rest_length, /*3*/modulus, /*4*/damping_coeff, /*5*/particle_ID, /*6 bond_index*/ strain_sq_integrator, /*7*/strain_integrator, /*8*/change_type};//FELASTIDX
+                                                //old : BOND_DATA = BONDS_PER_PARTICLE*3 = 12 //uint[BONDS_PER_PARTICLE * 2 = 8 ]  particleID, modulus, elastic limit
+                                                /* old old : 0=self UID, mass, radius. >0= modulus & particle UID */
 
-// additional buffers for dense lists  
-    #define INITIAL_BUFFSIZE_ACTIVE_GENES 1024    // initial buffer size for densely packed lists    
-                                            // NB NUM_BINS is m_GridTotal computed in FluidSystem::SetupGrid()
-                                            // NB The FGRID* buffers are set up in FluidSystem::AllocateGrid()
-    #define FGRIDCNT_ACTIVE_GENES    32  //# uint[NUM_BINS][NUM_GENES]  for each bin, for each gene, num active particles
-    #define FGRIDOFF_ACTIVE_GENES    33  //# uint[NUM_BINS][NUM_GENES]  For each bin, for each gene, the offset of the bin in the gene's dense array.
-    #define FDENSE_LIST_LENGTHS      34  //# uint[NUM_GENES]  for each gene the length of its dense list, i.e. num active particles for that gene.
-    #define FDENSE_LISTS             35  //# *uint[NUM_GENES]   where each points to uint[FNUM_ACTIVE_GENES[gene]]
-                                            // In AllocateParticles(...) AllocateBuffer initial size 1024 for each gene.
-                                            // Each timestep, before CountingSortFull(...) need to check size & enlarge if needed.
-                                            // NB need to AllocateBuffer, _if_ (new size is > old size) 
-                                            // enlarge in quadruplings, starting with 1024 particles. 
-                                            // VNB need to modify cleanup at exit.
-    #define FDENSE_BUF_LENGTHS       36  //# uint[NUM_GENES] holds length of currently allocated buffer.
+    //#define FELASTMOD         //# uint[BONDS_PER_PARTICLE +1]  modulus of bond (use a standard length) //not required
+    #define FNERVEIDX                   15      //# uint
+    #define FCONC                       16      //# float[NUM_TF]        NUM_TF = num transcription factors & morphogens
+    #define FEPIGEN                     17      //# uint[NUM_GENES]  holds epigenetic state. if cast as int, let -ve values indicate inactive or silenced genes.
+                                // NB if data is ordered FEPIGEN[gene][particle], then contiguious read writes by synchronous kernels are favoured. 
     
 // original buffers continued    
-	#define FGRID		18		//!         uniform acceleration grid : the bin to which a particle belongs
-	#define FGRIDCNT	19      //!         grid count                : array holding num particles in each bin
-	#define	FGRIDOFF	20      //!         grid offset               : array holding the offset of each bin
-	#define FGRIDACT	21      //! ?? not used ??
-	#define FSTATE		22      //# uint 
-	//#define FBRICK		23      //!            #Not used
-	#define FPARAMS		24		//! fluid parameters
-	#define FAUXARRAY1	25		//! auxiliary arrays (prefix sums)
-	#define FAUXSCAN1   26		//!
-	#define FAUXARRAY2	27		//!
-	#define FAUXSCAN2	28		//!
+	#define FGRID		                18		//!         uniform acceleration grid : the bin to which a particle belongs
+	#define FGRIDCNT	                19      //!         grid count                : array holding num particles in each bin
+	#define	FGRIDOFF	                20      //!         grid offset               : array holding the offset of each bin
+	#define FGRIDACT	                21      //! ?? not used ??
+	#define FSTATE		                22      //# uint
+	//#define FBRICK		            23      //!            #Not used
+	#define FPARAMS		                24		//! fluid parameters
+	#define FAUXARRAY1	                25		//! auxiliary arrays (prefix sums)
+	#define FAUXSCAN1                   26		//!
+	#define FAUXARRAY2	                27		//!
+	#define FAUXSCAN2	                28		//!
+
+    #define FPARTICLEIDX                29    //# uint[BONDS_PER_PARTICLE *2]  list of other particles' bonds connecting to this particle AND their indices // NB risk of overwriting race condition, when making bonds.
+    #define FPARTICLE_ID                30     //# uint original pnum, used for bonds between particles. 32bit, track upto 4Bn particles.
+    #define FMASS_RADIUS                31     //# uint holding modulus 16bit and limit 16bit.
+
+	// additional buffers for dense lists
+    #define INITIAL_BUFFSIZE_ACTIVE_GENES 1024    // initial buffer size for densely packed lists
+                                            // NB NUM_BINS is m_GridTotal computed in FluidSystem::SetupGrid()
+                                            // NB The FGRID* buffers are set up in FluidSystem::AllocateGrid()
+    #define FGRIDCNT_ACTIVE_GENES       32  //# uint[NUM_BINS][NUM_GENES]  for each bin, for each gene, num active particles
+    #define FGRIDOFF_ACTIVE_GENES       33  //# uint[NUM_BINS][NUM_GENES]  For each bin, for each gene, the offset of the bin in the gene's dense array.
+    #define FDENSE_LIST_LENGTHS         34  //# uint[NUM_GENES]  for each gene the length of its dense list, i.e. num active particles for that gene.
+    #define FDENSE_LISTS                35  //# *uint[NUM_GENES]   where each points to uint[FNUM_ACTIVE_GENES[gene]]
+                                            // In AllocateParticles(...) AllocateBuffer initial size 1024 for each gene.
+                                            // Each timestep, before CountingSortFull(...) need to check size & enlarge if needed.
+                                            // NB need to AllocateBuffer, _if_ (new size is > old size)
+                                            // enlarge in quadruplings, starting with 1024 particles.
+                                            // VNB need to modify cleanup at exit.
+    #define FDENSE_BUF_LENGTHS          36  //# uint[NUM_GENES] holds length of currently allocated buffer.
 	
-    #define FGRIDCNT_CHANGES            38     // for packing lists for particle change kenels
     #define FGRIDOFF_CHANGES            37
+    #define FGRIDCNT_CHANGES            38     // for packing lists for particle change kenels
     #define FDENSE_LIST_LENGTHS_CHANGES 39
     #define FDENSE_LISTS_CHANGES        40     //# *uint [NUM_CHANGES] holds pointers to change_list buffers [2][list_length] holding : particleIDx and bondIDx TODO edit buffer allocation & use  
     #define FDENSE_BUF_LENGTHS_CHANGES  41
 	
-    #define FCURAND_STATE 42
-    #define FCURAND_SEED 43
+    #define FCURAND_STATE               42
+    #define FCURAND_SEED                43
 	
 	#define MAX_BUF		                44
     
@@ -243,7 +257,7 @@
 	struct FParams {
 
         uint            debug;
-		int				numThreads, numBlocks, threadsPerBlock;
+		int				numItems, numGroups, itemsPerGroup;
 		int				gridThreads, gridBlocks;
 		int				szPnts, szGrid;
 		int				stride, pnum, pnumActive, maxPoints;
