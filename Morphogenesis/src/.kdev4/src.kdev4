@@ -66,7 +66,7 @@ parserArgumentsOpenCL=-ferror-limit=100 -fspell-checking -Wdocumentation -Wunuse
 Name=GCC
 
 [Launch]
-Launch Configurations=Launch Configuration 0,Launch Configuration 1,Launch Configuration 2
+Launch Configurations=Launch Configuration 0,Launch Configuration 1,Launch Configuration 2,Launch Configuration 3,Launch Configuration 4
 
 [Launch][Launch Configuration 0]
 Configured Launch Modes=execute
@@ -121,6 +121,44 @@ Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphoge
 External Terminal=konsole --noclose --workdir %workdir -e %exe
 Kill Before Executing Again=4194304
 Project Target=src,CreateDemo
+Use External Terminal=false
+Working Directory=
+isExecutable=true
+
+[Launch][Launch Configuration 3]
+Configured Launch Modes=execute
+Configured Launchers=nativeAppLauncher
+Name=check_demo
+Type=Native Application
+
+[Launch][Launch Configuration 3][Data]
+Arguments=/home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out
+Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
+Dependency Action=Nothing
+EnvironmentGroup=
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/check_demo
+External Terminal=konsole --noclose --workdir %workdir -e %exe
+Kill Before Executing Again=4194304
+Project Target=src,check_demo
+Use External Terminal=false
+Working Directory=
+isExecutable=true
+
+[Launch][Launch Configuration 4]
+Configured Launch Modes=execute
+Configured Launchers=nativeAppLauncher
+Name=make_demo
+Type=Native Application
+
+[Launch][Launch Configuration 4][Data]
+Arguments=125 1  6 6 6  0 5  /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out
+Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
+Dependency Action=Nothing
+EnvironmentGroup=
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/make_demo
+External Terminal=konsole --noclose --workdir %workdir -e %exe
+Kill Before Executing Again=4194304
+Project Target=src,make_demo
 Use External Terminal=false
 Working Directory=
 isExecutable=true

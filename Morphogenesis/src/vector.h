@@ -1083,6 +1083,10 @@
 		// do nothing
 	}
 
+	void printVector3DF(const Vector3DF* vector) {
+		printf("(%lf, %lf, %lf)", vector->x, vector->y, vector->z);
+	}
+
 	Vector3DF Vector3DF_init_with_values(float xa, float ya, float za) {
 		Vector3DF v;
 		v.x = xa;

@@ -88,7 +88,7 @@ int main ( int argc, const char** argv )
         printf ( "simSpace = %u, (0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
             6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n\n", simSpace );
     }
-        // Initialize
+    // Initialize
     Json::Reader reader;
     Json::Value obj_;
     Json::Value obj;

@@ -1,25 +1,46 @@
+#define __CL_ENABLE_EXCEPTIONS
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_TARGET_OPENCL_VERSION 300
+#define SDK_SUCCESS 0
+#define SDK_FAILURE 1
 
-// Fluid System
 #include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <vector_types.h>
 #include <inttypes.h>
 #include <errno.h>
-#include <string.h>
-
+#include <math.h>
+#include <regex>
+#include <jsoncpp/json/json.h>
+#define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
+#include "fluid.h"
 #include "fluid_system.h"
+#include "host_CL.cpp"
+#include <CL/cl.h>
+#include <CL/opencl.h>
+#include <chrono>
+#include <filesystem>
 
 typedef	unsigned int		uint;	
 
 int main ( int argc, const char** argv ) 
 {
     uint num_particles, demoType, simSpace;
+    char input_folder[256];
+    char output_folder[256];
     float spacing, x_dim, y_dim, z_dim;
-    if ( argc != 8 && argc !=1 ) {
+
+
+    if ( argc != 10 && argc !=1 ) {
         printf ( "usage: make_demo num_particles spacing x_dim y_dim z_dim \n \
         demoType(0:free falling, 1: remodelling & actuation, 2: diffusion & epigenetics.) \n \
         simSpace(0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
             6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n" );
         return 0;
-    } else if (argc == 8) {
+    } else if (argc == 10) {
         num_particles = atoi(argv[1]);
         printf ( "num_particles = %u\n", num_particles );
         
@@ -41,6 +62,13 @@ int main ( int argc, const char** argv )
         simSpace = atof(argv[7]);
         printf ( "simSpace = %u, (0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
             6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n\n", simSpace);
+
+        sprintf ( input_folder, "%s", argv[8] );
+
+        sprintf ( output_folder, "%s", argv[9] );
+
+        printf ( "input_folder = %s ,\noutput_folder = %s\n", input_folder, output_folder );
+
     }  else {
         num_particles = 4000;
         printf ( "num_particles = %u\n", num_particles );
@@ -66,9 +94,18 @@ int main ( int argc, const char** argv )
     }
     
     uint debug = 2;  // same values as in load_sim and in specification_file.txt .
-    FluidSystem fluid;
+
+    // Initialize
+    Json::Reader reader;
+    Json::Value obj_;
+    Json::Value obj;
+    obj["verbosity"] = 1;
+    obj["opencl_platform"] = 0;
+    obj["opencl_device"] = 0;
+    obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
+    FluidSystem fluid(obj);
     
-    fluid.WriteDemoSimParams("./demo", GPU_OFF, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/ 
+    fluid.WriteDemoSimParams("./demo", GPU_OFF, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/
     
     if(argc !=1){                                           // i.e not relying on defaults in simspace 8
     fluid.launchParams.num_particles    = num_particles;    // Write default values to fluid.launchParams...
@@ -103,6 +140,6 @@ int main ( int argc, const char** argv )
     
     fluid.WriteExampleSpecificationFile("./demo");
     printf("\nmake_demo finished.\n");
-    fluid.Exit_no_CL ();	
+    //fluid.Exit_no_CL ();
     return 0;
 }

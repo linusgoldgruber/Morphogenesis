@@ -38,9 +38,9 @@
 			[
 				{
 					"directoryIndex" : 0,
-					"id" : "CreateDemo::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-CreateDemo-Debug-bae8145174d38108f0f9.json",
-					"name" : "CreateDemo",
+					"id" : "check_demo::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-check_demo-Debug-e7685ef27ecef6ee9c05.json",
+					"name" : "check_demo",
 					"projectIndex" : 0
 				}
 			]

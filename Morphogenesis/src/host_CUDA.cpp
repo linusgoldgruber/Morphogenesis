@@ -391,7 +391,7 @@ void FluidSystem::PrefixSumCellsCL ( int zero_offsets ){
     for(int gene=0;gene<NUM_GENES;gene++){                                          // Note this calculation could be done by a kernel, 
       //if (m_FParams.debug>1) cout<<"\nPrefixSumCellsCL()2:gene="<<gene<<", densebuff_len["<<gene<<"]="<<densebuff_len[gene]<<", denselist_len["<<gene<<"]="<<denselist_len[gene]<<" \t"<<std::flush;
         if (denselist_len[gene] > densebuff_len[gene]) {                            // write pointer and size to FDENSE_LISTS and FDENSE_LIST_LENGTHS 
-            if (m_FParams.debug>1)printf("\n\nPrefixSumCellsCL: enlarging densebuff_len[%u],  m_Fluid.gpuptr(FDENSE_LIST_LENGTHS)[gene]=%llu .\t",gene, m_Fluid.gpuptr(FDENSE_LIST_LENGTHS)[gene] );
+            if (m_FParams.debug>1)printf("\n\nPrefixSumCellsCL: enlarging densebuff_len[%u],  gpuptr(&m_Fluid, FDENSE_LIST_LENGTHS)[gene]=%llu .\t",gene, gpuptr(&m_Fluid, FDENSE_LIST_LENGTHS)[gene] );
             while(denselist_len[gene] >  densebuff_len[gene]) densebuff_len[gene] *=4;                  // bufI(&m_Fluid, FDENSE_BUF_LENGTHS)[i]
             AllocateBufferDenseLists( gene, sizeof(uint), bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene], FDENSE_LISTS );   // NB frees previous buffer &=> clears data
         }

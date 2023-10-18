@@ -14,9 +14,7 @@
 
 
 
-int iDivUp (int a, int b) {
-    return (a % b != 0) ? (a / b + 1) : (a / b);
-}
+
 
 cl_int FluidSystem::clMemsetD32(cl_mem buffer, int value, size_t count) {
     cl_int err;
@@ -37,11 +35,6 @@ cl_int FluidSystem::clMemsetD32(cl_mem buffer, int value, size_t count) {
     clReleaseKernel(m_Kern[FUNC_MEMSET32D]);
 
     return CL_SUCCESS;
-}
-
-void computeNumBlocks (int numPnts, int minThreads, int &numGroups, int &numItems){
-    numItems = min( minThreads, numPnts );
-    numGroups = (numItems==0) ? 1 : iDivUp ( numPnts, numItems );
 }
 
 void FluidSystem::TransferToTempCL ( int buf_id, int sz ){

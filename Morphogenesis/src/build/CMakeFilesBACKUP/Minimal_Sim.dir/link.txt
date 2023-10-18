@@ -1,0 +1,1 @@
+/usr/bin/gcc -lOpenCL -I /usr/lib/gcc/x86_64-linux-gnu/11/include -g CMakeFiles/Minimal_Sim.dir/minimal_sim.cpp.o -o Minimal_Sim  /usr/lib/x86_64-linux-gnu/libOpenCL.so -ljsoncpp -lstdc++ 

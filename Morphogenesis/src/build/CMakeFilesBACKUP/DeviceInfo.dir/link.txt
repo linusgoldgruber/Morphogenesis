@@ -1,0 +1,1 @@
+/usr/bin/gcc -lOpenCL -I /usr/lib/gcc/x86_64-linux-gnu/11/include -g CMakeFiles/DeviceInfo.dir/DeviceInfo.cpp.o -o DeviceInfo  /usr/lib/x86_64-linux-gnu/libOpenCL.so -ljsoncpp -lstdc++ 

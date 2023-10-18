@@ -1,3 +1,4 @@
+#include <stdio.h>
 
 // ** NOTES **
 // Vector code CANNOT be inlined in header file because of dependencies
@@ -85,6 +86,7 @@
 	//class MatrixF;
 	//class Matrix4F;
 
+	void printVector3DF(const Vector3DF* vector)
 
 		// Constructors/Destructors
 		inline Vector3DI();

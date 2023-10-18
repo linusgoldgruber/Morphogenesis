@@ -372,20 +372,20 @@ void FluidSystem::InitializeOpenCL()
                                                                             if(verbosity>0) cout << "-----InitializeOpenCL() finished-----\n\n" << flush;
 }
 
-void FluidSystem::CleanUp()
-{
-																																			cout<<"\nFluidSystem::CleanUp_chk0"<<flush;
-	cl_int status;
-	status = clReleaseMemObject(m_FParamDevice);	if (status != CL_SUCCESS)	{ cout << "\nbasemem  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>0) cout<<"\nFluidSystem::CleanUp_chk0.1"<<flush;
-	status = clReleaseMemObject(m_FluidDevice);	    if (status != CL_SUCCESS)	{ cout << "\nimgmem   status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>0) cout<<"\nFluidSystem::CleanUp_chk0.2"<<flush;
-	status = clReleaseMemObject(m_FluidTempDevice);	if (status != CL_SUCCESS)	{ cout << "\ncdatabuf status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>0) cout<<"\nFluidSystem::CleanUp_chk0.3"<<flush;
-	status = clReleaseMemObject(m_FGenomeDevice);	if (status != CL_SUCCESS)	{ cout << "\nhdatabuf status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>0) cout<<"\nFluidSystem::CleanUp_chk0.4"<<flush;
-																																			cout<<"\nFluidSystem::CleanUp_chk1_finished"<<flush;
-}
+// void FluidSystem::CleanUp()
+// {
+// 																																			cout<<"\nFluidSystem::CleanUp_chk0"<<flush;
+// 	cl_int status;
+// 	status = clReleaseMemObject(m_FParamDevice);	if (status != CL_SUCCESS)	{ cout << "\nbasemem  status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>0) cout<<"\nFluidSystem::CleanUp_chk0.1"<<flush;
+// 	status = clReleaseMemObject(m_FluidDevice);	    if (status != CL_SUCCESS)	{ cout << "\nimgmem   status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>0) cout<<"\nFluidSystem::CleanUp_chk0.2"<<flush;
+// 	status = clReleaseMemObject(m_FluidTempDevice);	if (status != CL_SUCCESS)	{ cout << "\ncdatabuf status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>0) cout<<"\nFluidSystem::CleanUp_chk0.3"<<flush;
+// 	status = clReleaseMemObject(m_FGenomeDevice);	if (status != CL_SUCCESS)	{ cout << "\nhdatabuf status = " << checkerror(status) <<"\n"<<flush; }		if(verbosity>0) cout<<"\nFluidSystem::CleanUp_chk0.4"<<flush;
+// 																																			cout<<"\nFluidSystem::CleanUp_chk1_finished"<<flush;
+// }
 
 void FluidSystem::exit_(cl_int res)
 {
-	CleanUp();
+	//CleanUp();
 	//~RunCL(); Never need to call a destructor manually.
 	exit(res);
 }
@@ -415,7 +415,7 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
     if (m_FParams.debug>1)std::cout << "Chk1.4 \n";
 
     // Allocate the sim parameters CUCLCUCL
-    AllocateBuffer ( FPARAMS,		sizeof(FParams),	0,	1,	 GPU_OFF,     CPU_YES );//AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
+    AllocateBuffer ( FPARAMS,		sizeof(FParams),	0,	1,	 GPU_OFF,     CPU_YES ); //AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
 
     if (m_FParams.debug>1)std::cout << "Chk1.6 \n";
 
@@ -539,50 +539,124 @@ void FluidSystem::SetVec (int p, Vector3DF v ){
     UpdateParams ();
 }
 
-void FluidSystem::AllocateBuffer ( int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode ){   // mallocs a buffer - called by FluidSystem::Initialize(), AllocateParticles, and AllocateGrid()
-//also called by WriteDemoSimParams(..)
-    cl_int err;
+// void FluidSystem::AllocateBuffer ( int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode ){   // mallocs a buffer - called by FluidSystem::Initialize(), AllocateParticles, and AllocateGrid()
+// //also called by WriteDemoSimParams(..)
+//     cl_int err;
+//     bool rtn = true;
+//     if (verbosity>0)std::cout<<"\nAllocateBuffer ( int buf_id="<<buf_id<<", int stride="<<stride<<", int cpucnt="<<cpucnt<<", int gpucnt="<<gpucnt<<", int "<<gpumode<<", int "<<cpumode<<" )\t"<<std::flush;
+//     if (cpumode == CPU_YES) {
+//         char* src_buf  = bufC(&m_Fluid, buf_id);
+//         char* dest_buf = (char*) malloc(cpucnt*stride); //  ####  malloc the buffer   ####
+//         if (src_buf != nullptr) {
+// //             memcpy(dest_buf, src_buf, cpucnt*stride);
+// //             free(src_buf);
+//
+//             // Test code: Write sample data to the buffer
+//             const char* sampleData = "Sample Data";  // Replace with your test data
+//             strncpy(dest_buf, sampleData, strlen(sampleData));
+//
+//             // Original memcpy operation
+//             memcpy(dest_buf + strlen(sampleData), src_buf + strlen(sampleData), cpucnt * stride - strlen(sampleData));
+//
+//             // Free the original source buffer
+//             free(src_buf);
+//
+//         }
+//         setBuf(&m_Fluid, buf_id, dest_buf); // stores pointer to buffer in mcpu[buf_id]
+//         //if(buf_id ==19) {cout << "\n\n FGRIDCNT-Buffer (debugging): ";};
+// }
+//
+//     if(gpumode == GPU_SINGLE || gpumode == GPU_DUAL || gpumode == GPU_TEMP){
+//         cl_int err;
+//         cl_ulong free1, free2, total;
+//         clGetDeviceInfo(m_device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
+//         //if (m_FParams.debug>1)printf("\nOpenCL Memory: free=%lu, total=%lu.\t",free1,total);
+//
+//         if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL )    {
+//             if (gpuptr(&m_Fluid, buf_id) != 0x0)            clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject", "Fluid.gpu", mbDebug);
+//                                                             cl_int err;
+//                                                             setGpuBuf(&m_Fluid, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
+//                                                                                             if(verbosity>0) cout << checkerror(err)  << stride*gpucnt << "\n" << flush;
+//
+//
+//             if (m_FParams.debug>1)                          std::cout<<"\t\t gpuptr(&m_Fluid, "<<buf_id<<")'"<<gpuptr(&m_Fluid, buf_id)<<",   gpuVar(&m_Fluid, "<<buf_id<<")="<<gpuVar(&m_Fluid, buf_id)<<"\t"<<std::flush;
+//             //if(err != CL_SUCCESS)                           FluidSystem::Exit();
+//         }
+//
+//         if (gpumode == GPU_TEMP || gpumode == GPU_DUAL ) {
+//             if (gpuptr(&m_FluidTemp, buf_id) != 0x0)        clCheck(clReleaseMemObject(gpuVar(&m_FluidTemp, buf_id)), "AllocateBuffer", "clReleaseMemObject", "FluidTemp.gpu", mbDebug);
+//
+//                                                             setGpuBuf(&m_FluidTemp, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
+//             //if (err != CL_SUCCESS)                          FluidSystem::Exit();
+//         }
+//
+//         //no clFinish needed, as EnqueueWriteBuffer function gets called with blocking_wirte set to CL_TRUE
+//         if (m_FParams.debug>1)printf("\nAfter allocation: free=%lu, total=%lu, this buffer=%lu.\n",free2,total,(free1-free2) );
+//     }
+// }
+
+void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode) {
     bool rtn = true;
-    if (verbosity>0)std::cout<<"\nAllocateBuffer ( int buf_id="<<buf_id<<", int stride="<<stride<<", int cpucnt="<<cpucnt<<", int gpucnt="<<gpucnt<<", int "<<gpumode<<", int "<<cpumode<<" )\t"<<std::flush;
+    cl_int err;
+
+    if (m_FParams.debug > 1) {
+        std::cout << "\nAllocateBuffer ( int buf_id=" << buf_id << ", int stride=" << stride << ", int cpucnt=" << cpucnt
+                  << ", int gpucnt=" << gpucnt << ", int " << gpumode << ", int " << cpumode << " )\t" << std::flush;
+    }
+
     if (cpumode == CPU_YES) {
-        char* src_buf  = bufC(&m_Fluid, buf_id);
-        char* dest_buf = (char*) malloc(cpucnt*stride); //  ####  malloc the buffer   ####
-        if (src_buf != 0x0) {
-            memcpy(dest_buf, src_buf, cpucnt*stride);
+        char* src_buf = bufC(&m_Fluid, buf_id);
+        char* dest_buf = (char*)malloc(cpucnt * stride);  // Allocate the buffer
+
+        if (src_buf != nullptr) {
+            memcpy(dest_buf, src_buf, cpucnt * stride);
             free(src_buf);
         }
-        setBuf(&m_Fluid, buf_id, dest_buf); // stores pointer to buffer in mcpu[buf_id]
-        if(buf_id ==19) {cout << "\n\n FGRIDCNT-Buffer (debugging): ";};
-}
 
-    if(gpumode == GPU_SINGLE || gpumode == GPU_DUAL || gpumode == GPU_TEMP){
-        cl_int err;
-        cl_ulong free1, free2, total;
+        setBuf(&m_Fluid, buf_id, dest_buf);  // Store the pointer to the buffer in mcpu[buf_id]
+    }
+
+    if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL || gpumode == GPU_TEMP) {
+
+        clFinish(m_queue);  // Ensure any previous operations on the command queue are completed
+
+        size_t total;
+
         clGetDeviceInfo(m_device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
-        //if (m_FParams.debug>1)printf("\nOpenCL Memory: free=%lu, total=%lu.\t",free1,total);
 
-        if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL )    {
-            if (gpuptr(&m_Fluid, buf_id) != 0x0)            clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject", "Fluid.gpu", mbDebug);
-                                                            cl_int err;
-                                                            setGpuBuf(&m_Fluid, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
+        if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL) {
+            if (gpuptr(&m_Fluid, buf_id) != 0x0) {
+                clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject", "gpuVar", mbDebug);
+            }
+
+            setGpuBuf(&m_Fluid, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err));
                                                                                             if(verbosity>0) cout << checkerror(err)  << stride*gpucnt << "\n" << flush;
 
+            if (m_FParams.debug > 1) {
+                std::cout << "\t\t gpuptr(&m_Fluid, " << buf_id << ")'" << gpuptr(&m_Fluid, buf_id) << ",   gpu(&m_Fluid, " << buf_id << ")="
+                          << gpuVar(&m_Fluid, buf_id) << "\t" << std::flush;
+            }
 
-            if (m_FParams.debug>1)                          std::cout<<"\t\t gpuptr(&m_Fluid, "<<buf_id<<")'"<<gpuptr(&m_Fluid, buf_id)<<",   gpuVar(&m_Fluid, "<<buf_id<<")="<<gpuVar(&m_Fluid, buf_id)<<"\t"<<std::flush;
-            //if(err != CL_SUCCESS)                           FluidSystem::Exit();
+            if (err != CL_SUCCESS) {_exit(err);}
         }
 
-        if (gpumode == GPU_TEMP || gpumode == GPU_DUAL ) {
-            if (gpuptr(&m_FluidTemp, buf_id) != 0x0)        clCheck(clReleaseMemObject(gpuVar(&m_FluidTemp, buf_id)), "AllocateBuffer", "clReleaseMemObject", "FluidTemp.gpu", mbDebug);
+        if (gpumode == GPU_TEMP || gpumode == GPU_DUAL) {
+            if (gpuptr(&m_FluidTemp, buf_id) != 0x0) {
+                clCheck(clReleaseMemObject(gpuVar(&m_FluidTemp, buf_id)), "AllocateBuffer", "clReleaseMemObject", "gpuVar", mbDebug);
+            }
 
-                                                            setGpuBuf(&m_FluidTemp, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride*gpucnt, NULL, &err));
-            //if (err != CL_SUCCESS)                          FluidSystem::Exit();
+            setGpuBuf(&m_FluidTemp, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err));
+                                                                                            if(verbosity>0) cout << checkerror(err)  << stride*gpucnt << "\n" << flush;
+
+            if (err != CL_SUCCESS) {_exit(err);}
         }
 
-        //no clFinish needed, as EnqueueWriteBuffer function gets called with blocking_wirte set to CL_TRUE
-        if (m_FParams.debug>1)printf("\nAfter allocation: free=%lu, total=%lu, this buffer=%lu.\n",free2,total,(free1-free2) );
+        clFinish(m_queue);  // Ensure any new OpenCL operations are completed
+
+        clGetDeviceInfo(m_device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
     }
 }
+
 
 void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // calls AllocateBuffer(..) for each buffer.
 // Defaults in header : int gpu_mode = GPU_DUAL, int cpu_mode = CPU_YES
@@ -590,6 +664,8 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
     																				if(verbosity>0) cout << "-----FluidSystem::AllocateParticles()-----\n" << flush;
 
     size_t threefloat = 3 * sizeof(float);
+
+
 
     if (verbosity>0)std::cout<<"\n\nAllocateParticles ( int cnt= "<<cnt<<", int "<<gpu_mode<<", int "<<cpu_mode<<" ), debug="<<m_FParams.debug<<", launchParams.debug="<<launchParams.debug<<"\t";//<<std::flush;
     if (m_FParams.debug>1)std::cout<<"\n\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUAL=3, CPU_OFF=4, CPU_YES=5"<<std::flush;
@@ -653,6 +729,8 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
         AllocateBuffer ( FAUXSCAN2,	    sizeof(uint),		0,	numElem3, GPU_SINGLE, CPU_OFF );
     }
 																				if(verbosity>0) cout << "\n-----AllocateParticles() finished-----\n\n" << flush;
+
+
 }
 
 void FluidSystem::AllocateBufferDenseLists(int buf_id, int stride, int gpucnt, int lists) {
@@ -693,7 +771,7 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
     AllocateBuffer ( FGRIDCNT_ACTIVE_GENES,  sizeof(uint[NUM_GENES]),       cnt,   m_FParams.szGrid,	gpu_mode, cpu_mode );
     AllocateBuffer ( FGRIDOFF_ACTIVE_GENES,  sizeof(uint[NUM_GENES]),       cnt,   m_FParams.szGrid,	gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_LIST_LENGTHS,	 sizeof(uint),		      NUM_GENES,   NUM_GENES,	        gpu_mode, cpu_mode );
-    //AllocateBuffer ( FDENSE_LISTS,	         sizeof(cl_device_idptr), NUM_GENES,   NUM_GENES,           gpu_mode, cpu_mode );
+    AllocateBuffer ( FDENSE_LISTS,	         sizeof(cl_mem), NUM_GENES,   NUM_GENES,           gpu_mode, cpu_mode );             //was CUdeviceptr, is it = cl_mem?
     AllocateBuffer ( FDENSE_BUF_LENGTHS,	 sizeof(uint),            NUM_GENES,   NUM_GENES,           gpu_mode, cpu_mode );
     //AllocateBuffer ( __________,	         sizeof(uint),		            cnt,   m_FParams.szPnts,	gpu_mode, cpu_mode );                  //Nr.37 Macro missing
 
@@ -701,7 +779,7 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
     AllocateBuffer ( FGRIDCNT_CHANGES,               sizeof(uint[NUM_CHANGES]),          cnt,   m_FParams.szGrid,	    gpu_mode, cpu_mode );
     AllocateBuffer ( FGRIDOFF_CHANGES,               sizeof(uint[NUM_CHANGES]),          cnt,   m_FParams.szGrid,	    gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_LIST_LENGTHS_CHANGES,	 sizeof(uint),		         NUM_CHANGES,        NUM_CHANGES,	    gpu_mode, cpu_mode );
-    //AllocateBuffer ( FDENSE_LISTS_CHANGES,	         sizeof(cl_device_idptr),    NUM_CHANGES,        NUM_CHANGES,       gpu_mode, cpu_mode );
+    AllocateBuffer ( FDENSE_LISTS_CHANGES,	         sizeof(cl_mem),    NUM_CHANGES,        NUM_CHANGES,       gpu_mode, cpu_mode );             //was CUdeviceptr, is it = cl_mem?
     AllocateBuffer ( FDENSE_BUF_LENGTHS_CHANGES,	 sizeof(uint),               NUM_CHANGES,        NUM_CHANGES,       gpu_mode, cpu_mode );
 
     if (gpu_mode != GPU_OFF ) {
@@ -709,7 +787,7 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
         for(int i=0; i<NUM_GENES; i++){ //for each gene allocate intial buffer, write pointer and size to FDENSE_LISTS and FDENSE_LIST_LENGTHS
             cl_mem*  _listpointer = (cl_mem*) &bufC(&m_Fluid, FDENSE_LISTS)[i * sizeof(cl_mem)] ;
             *_listpointer = NULL;
-            AllocateBufferDenseLists( i, sizeof(uint), INITIAL_BUFFSIZE_ACTIVE_GENES, FDENSE_LISTS);  // AllocateBuffer writes pointer to  m_Fluid.gpuptr(buf_id).
+            AllocateBufferDenseLists( i, sizeof(uint), INITIAL_BUFFSIZE_ACTIVE_GENES, FDENSE_LISTS);  // AllocateBuffer writes pointer to  gpuptr(&m_Fluid, buf_id).
             bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[i] = 0;
             bufI(&m_Fluid, FDENSE_BUF_LENGTHS)[i]  = INITIAL_BUFFSIZE_ACTIVE_GENES;
         }
@@ -734,7 +812,7 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
 }
 
 int FluidSystem::AddParticleMorphogenesis2 (Vector3DF* Pos, Vector3DF* Vel, uint Age, uint Clr, uint *_ElastIdxU, float *_ElastIdxF, uint *_Particle_Idx, uint Particle_ID, uint Mass_Radius, uint NerveIdx, float* _Conc, uint* _EpiGen ){  // called by :ReadPointsCSV2 (...) where :    uint Particle_Idx[BONDS_PER_PARTICLE * 2];  AND SetupAddVolumeMorphogenesis2(....)
-    cout <<"-----starting AddParticleMorphogenesis2()-----";
+    cout <<"\n-----starting AddParticleMorphogenesis2()-----\n";
     if ( mNumPoints >= mMaxPoints ) return -1;
     int n = mNumPoints;
     Set(bufV3(&m_Fluid, FPOS) + n, Pos->x,Pos->y,Pos->z );

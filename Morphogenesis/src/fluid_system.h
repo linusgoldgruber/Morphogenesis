@@ -647,7 +647,8 @@ public:
         void WriteDemoSimParams ( const char * relativePath, int gpu_mode, int cpu_mode, uint num_particles, float spacing, float x_dim, float y_dim, float z_dim, uint demoType, uint simSpace, uint debug); // Write standard demo to file, as demonstration of file format. 
         void WriteSimParams ( const char * relativePath );
         void ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int cpu_mode);
-        
+        void ReadPointsCSV2_TEST ( const char * relativePath, int gpu_mode, int cpu_mode);
+
         void ReadSpecificationFile(const char* relativePath);
         void WriteExampleSpecificationFile ( const char * relativePath );
         void WriteSpecificationFile_fromLaunchParams ( const char * relativePath );

@@ -1,0 +1,3 @@
+/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/CMakeFiles/CheckDemo.dir
+/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/CMakeFiles/edit_cache.dir
+/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/CMakeFiles/rebuild_cache.dir

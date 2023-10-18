@@ -4,12 +4,12 @@ cmake_policy(SET CMP0054 NEW)
 
 project(MinimalSim LANGUAGES C CXX)
 
-set(PROJECT_NAME CreateDemo)
+set(PROJECT_NAME check_demo)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_COMPILER "/usr/bin/gcc")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I /usr/lib/gcc/x86_64-linux-gnu/11/include")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I /usr/lib/gcc/x86_64-linux-gnu/11/include -g")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
 set(VTK_DIR "/home/goldi/Documents/VTK/build")
 set(CMAKE_THREAD_LIBS_INIT "-lpthread")
@@ -47,9 +47,13 @@ pkg_check_modules(JSONCPP jsoncpp)
 include_directories(${JSONCPP_INCLUDE_DIRS})
 include_directories(${VTK_INCLUDE_DIRS})
 
-add_executable(CreateDemo
-        createDemo.cpp
+add_executable(${PROJECT_NAME}
+        check_demo.cpp
         )
+
+#add_executable(CreateDemo
+        #createDemo.cpp
+        #)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         OpenCL::OpenCL

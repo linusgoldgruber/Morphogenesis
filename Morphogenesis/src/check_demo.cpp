@@ -1,13 +1,35 @@
+#define __CL_ENABLE_EXCEPTIONS
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_TARGET_OPENCL_VERSION 300
+#define SDK_SUCCESS 0
+#define SDK_FAILURE 1
 
 #include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <vector_types.h>
 #include <inttypes.h>
 #include <errno.h>
-#include <string.h>
-
+#include <math.h>
+#include <regex>
+#include <jsoncpp/json/json.h>
+#define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
+#include "fluid.h"
 #include "fluid_system.h"
+#include "host_CL.cpp"
+#include <CL/cl.h>
+#include <CL/opencl.h>
+#include <chrono>
+#include <filesystem>
+
+
+//#include "fluid_system.h"
 
 int main ( int argc, const char** argv ) 
 {
+    uint debug =2;
     char paramsPath[256];
     char genomePath[256];
     char pointsPath[256];
@@ -28,17 +50,29 @@ int main ( int argc, const char** argv )
         sprintf ( outPath, "%s", argv[2] );
         printf("output_folder = %s\n", outPath);
 	}	
-
-    FluidSystem fluid;
     
+    // Initialize
+    Json::Reader reader;
+    Json::Value obj_;
+    Json::Value obj;
+    obj["verbosity"] = 1;
+    obj["opencl_platform"] = 0;
+    obj["opencl_device"] = 0;
+    obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
+    FluidSystem fluid(obj);
+
     // Clear all buffers
     fluid.Initialize();   // where do the buffers for params and genome get allocated when there is no fluid.InitializeOpenCL (); ?
 
     fluid.ReadSimParams(paramsPath);
+
     fluid.ReadGenome(genomePath);
-    fluid.ReadPointsCSV2(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
+
+    cout << "##################################SO FAR So GOOD########################################";
+
+    fluid.ReadPointsCSV2_TEST(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
     printf("\nchk1\n");
-    fluid.WriteSimParams ( outPath ); 
+    fluid.WriteSimParams ( outPath );
     printf("\nchk2\n");
     fluid.WriteGenome( outPath );
     printf("\nchk3\n");
@@ -48,6 +82,45 @@ int main ( int argc, const char** argv )
     printf("\nchk5\n");
     
     printf("\ncheck_demo finished.\n");
-    fluid.Exit_no_CL ();	
+    //fluid.Exit_no_CL ();
     return 0;
+
+
+    /*// Function
+    void allocateAndAccessMemory(FBufs* fb, int n) {
+
+        // Allocate with malloc
+        fb->mcpu[n] = (char*)malloc(sizeof(char) * 20);
+
+        // Check if memory allocation was successful
+        if (fb->mcpu[n] != NULL) {
+
+            // Write data
+            strcpy(fb->mcpu[n], "Hello, dynamic memory!");
+
+            // Read and print data
+            std::cout << "Read from memroy: " << fb->mcpu[n] << std::endl;
+
+            // Clean up (needed?)
+            free(fb->mcpu[n]);
+            fb->mcpu[n] = NULL;
+        } else {
+            std::cerr << "alloc failed." << std::endl;
+        }
+    }
+
+int main ()
+{
+
+
+
+
+        FBufs fb;
+        int n = 0; // Index of the memory buffer
+
+        // Call the memory allocation and access function
+        allocateAndAccessMemory(&fb, n);
+
+        return 0;
+        */
 }
