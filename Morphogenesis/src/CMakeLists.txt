@@ -51,10 +51,6 @@ add_executable(${PROJECT_NAME}
         check_demo.cpp
         )
 
-#add_executable(CreateDemo
-        #createDemo.cpp
-        #)
-
 target_link_libraries(${PROJECT_NAME} PRIVATE
         OpenCL::OpenCL
         ${JSONCPP_LIBRARIES}

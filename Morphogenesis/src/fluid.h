@@ -24,7 +24,32 @@
 #ifndef DEF_FLUID
 	#define DEF_FLUID
 
-    float3 make_float3(float x, float y, float z)
+// #ifndef CL_KERNEL
+//     #include <CL/cl.h>
+//
+//     typedef cl_float3 xxx_float3;
+//     typedef cl_int3 xxx_int3;
+//
+// #endif
+
+// #ifdef CL_KERNEL
+//     typedef float3 xxx_float3;
+//     typedef int3 xxx_int3;
+//
+// #endif
+    #ifndef CL_KERNEL
+    struct  float3
+	{
+		float x, y, z;
+	};
+
+	struct  int3
+	{
+		int x, y, z;
+	};
+    #endif
+
+	    float3 make_float3(float x, float y, float z)
     {
         float3 t; t.x = x; t.y = y; t.z = z; return t;
     }
@@ -33,6 +58,9 @@
     {
         int3 t; t.x = x; t.y = y; t.z = z; return t;
     }
+
+
+
 
 	//#include <cuda.h>
     //#include <CL/opencl.h>
@@ -45,6 +73,7 @@
     //#include <curand_kernel.h>
     //#include <CL/cl.h>
     #include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
+
 
 
 	typedef	unsigned int		uint;
@@ -69,10 +98,10 @@
     // # if elastic force is written to both interacting particles, then the effective number of bonds doubles.
     // # i.e. each particle stores three bonds, but the average bonds per atom would be six.
     #define BONDS_PER_PARTICLE  6// 6 enables triangulated cubic structure    4   // current: 4 bonds plus length and modulus of each NB written to both particles so average 8 bonds per particle //old: actually 3, [0] for self ID, mass & radius
-#define DATA_PER_BOND 9 //6 : [0]current index, [1]elastic limit, [2]restlength, [3]modulus, [4]damping coeff, [5]particle ID, [6]bond index [7]stress integrator [8]change-type binary indicator
-                        // previously 3 : [0]current index, [1]mod_lim, [2]particle ID.
-#define BOND_DATA BONDS_PER_PARTICLE * DATA_PER_BOND
-#define REST_LENGTH  1  // need to find suitable number relative to particle and bin size, plus elastic limits.
+    #define DATA_PER_BOND 9 //6 : [0]current index, [1]elastic limit, [2]restlength, [3]modulus, [4]damping coeff, [5]particle ID, [6]bond index [7]stress integrator [8]change-type binary indicator
+                            // previously 3 : [0]current index, [1]mod_lim, [2]particle ID.
+    #define BOND_DATA BONDS_PER_PARTICLE * DATA_PER_BOND
+    #define REST_LENGTH  1  // need to find suitable number relative to particle and bin size, plus elastic limits.
 
     // Sensorimotor:
     // Sensory nerve endings & muscles need type and nerve uid to write/read.

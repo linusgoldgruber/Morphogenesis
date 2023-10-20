@@ -1,7 +1,7 @@
 #include "fluid_system.h"
 #include "vector_host.h"
 #include <assert.h>
-#include <vector_types.h>
+//#include <vector_types.h>
 #include <vtkSmartPointer.h>
 #include <vtkLine.h>
 #include <vtkPoints.h>
@@ -18,6 +18,8 @@ int iDivUp (int a, int b) {
 }
 
 void computeNumBlocks (int numPnts, int minThreads, int &numGroups, int &numItems){
+
+    cout << "-------Running computeNumBlocks() with " << numPnts <<" Points and " << minThreads << " minThreads.";
     numItems = min( minThreads, numPnts );
     numGroups = (numItems==0) ? 1 : iDivUp ( numPnts, numItems );
 }
@@ -201,15 +203,15 @@ void FluidSystem::WriteGenome( const char * relativePath){
 
 void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
     if (m_FParams.debug>1) std::cout << "\n  SavePointsCSV2 ( const char * relativePath = "<< relativePath << ", int frame = "<< frame << " );  started \n" << std::flush;
-//     char buf[256];
-//     frame += 100000;    // ensures numerical and alphabetic order match
-//     sprintf ( buf, "%s/particles_pos_vel_color%04d.csv", relativePath, frame );
-//     FILE* fp = fopen ( buf, "w" );
-
     char buf[256];
     frame += 100000;    // ensures numerical and alphabetic order match
-    sprintf ( buf, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/particles_pos_vel_color%04d.csv", frame );
+    sprintf ( buf, "%s/particles_pos_vel_color%04d.csv", relativePath, frame );
     FILE* fp = fopen ( buf, "w" );
+
+    /*char buf[256];
+    frame += 100000;    // ensures numerical and alphabetic order match
+    sprintf ( buf, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/particles_pos_vel_color%04d.csv", frame );
+    FILE* fp = fopen ( buf, "w" );*/
 
     if (fp == NULL) {
         if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::SavePointsCSV ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
@@ -307,6 +309,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
 
     SetupSPH_Kernels ();
     SetupSpacing ();
+
     std::cout<<"\n\nReadPointsCSV2: SetupGrid ( "<<m_Vec[PVOLMIN].x <<", "<<m_Vec[PVOLMIN].y<<", "<<m_Vec[PVOLMIN].z<<", "<<m_Vec[PVOLMAX].x<<", "<<m_Vec[PVOLMAX].y<<", "<<m_Vec[PVOLMAX].z<<", "<<m_Param[PSIMSCALE]<<", "<<m_Param[PGRIDSIZE]<<")\n"<<std::flush;
 
     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
@@ -318,6 +321,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
 
     cout<<"ReadPointsCSV2: AllocateParticles ( "<<mMaxPoints<<", "<<gpu_mode<<", "<<cpu_mode<<" )"<<std::flush;
     AllocateParticles ( mMaxPoints, gpu_mode, cpu_mode );  // allocates only cpu buffer for particles
+    cout<<"ReadPointsCSV2: AllocateGrid ( gpu_mode: "<<gpu_mode<<", cpu_mode: "<<cpu_mode<<" )"<<std::flush;
     AllocateGrid(gpu_mode, cpu_mode);
     ////////////////////////////////////////
     uint Clr, Age;
@@ -409,7 +413,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
             exit_(ret);
         }
 
-        //AddParticleMorphogenesis2 (&Pos, &Vel, Age, Clr, ElastIdxU, ElastIdxF, Particle_Idx, Particle_ID, Mass_Radius,  NerveIdx, Conc, EpiGen );
+        AddParticleMorphogenesis2 (&Pos, &Vel, Age, Clr, ElastIdxU, ElastIdxF, Particle_Idx, Particle_ID, Mass_Radius,  NerveIdx, Conc, EpiGen );
     }
     if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() finished reading points. i="<<i<<", NumPoints()="<<NumPoints()<<"\n"<<std::flush;
     fclose(points_file);
@@ -419,9 +423,8 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
     if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() finished extra functions. NumPoints()="<<NumPoints()<<"\n"<<std::flush;
 }
 
-void FluidSystem::ReadPointsCSV2_TEST ( const char * relativePath, int gpu_mode, int cpu_mode){ // NB allocates buffers as well.
+void FluidSystem::ReadPointsCSV2_DEBUG ( const char * relativePath, int gpu_mode, int cpu_mode){ // NB allocates buffers as well.
 
-    m_FParams.debug = 2;
     //if (m_FParams.debug>1) std::cout << "\n  ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int cpu_mode);  started \n" << std::flush;
     const char * points_file_path = relativePath;
     if (m_FParams.debug>1)printf("\n## opening file %s ", points_file_path);
@@ -441,13 +444,7 @@ void FluidSystem::ReadPointsCSV2_TEST ( const char * relativePath, int gpu_mode,
     SetupSPH_Kernels ();
     SetupSpacing ();
 
-    computeNumBlocks ( m_FParams.pnum, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);				// particles
-    computeNumBlocks ( m_FParams.gridTotal, m_FParams.itemsPerGroup, m_FParams.gridBlocks, m_FParams.gridThreads);		// grid cell
-
-    cout << m_FParams.gridBlocks << "\n";
-    cout << m_FParams.gridThreads << "\n";
-
-    std::cout<<"\n\nReadPointsCSV2: SetupGrid ( "<<m_Vec[PVOLMIN].x <<", "<<m_Vec[PVOLMIN].y<<", "<<m_Vec[PVOLMIN].z<<", "<<m_Vec[PVOLMAX].x<<", "<<m_Vec[PVOLMAX].y<<", "<<m_Vec[PVOLMAX].z<<", "<<m_Param[PSIMSCALE]<<", "<<m_Param[PGRIDSIZE]<<")\n"<<std::flush;
+    std::cout<<"\n\nReadPointsCSV2: SetupGrid ( "<<m_Vec[PVOLMIN].x <<", "<<m_Vec[PVOLMIN].y<<", "<<m_Vec[PVOLMIN].z<<", "<<m_Vec[PVOLMAX].x<<", "<<m_Vec[PVOLMAX].y<<", "<<m_Vec[PVOLMAX].z<<", "<<m_Param[PSIMSCALE]<<", "<<m_Param[PGRIDSIZE]<<"), szPnts = "<<m_FParams.szPnts<<", gridBlocks= "<<m_FParams.gridBlocks<<", gridThreads= "<<m_FParams.gridThreads<<"\n"<<std::flush;
 
     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
     if (gpu_mode != GPU_OFF) {     // create CUDA instance etc..
@@ -458,7 +455,10 @@ void FluidSystem::ReadPointsCSV2_TEST ( const char * relativePath, int gpu_mode,
 
     cout<<"ReadPointsCSV2: AllocateParticles ( "<<mMaxPoints<<", "<<gpu_mode<<", "<<cpu_mode<<" )"<<std::flush;
     AllocateParticles ( mMaxPoints, gpu_mode, cpu_mode );  // allocates only cpu buffer for particles
+    cout << "\n-----AllocateParticles() finished2-----\n\n" << flush;
+
     AllocateGrid(gpu_mode, cpu_mode);
+        cout << "\n-----AllocateGrid() finished2-----\n\n" << flush;
     ////////////////////////////////////////
     uint Clr, Age;
     Vector3DF Pos, Vel, PosMin, PosMax;
@@ -471,13 +471,13 @@ void FluidSystem::ReadPointsCSV2_TEST ( const char * relativePath, int gpu_mode,
 
     float vel_lim = GetParam ( PVEL_LIMIT );
     PosMin = GetVec ( PBOUNDMIN );  //PBOUNDMIN  // PVOLMIN
-    printf("\nVector PosMin: ");
-    printVector3DF(&PosMin);
-    printf("\n");
+                printf("\nVector PosMin: ");
+                printVector3DF(&PosMin);
+                printf("\n");
     PosMax = GetVec ( PBOUNDMAX );  //PBOUNDMAX  // PVOLMAX
-    printf("Vector PosMax: ");
-    printVector3DF(&PosMax);
-    printf("\n");
+                printf("Vector PosMax: ");
+                printVector3DF(&PosMax);
+                printf("\n");
 
     if (m_FParams.debug>1) cout<<"\n\nPosMin = PBOUNDMIN=("<<m_Vec[PBOUNDMIN].x <<","<<m_Vec[PBOUNDMIN].y <<","<<m_Vec[PBOUNDMIN].z
         <<"),  PosMax = PBOUNDMAX=("<<m_Vec[PBOUNDMAX].x <<","<<m_Vec[PBOUNDMAX].y <<","<< m_Vec[PBOUNDMAX].z
@@ -516,6 +516,7 @@ void FluidSystem::ReadPointsCSV2_TEST ( const char * relativePath, int gpu_mode,
         for(int j=0; j<BOND_DATA; j+=DATA_PER_BOND) {// BONDS_PER_PARTICLE * DATA_PER_BOND
             ret += std::fscanf(points_file, "%u, %f, %f, %f, %f, %u, %f, %f, %u, ", &ElastIdxU[j+0], &ElastIdxF[j+1], &ElastIdxF[j+2], &ElastIdxF[j+3], &ElastIdxF[j+4], &ElastIdxU[j+5], &ElastIdxF[j+6], &ElastIdxF[j+7], &ElastIdxU[j+8] );
         }
+    if (m_FParams.debug>1) std::cout<<"\n\n ReadPointsCSV2() BREAK 1"<<number_of_lines<<"\n"<<std::flush;
       //if (m_FParams.debug>1)printf("\t%u\t",ElastIdxU[0]);
 //if (m_FParams.debug>1) std::cout<<"(line 1263, ret="<<ret<<")\t"<<std::flush;
         ret += std::fscanf(points_file, " \t%u, %u, %u, %u, \t\t", &Particle_ID, &mass, &radius, &NerveIdx);
@@ -524,11 +525,14 @@ void FluidSystem::ReadPointsCSV2_TEST ( const char * relativePath, int gpu_mode,
         for(int j=0; j<(BONDS_PER_PARTICLE*2); j+=2) {
             ret += std::fscanf(points_file, "%u, %u,, ",  &Particle_Idx[j], &Particle_Idx[j+1] );
         }
+    if (m_FParams.debug>1) std::cout<<"\n\n ReadPointsCSV2() BREAK 2"<<number_of_lines<<"\n"<<std::flush;
+
 //if (m_FParams.debug>1) std::cout<<"(ReadPointsCSV2() line 1270, ret="<<ret<<"),\t"<<std::flush;
         for(int j=0; j<(NUM_TF); j++)       {    ret += std::fscanf(points_file, "%f, ",  &Conc[j] );   } ret += std::fscanf(points_file, "\t");
 //if (m_FParams.debug>1) std::cout<<"(ReadPointsCSV2() line 1272, ret="<<ret<<"),\t"<<std::flush;
         for(int j=0; j<(NUM_GENES); j++)    {    ret += std::fscanf(points_file, "%u, ",  &EpiGen[j] ); } ret += std::fscanf(points_file, " \n");
 //if (m_FParams.debug>1) std::cout<<"(ReadPointsCSV2() line 1274, ret="<<ret<<"),\t"<<std::flush;
+    if (m_FParams.debug>1) std::cout<<"\n\n ReadPointsCSV2() BREAK 3"<<number_of_lines<<"\n"<<std::flush;
 
         if (ret != (9 + BOND_DATA + 4 + BONDS_PER_PARTICLE*2 + NUM_TF + NUM_GENES) ) {  // 9 + 6*9 + 4 + 6*2 + 16 + 16 = 111
             if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() fail line 1276, ret="<<ret<<"\n"<<std::flush;// ret=39
@@ -541,23 +545,28 @@ void FluidSystem::ReadPointsCSV2_TEST ( const char * relativePath, int gpu_mode,
                 || Pos.x > PosMax.x   || Pos.y > PosMax.y || Pos.z > PosMax.z
                 || (Vel.x * Vel.x + Vel.y * Vel.y + Vel.z * Vel.z) > vel_lim * vel_lim )
         {
-            //if (m_FParams.debug>1) {
+            if (m_FParams.debug>1) {
              std::cout << "\n void FluidSystem::ReadPointsCSV, out of bounds !  particle number = " << i;
              std::cout << "\n Pos.x = " << Pos.x << "  Pos.y = " << Pos.y << "  Pos.z = " << Pos.z;
              std::cout << "\n PosMax.x = " << PosMax.x << "  PosMax.y = " << PosMax.y << "  PosMax.z = " << PosMax.z;
              std::cout << "\n PosMin.x = " << PosMin.x << "  PosMin.y = " << PosMin.y << "  PosMin.z = " << PosMin.z;
              std::cout << "\n velocity = " << sqrt(Vel.x * Vel.x + Vel.y * Vel.y + Vel.z * Vel.z) << "   vel_lim = " << vel_lim;
              std::cout << "\n " << std::flush;
-            //}
+            }
             /*if (m_FParams.debug>1)printf("\nParticle out of bounds, i=%u\t Pos=(%f,%f,%f), PosMin=(%f,%f,%f), PosMax=(%f,%f,%f), Closing file and exiting.",
                    i, Pos.x, Pos.y, Pos.z, PosMin.x, PosMin.y, PosMin.z, PosMax.x, PosMax.y, PosMax.z );*/
             fclose(points_file);
             exit_(ret);
         }
 
-        //AddParticleMorphogenesis2 (&Pos, &Vel, Age, Clr, ElastIdxU, ElastIdxF, Particle_Idx, Particle_ID, Mass_Radius,  NerveIdx, Conc, EpiGen );
+        AddParticleMorphogenesis2 (&Pos, &Vel, Age, Clr, ElastIdxU, ElastIdxF, Particle_Idx, Particle_ID, Mass_Radius,  NerveIdx, Conc, EpiGen );
     }
-
+    if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() finished reading points. i="<<i<<", NumPoints()="<<NumPoints()<<"\n"<<std::flush;
+    fclose(points_file);
+    AddNullPoints ();                                   // add null particles up to mMaxPoints // should be redundant here as mMaxPoints = number_of_lines-1
+    if (gpu_mode != GPU_OFF) TransferToCL ();         // Initial transfer
+  //if (m_FParams.debug>1)printf("\n gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES)=%llu, \t gpuVar(&m_Fluid, FGRIDOFF_CHANGES)=%llu, \t gpuVar(&m_Fluid, FGRIDCNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES), gpuVar(&m_Fluid, FGRIDOFF_CHANGES) , gpuVar(&m_Fluid, FGRIDCNT_CHANGES)   );
+    if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() finished extra functions. NumPoints()="<<NumPoints()<<"\n"<<std::flush;
 }
 
 void FluidSystem::ReadSimParams ( const char * relativePath ) { // transcribe SimParams from file to fluid_system object. /home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo
@@ -726,6 +735,7 @@ void FluidSystem::WriteSimParams ( const char * relativePath ){
 
 void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, int cpu_mode, uint num_particles, float spacing, float x_dim, float y_dim, float z_dim, uint demoType, uint simSpace, uint debug){
     m_FParams.debug=debug;
+    cout << "\nm_FParams.debug= " << m_FParams.debug << "\n";
 
     if (m_FParams.debug>1)std::cout<<"\nWriteDemoSimParams chk1, num_particles="<<num_particles<<", m_FParams.debug="<<m_FParams.debug <<", launchParams.genomePath="<< launchParams.genomePath  <<std::flush;
 
@@ -762,12 +772,20 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     AllocateGrid(GPU_OFF, CPU_YES);                                                              if (m_FParams.debug>1) std::cout << " chk1.2 " << std::flush ;
     std::cout<<"\nWriteDemoSimParams chk2 "<<std::flush;
     */
+    cout << "XX m_Param[PGRIDSIZE]: " << m_Param[PGRIDSIZE] << endl;
+    cout << "XX m_Param[PSIMSCALE]: " << m_Param[PSIMSCALE] << endl;
+
+    cout << "XX m_Vec[PINITMIN].x: " << m_Vec[PINITMIN].x << endl;
+    cout << "XX m_Vec[PINITMIN].y: " << m_Vec[PINITMIN].y << endl;
+    cout << "XX m_Vec[PINITMIN].z: " << m_Vec[PINITMIN].z << endl;
+
     m_Vec[PBOUNDMIN].x= m_Vec[PVOLMIN].x + 2*(m_Param[PGRIDSIZE]/m_Param[PSIMSCALE]);
     m_Vec[PBOUNDMIN].y= m_Vec[PVOLMIN].y + 2*(m_Param[PGRIDSIZE]/m_Param[PSIMSCALE]);
     m_Vec[PBOUNDMIN].z= m_Vec[PVOLMIN].z + 2*(m_Param[PGRIDSIZE]/m_Param[PSIMSCALE]);
     m_Vec[PINITMIN].x = std::max(m_Vec[PINITMIN].x , m_Vec[PBOUNDMIN].x+1 );
     m_Vec[PINITMIN].y = std::max(m_Vec[PINITMIN].y , m_Vec[PBOUNDMIN].y+1 );
     m_Vec[PINITMIN].z = std::max(m_Vec[PINITMIN].z , m_Vec[PBOUNDMIN].z+1 );
+
 
     Vector3DF pinit_max = {x_dim,y_dim,z_dim};
     //pinit_max += m_Vec[PINITMIN];

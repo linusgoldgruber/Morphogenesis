@@ -65,11 +65,11 @@ num_files = 3000
  steps_per_file = 6
  freeze_steps = 20
  
-debug = 1
+debug = 2
  file_num = 0
  
 save_ply = n
- save_csv = n
+ save_csv = y
  save_vtp = y
  
 gene_activity = n

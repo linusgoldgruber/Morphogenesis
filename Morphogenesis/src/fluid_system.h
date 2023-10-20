@@ -34,6 +34,7 @@
 #ifndef DEF_FLUID_SYS
 	#define DEF_FLUID_SYS
 
+
     #include <dirent.h> 
     #include <filesystem>
 	#include <iostream>
@@ -288,7 +289,6 @@ public:
 		typedef struct FBufs {
                 char* mcpu[MAX_BUF];
                 cl_mem mgpu[MAX_BUF];
-
         } FBufs;
 
         #ifdef CL_KERNEL
@@ -307,6 +307,7 @@ public:
             float*  bufF (FBufs* fb, int n) { return (float*)  fb->mcpu[n]; }
             uint*   bufI (FBufs* fb, int n) { return (uint*)   fb->mcpu[n]; }
             char*   bufC (FBufs* fb, int n) { return (char*)   fb->mcpu[n]; }
+            char*   bufC_TEST (FBufs* fb, int n) { return (char*)   fb->mcpu[n]; }
             uint**  bufII (FBufs* fb, int n) { return (uint**)  fb->mcpu[n]; }          // for elastIdx[][]
             well512_state*  bufWell512State(FBufs* fb, int n) { return (well512_state*) fb->mcpu[n]; }
             unsigned long long*  bufULL(FBufs* fb, int n) { return (unsigned long long*) fb->mcpu[n]; }
@@ -647,7 +648,7 @@ public:
         void WriteDemoSimParams ( const char * relativePath, int gpu_mode, int cpu_mode, uint num_particles, float spacing, float x_dim, float y_dim, float z_dim, uint demoType, uint simSpace, uint debug); // Write standard demo to file, as demonstration of file format. 
         void WriteSimParams ( const char * relativePath );
         void ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int cpu_mode);
-        void ReadPointsCSV2_TEST ( const char * relativePath, int gpu_mode, int cpu_mode);
+        void ReadPointsCSV2_DEBUG ( const char * relativePath, int gpu_mode, int cpu_mode);
 
         void ReadSpecificationFile(const char* relativePath);
         void WriteExampleSpecificationFile ( const char * relativePath );
