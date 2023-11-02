@@ -2,19 +2,19 @@
 #define CL_HPP_ENABLE_EXCEPTIONS
 #define CL_TARGET_OPENCL_VERSION 300
 
-//float3 type definition
+//cl_float3 type definition
 // typedef struct {
 //     float x;
 //     float y;
 //     float z;
-// } float3;
+// } cl_float3;
 
-//int3 type definition
+//cl_int3 type definition
 // typedef struct {
 // 	int x;
 // 	int y;
 // 	int z;
-// } int3;
+// } cl_int3;
 
 
 

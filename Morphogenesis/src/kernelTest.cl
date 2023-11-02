@@ -38,7 +38,7 @@
 
 #include "fluid_system_opencl.h"
 #include "fluid.h"
-#include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
+#include "randCL_well512.cl"
 
 
 

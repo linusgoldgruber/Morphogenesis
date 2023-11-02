@@ -66,14 +66,14 @@ int main ( int argc, const char** argv )
     // Clear all buffers
     fluid.Initialize();   // where do the buffers for params and genome get allocated when there is no fluid.InitializeOpenCL (); ?
 
-//     fluid.ReadSimParams(paramsPath);
-//
-//     fluid.ReadGenome(genomePath);
-//
-//     cout << "################################## SO FAR So GOOD ########################################";
-//
-//     fluid.ReadPointsCSV2_DEBUG(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
-//     //fluid.ReadPointsCSV2(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
+    fluid.ReadSimParams(paramsPath);
+
+    fluid.ReadGenome(genomePath);
+
+    cout << "################################## SO FAR So GOOD ########################################";
+
+    fluid.ReadPointsCSV2_DEBUG(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
+    //fluid.ReadPointsCSV2(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
 //     printf("\nchk1\n");
 //     fluid.WriteSimParams ( outPath );
 //     printf("\nchk2\n");

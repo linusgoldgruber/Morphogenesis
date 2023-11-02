@@ -743,7 +743,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
     
     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
     if (gpu_mode != GPU_OFF) {     // create CUDA instance etc.. 
-        FluidSetupCL ( mMaxPoints, m_GridSrch, *(int3*)& m_GridRes, *(float3*)& m_GridSize, *(float3*)& m_GridDelta, *(float3*)& m_GridMin, *(float3*)& m_GridMax, m_GridTotal, 0 );
+        FluidSetupCL ( mMaxPoints, m_GridSrch, *(cl_int3*)& m_GridRes, *(cl_float3*)& m_GridSize, *(cl_float3*)& m_GridDelta, *(cl_float3*)& m_GridMin, *(cl_float3*)& m_GridMax, m_GridTotal, 0 );
         UpdateParams();            //  sends simulation params to device.
         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
     }

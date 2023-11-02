@@ -285,7 +285,7 @@ public:
 
 	bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
 
-
+/*
 		typedef struct FBufs {
                 char* mcpu[MAX_BUF];
                 cl_mem mgpu[MAX_BUF];
@@ -293,7 +293,7 @@ public:
 
         #ifdef CL_KERNEL
             Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mgpu[n]; }
-            float3* bufF3(__constant FBufs* fb, int n) { return (float3*) fb->mgpu[n]; }
+            cl_float3* bufF3(__constant FBufs* fb, int n) { return (cl_float3*) fb->mgpu[n]; }
             float*  bufF (__constant FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
             uint*   bufI (__constant FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
             char*   bufC (__constant FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
@@ -303,7 +303,7 @@ public:
 
         #else
             Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mcpu[n]; }
-            float3* bufF3(FBufs* fb, int n) { return (float3*) fb->mcpu[n]; }
+            cl_float3* bufF3(FBufs* fb, int n) { return (cl_float3*) fb->mcpu[n]; }
             float*  bufF (FBufs* fb, int n) { return (float*)  fb->mcpu[n]; }
             uint*   bufI (FBufs* fb, int n) { return (uint*)   fb->mcpu[n]; }
             char*   bufC (FBufs* fb, int n) { return (char*)   fb->mcpu[n]; }
@@ -311,7 +311,7 @@ public:
             uint**  bufII (FBufs* fb, int n) { return (uint**)  fb->mcpu[n]; }          // for elastIdx[][]
             well512_state*  bufWell512State(FBufs* fb, int n) { return (well512_state*) fb->mcpu[n]; }
             unsigned long long*  bufULL(FBufs* fb, int n) { return (unsigned long long*) fb->mcpu[n]; }
-        #endif
+        #endif*/
 
 		void setBuf(FBufs *fb, int n, char* buf) {
              fb->mcpu[n] = buf;
@@ -603,8 +603,8 @@ public:
 		Vector3DF GetGridMax ()		{ return m_GridMax; }
 		Vector3DF GetGridDelta ()	{ return m_GridDelta; }
 
-		void FluidSetupCL ( int num, int gsrch, int3 res, float3 size, float3 delta, float3 gmin, float3 gmax, int total, int chk );
-		void FluidParamCL(float ss, float sr, float pr, float mass, float rest, float3 bmin, float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p);
+		void FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size, cl_float3 delta, cl_float3 gmin, cl_float3 gmax, int total, int chk );
+		void FluidParamCL(float ss, float sr, float pr, float mass, float rest, cl_float3 bmin, cl_float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p);
 
         void Init_CLRand ();
 		void InsertParticlesCL ( uint* gcell, uint* ccell, uint* gcnt );

@@ -59,18 +59,18 @@ extern "C" __global__ void insertParticles ( int pnum )                         
 	// printf ( " pos: %012llx, gcell: %012llx, gndx: %012llx, gridcnt: %012llx\n", fbuf.bufC(FPOS), fbuf.bufC(FGCELL), fbuf.bufC(FGNDX), fbuf.bufC(FGRIDCNT) );
   //  if (fparam.debug>2 && i==0)printf("\ninsertParticles(): pnum=%u\n",pnum);
 
-	register float3 gridMin =	fparam.gridMin;                                  // "register" is a compiler 'hint', to keep this variable in thread register
-	register float3 gridDelta = fparam.gridDelta;                                //  even if other variable have to be moved to slower 'local' memory
-	register int3 gridRes =		fparam.gridRes;                                  //  in the streaming multiprocessor's cache.
-	register int3 gridScan =	fparam.gridScanMax;
+	register cl_float3 gridMin =	fparam.gridMin;                                  // "register" is a compiler 'hint', to keep this variable in thread register
+	register cl_float3 gridDelta = fparam.gridDelta;                                //  even if other variable have to be moved to slower 'local' memory
+	register cl_int3 gridRes =		fparam.gridRes;                                  //  in the streaming multiprocessor's cache.
+	register cl_int3 gridScan =	fparam.gridScanMax;
     register int gridTot =      fparam.gridTotal;
 
 	register int		gs;
-	register float3		gcf;
-	register int3		gc;
+	register cl_float3		gcf;
+	register cl_int3		gc;
 
-	gcf = (bufF3(&fbuf, FPOS)[i] - gridMin) * gridDelta;                           // finds bin as a float3
-	gc = make_int3( int(gcf.x), int(gcf.y), int(gcf.z) );                        // crops to an int3
+	gcf = (bufF3(&fbuf, FPOS)[i] - gridMin) * gridDelta;                           // finds bin as a cl_float3
+	gc = make_cl_int3( int(gcf.x), int(gcf.y), int(gcf.z) );                        // crops to an cl_int3
 	gs = (gc.y * gridRes.z + gc.z)*gridRes.x + gc.x;                             // linearizes to an int for a 1D array of bins
 
 if(fparam.debug>1 && i==pnum-1) printf("\n\ninsertParticles()1: gridTot=%i,  i=%u: gc.x=%i, gc.y=%i, gc.z=%i, gs=%i \t gridScan.x=%i, gridScan.y=%i, gridScan.z=%i, gridTot=%u,\t gridDelta=(%f,%f,%f) gridMin=(%f,%f,%f) gridRes=(%i,%i,%i)",
@@ -103,18 +103,18 @@ __kernel void insertParticlesCL ( int pnum ) {
     uint i = get_global_id(0);
     if ( i >= pnum ) return;
 
-    float3  gridMin     =  fparam.gridMin;
-    float3  gridDelta   =  fparam.gridDelta;
-    int3    gridRes     =  fparam.gridRes;
-    int3    gridScan    =  fparam.gridScanMax;
+    cl_float3  gridMin     =  fparam.gridMin;
+    cl_float3  gridDelta   =  fparam.gridDelta;
+    cl_int3    gridRes     =  fparam.gridRes;
+    cl_int3    gridScan    =  fparam.gridScanMax;
     int     gridTot     =  fparam.gridTotal;
 
     int     gs;
-    float3  gcf;
-    int3    gc;
+    cl_float3  gcf;
+    cl_int3    gc;
 
     gcf = (bufF3(&fbuf, FPOS)[i] - gridMin) * gridDelta;
-    gc  = (int3)(gcf.x, gcf.y, gcf.z);
+    gc  = (cl_int3)(gcf.x, gcf.y, gcf.z);
     gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
 
     if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
@@ -209,7 +209,7 @@ extern "C" __global__ void countingSortFull ( int pnum )                        
 		// Determine the sort_ndx, location of the particle after sort		
         uint indx =  ftemp.bufI(FGNDX)  [ i ];                                          // indx is off set within new cell
         int sort_ndx = bufI(&fbuf, FGRIDOFF) [ icell ] + indx ;                           // global_ndx = grid_cell_offet + particle_offset	
-		float3 zero; zero.x=0;zero.y=0;zero.z=0;
+		cl_float3 zero; zero.x=0;zero.y=0;zero.z=0;
         
         // Make dense lists for (i) available genes (ii) active genes (iii) diffusion particles (iv) active/reserve particles. ######################
         // NB req new FGNDX & FGRIDOFF for each of (i-iv).
@@ -229,7 +229,7 @@ extern "C" __global__ void countingSortFull ( int pnum )                        
 		fbuf.bufI (FCLR)    [sort_ndx] =	ftemp.bufI(FCLR)     [i];
 		fbuf.bufI (FGCELL)  [sort_ndx] =	icell;
 		fbuf.bufI (FGNDX)   [sort_ndx] =	indx;
-        float3 pos = ftemp.bufF3(FPOS) [i];
+        cl_float3 pos = ftemp.bufF3(FPOS) [i];
         // add extra data for morphogenesis
         // track the sort index of the other particle
         for (int a=0;a<BONDS_PER_PARTICLE;a++){
@@ -409,9 +409,9 @@ extern "C" __global__ void countingSortChanges ( int pnum )
     {   // debug chk
    /* 
     uint bin2=bin;
-    float3 gridDelta = fparam.gridDelta;                                //  even if other variable have to be moved to slower 'local' memory  
-    int3 gridRes =		fparam.gridRes;   
-	float3 gc, binPos;
+    cl_float3 gridDelta = fparam.gridDelta;                                //  even if other variable have to be moved to slower 'local' memory  
+    cl_int3 gridRes =		fparam.gridRes;   
+	cl_float3 gc, binPos;
     gc.x=bin2%gridRes.x;
     bin2-=gridRes.x;
     bin2=bin2/gridRes.x;
@@ -466,7 +466,7 @@ extern "C" __global__ void countingSortChanges ( int pnum )
     for(uint particle=grdoffset; particle<grdoffset+count; particle++){                                                             // loop through particleIDx in bin in main particle list
 /*
  * if(particle==grdoffset){
-    float3 pos = bufF3(&fbuf, FPOS)[particle];
+    cl_float3 pos = bufF3(&fbuf, FPOS)[particle];
     uint ID = bufI(&fbuf, FPARTICLE_ID)[particle];
     printf("\ncountingSortChanges: bin=%u, particle=%u, ID=%u\t pos.x=%f, pos.y=%f, pos.z=%f",bin, particle, ID, pos.x, pos.y, pos.z);
     }
@@ -617,12 +617,12 @@ extern "C" __global__ void countingSortChanges ( int pnum )
  }
 }
 
-extern "C" __device__ float contributePressure ( int i, float3 p, int cell, float &sum_p6k )  
+extern "C" __device__ float contributePressure ( int i, cl_float3 p, int cell, float &sum_p6k )  
 // pressure due to particles in 'cell'. NB for each particle there are 27 cells in which interacting particles might be.
 {			
 	if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return 0.0;                       // If the cell is empty, skip it.
 
-	float3 dist;
+	cl_float3 dist;
 	float dsq, r, q, b, c, sum = 0.0;//, sum_p6k = 0.0;
 	//register float d2 = fparam.psimscale * fparam.psimscale;                // max length in simulation space
 	register float r2 = fparam.r2; // / d2;                                     // = m_FParams.psmoothradius^2 / m_FParams.psimscale^2
@@ -635,7 +635,7 @@ extern "C" __device__ float contributePressure ( int i, float3 p, int cell, floa
 	for ( int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++ ) {    // For particles in this cell.
         k++;
 		int pndx = bufI(&fbuf, FGRID) [cndx];                                 // index of this particle
-		dist = p - bufF3(&fbuf, FPOS) [pndx];                                 // float3 distance between this particle, and the particle for which the loop has been called.
+		dist = p - bufF3(&fbuf, FPOS) [pndx];                                 // cl_float3 distance between this particle, and the particle for which the loop has been called.
 		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);              // scalar distance squared
         
         // From https://github.com/DualSPHysics/DualSPHysics/wiki/3.-SPH-formulation#31-smoothing-kernel 
@@ -681,7 +681,7 @@ extern "C" __global__ void computePressure ( int pnum )
 	gc -= nadj;
 
 	// Sum Pressures
-	float3 pos = bufF3(&fbuf, FPOS) [i];
+	cl_float3 pos = bufF3(&fbuf, FPOS) [i];
 	float sum = 0.0, sum_p6k = 0.0;
 	for (int c=0; c < fparam.gridAdjCnt; c++) {                                    
 		sum += contributePressure ( i, pos, gc + fparam.gridAdj[c], sum_p6k );
@@ -1393,9 +1393,9 @@ extern "C" __device__ void removeParticle (uint particle_Idx)                   
     //  sets values to null particle, => will be sorted to reserve section of particle list in next time step.
     if (fparam.debug>2)printf("\nremoveParticle() particle_Idx=%u \t",particle_Idx);
     bufF3(&fbuf, FPOS)[particle_Idx]      = fparam.pboundmax;
-    bufF3(&fbuf, FVEVAL)[particle_Idx]    = make_float3(0,0,0);
-    bufF3(&fbuf, FVEL)[particle_Idx]      = make_float3(0,0,0);
-    bufF3(&fbuf, FFORCE)[particle_Idx]    = make_float3(0,0,0);
+    bufF3(&fbuf, FVEVAL)[particle_Idx]    = make_cl_float3(0,0,0);
+    bufF3(&fbuf, FVEL)[particle_Idx]      = make_cl_float3(0,0,0);
+    bufF3(&fbuf, FFORCE)[particle_Idx]    = make_cl_float3(0,0,0);
     for (int incomingBondIdx=0; incomingBondIdx<BONDS_PER_PARTICLE; incomingBondIdx++){                             // Remove reciprocal data for incoming bonds
         uint jIdx       = bufI(&fbuf, FPARTICLEIDX)[particle_Idx*BONDS_PER_PARTICLE*2 + incomingBondIdx*2];
         uint bondIdx    = bufI(&fbuf, FPARTICLEIDX)[particle_Idx*BONDS_PER_PARTICLE*2 + incomingBondIdx*2 +1];
@@ -1424,11 +1424,11 @@ extern "C" __device__ void removeParticle (uint particle_Idx)                   
     for (int tf=0;tf<NUM_TF;tf++) ptr_tf[tf]=0;
 }
 
-extern "C" __device__ void find_potential_bonds (int i, float3 ipos, int cell, uint _bonds[BONDS_PER_PARTICLE][2], float _bond_dsq[BONDS_PER_PARTICLE], float max_len_sq)
+extern "C" __device__ void find_potential_bonds (int i, cl_float3 ipos, int cell, uint _bonds[BONDS_PER_PARTICLE][2], float _bond_dsq[BONDS_PER_PARTICLE], float max_len_sq)
 {                                                                                                           // Triangulated cubic bond selection...
 	if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return;                                                           // If the cell is empty, skip it.
 	float dsq;//, sdist;//, c;
-	float3 dist = make_float3(0,0,0), eterm  = make_float3(0,0,0), force = make_float3(0,0,0);
+	cl_float3 dist = make_cl_float3(0,0,0), eterm  = make_cl_float3(0,0,0), force = make_cl_float3(0,0,0);
 	uint j;
 	int clast = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];                                      // index of last particle in this cell
     for ( int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++ ) {                                    // For particles in this cell.
@@ -1490,7 +1490,7 @@ extern "C" __global__ void initialize_FCURAND_STATE (int pnum)  // designed to u
 }
 
 
-extern "C" __device__ void find_potential_bond (int i, float3 ipos, uint _thisParticleBonds[BONDS_PER_PARTICLE], float3 tpos, int gc, uint &_otherParticleIdx, uint &_otherParticleBondIdx, float &_bond_dsq, float max_len)                                                                                      
+extern "C" __device__ void find_potential_bond (int i, cl_float3 ipos, uint _thisParticleBonds[BONDS_PER_PARTICLE], cl_float3 tpos, int gc, uint &_otherParticleIdx, uint &_otherParticleBondIdx, float &_bond_dsq, float max_len)                                                                                      
 {                                                                                                      // Used when just one bond, near a target location "tpos" is sought.
     int nadj = (1*fparam.gridRes.z + 1)*fparam.gridRes.x + 1;
     gc -= nadj; 
@@ -1499,7 +1499,7 @@ extern "C" __device__ void find_potential_bond (int i, float3 ipos, uint _thisPa
     float max_len_sq = max_len*max_len;
     uint rnd_nmbr = curand(&fbuf.bufCuRNDST(FCURAND_STATE)[i]);                                                 // NB bitshift and mask to get rand bool to choose bond
     /*
-    float3 old_tpos=tpos;
+    cl_float3 old_tpos=tpos;
     */
     tpos.x += max_len/float(4+(rnd_nmbr&7))     *(-1*float(1&(rnd_nmbr>>3))  );                                 // shift tpos by a random step < max_len, randomises bond.
     tpos.y += max_len/float(4+((rnd_nmbr>>4)&7))*(-1*float(1&(rnd_nmbr>>7))  );
@@ -1516,7 +1516,7 @@ extern "C" __device__ void find_potential_bond (int i, float3 ipos, uint _thisPa
     for (int c=0; c < fparam.gridAdjCnt; c++) { 
         cell = gc + fparam.gridAdj[c];
         float dsq;
-        float3 dist = make_float3(0,0,0);
+        cl_float3 dist = make_cl_float3(0,0,0);
         uint j;
         int clast = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];                                      // index of last particle in this cell
         for ( int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++ ) {                                    // For particles in this cell.
@@ -1613,8 +1613,8 @@ extern "C" __device__ int atomicMakeBond(uint thisParticleIndx,  uint otherParti
     }else return 1;
 }
 
-extern "C" __device__ int findBondAxis(float3 pos, uint j ){
-    float3 dist     = ( pos - bufF3(&fbuf, FPOS)[ j ] );                                                             // dist in cm (Rama's comment)                                   
+extern "C" __device__ int findBondAxis(cl_float3 pos, uint j ){
+    cl_float3 dist     = ( pos - bufF3(&fbuf, FPOS)[ j ] );                                                             // dist in cm (Rama's comment)                                   
     float distxsq   = dist.x*dist.x, distysq=dist.y*dist.y, distzsq=dist.z*dist.z;
     float dsq       = distxsq + distysq + distzsq;                                                                  // scalar distance squared
             
@@ -1626,17 +1626,17 @@ extern "C" __device__ int findBondAxis(float3 pos, uint j ){
 }
 
 
-extern "C" __device__ void find_closest_particle_per_axis(uint particle, float3 pos, uint neighbours[6]){       // Used by "insertNewParticle()"
+extern "C" __device__ void find_closest_particle_per_axis(uint particle, cl_float3 pos, uint neighbours[6]){       // Used by "insertNewParticle()"
     uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;  // thread ID used for debugging
     // identify which bin to search  NB particle is new => not yet inserted into a cell
-	register float3 gridMin   =	fparam.gridMin;                 // "register" is a compiler 'hint', to keep this variable in thread register
-	register float3 gridDelta = fparam.gridDelta;               //  even if other variable have to be moved to slower 'local' memory  
-	register int3   gridRes   =	fparam.gridRes;                 //  in the streaming multiprocessor's cache.
+	register cl_float3 gridMin   =	fparam.gridMin;                 // "register" is a compiler 'hint', to keep this variable in thread register
+	register cl_float3 gridDelta = fparam.gridDelta;               //  even if other variable have to be moved to slower 'local' memory  
+	register cl_int3   gridRes   =	fparam.gridRes;                 //  in the streaming multiprocessor's cache.
     int		gs;
-	float3	gcf;
-	int3	gc;
-	gcf = (pos - gridMin) * gridDelta;                          // finds bin as a float3
-	gc  = make_int3( int(gcf.x), int(gcf.y), int(gcf.z) );      // crops to an int3
+	cl_float3	gcf;
+	cl_int3	gc;
+	gcf = (pos - gridMin) * gridDelta;                          // finds bin as a cl_float3
+	gc  = make_cl_int3( int(gcf.x), int(gcf.y), int(gcf.z) );      // crops to an cl_int3
 	gs  = (gc.y * gridRes.z + gc.z)*gridRes.x + gc.x;           // linearizes to an int for a 1D array of bins
 	
 	float neighbours_dsq[6] = {FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX};
@@ -1647,7 +1647,7 @@ extern "C" __device__ void find_closest_particle_per_axis(uint particle, float3 
         uint cell = gs + fparam.gridAdj[c];
         if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) continue;                                                         // If the cell is empty, skip it.
         float dsq = FLT_MAX;
-        float3 dist = make_float3(0,0,0);
+        cl_float3 dist = make_cl_float3(0,0,0);
         uint j = UINT_MAXSIZE;
         int clast = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];                                      // index of last particle in this cell
         //printf("\n(A:i=%u,particle=%u,c=%u,cell=%u,cndx=%u,clast=%u),",i,particle, c, cell, bufI(&fbuf, FGRIDOFF)[cell], clast);
@@ -1681,7 +1681,7 @@ extern "C" __device__ void find_closest_particle_per_axis(uint particle, float3 
 }
 
 
-extern "C" __device__ void find_bonds_to_redistribute(uint new_particle_Idx, float3 newParticlePos, uint neighbours[6], uint neighboursBondIdx[6], uint neighbours2[6]){
+extern "C" __device__ void find_bonds_to_redistribute(uint new_particle_Idx, cl_float3 newParticlePos, uint neighbours[6], uint neighboursBondIdx[6], uint neighbours2[6]){
     float neighbours_dsq[6] = {FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX};                                                                        // Used by "insertNewParticle()"
     
     //if (fparam.debug>2 /*&& (threadIdx.x==0 || particle_index==0)*/ ) printf("\nfind_bonds_to_redistribute()1.0:  new_particle_Idx=%u, neighbours=(%u,%u,%u,%u,%u,%u) ", 
@@ -1699,7 +1699,7 @@ extern "C" __device__ void find_bonds_to_redistribute(uint new_particle_Idx, flo
             int chk =0;
             for (; chk<6; chk++) if (otherParticle==neighbours[chk] || otherParticle==neighbours2[chk]) chk =7; // not one of neighbours[6] or neighbours2[6]
             if (chk==7) continue;
-            float3 dist = bufF3(&fbuf, FPOS)[otherParticle] - newParticlePos ;
+            cl_float3 dist = bufF3(&fbuf, FPOS)[otherParticle] - newParticlePos ;
             
             float dsq = dist.x*dist.x+dist.y*dist.y+dist.z*dist.z;
             //if (fparam.debug>2  ) printf("\nfind_bonds_to_redistribute()1.3: otherParticle=%u, dsq=%f, neighbours_dsq[neighbour]=%f, neighbour=%u ", 
@@ -1720,10 +1720,10 @@ extern "C" __device__ void makeBondIndxMap( uint parentParticleIndx, int bondInx
     uint bond0otherPartlicleIdx = bufI(&fbuf, FELASTIDX)[parentParticleIndx*BOND_DATA];                           // Used by "insertNewParticle()"
     uint bond1otherPartlicleIdx = bufI(&fbuf, FELASTIDX)[parentParticleIndx*BOND_DATA+DATA_PER_BOND];
     uint bond2otherPartlicleIdx = bufI(&fbuf, FELASTIDX)[parentParticleIndx*BOND_DATA+2*DATA_PER_BOND];
-    float3 pos      = bufF3(&fbuf, FPOS)[parentParticleIndx]; 
-    float3 bond0    = bufF3(&fbuf, FPOS)[bond0otherPartlicleIdx] - pos;
-    float3 bond1    = bufF3(&fbuf, FPOS)[bond1otherPartlicleIdx] - pos;
-    float3 bond2    = bufF3(&fbuf, FPOS)[bond2otherPartlicleIdx] - pos;
+    cl_float3 pos      = bufF3(&fbuf, FPOS)[parentParticleIndx]; 
+    cl_float3 bond0    = bufF3(&fbuf, FPOS)[bond0otherPartlicleIdx] - pos;
+    cl_float3 bond1    = bufF3(&fbuf, FPOS)[bond1otherPartlicleIdx] - pos;
+    cl_float3 bond2    = bufF3(&fbuf, FPOS)[bond2otherPartlicleIdx] - pos;
 /*
     // int axis =  1*(distxsq<distysq && distxsq<distzsq) + 2*(distysq<=distxsq && distysq<distzsq) +3*(distzsq<=distxsq && distzsq<=distysq);
     // if ((axis==1 && dist.x) || (axis==2 && dist.y) || (axis==3 && dist.z)) axis +=2; else axis--;       // sort by longest axis +/-ve 
@@ -1764,7 +1764,7 @@ extern "C" __device__ void makeBondIndxMap( uint parentParticleIndx, int bondInx
 }
 
 
-extern "C" __device__ void redistribute_bonds(uint new_particle_Idx, float3 newParticlePos, uint neighbours[6], uint neighboursBondIdx[6], uint neighbours2[6]){
+extern "C" __device__ void redistribute_bonds(uint new_particle_Idx, cl_float3 newParticlePos, uint neighbours[6], uint neighboursBondIdx[6], uint neighbours2[6]){
     // for particle removal, given list of bonds ... 
     // for each bond 
     
@@ -1772,7 +1772,7 @@ extern "C" __device__ void redistribute_bonds(uint new_particle_Idx, float3 newP
 }
 
 
-extern "C" __device__ int insertNewParticle(uint new_particle_Idx, float3 newParticlePos, uint parentParticleIndx, uint bondIdx, uint secondParticleIdx, uint otherParticleBondIndex, uint bond_type[BONDS_PER_PARTICLE]){
+extern "C" __device__ int insertNewParticle(uint new_particle_Idx, cl_float3 newParticlePos, uint parentParticleIndx, uint bondIdx, uint secondParticleIdx, uint otherParticleBondIndex, uint bond_type[BONDS_PER_PARTICLE]){
     if (fparam.debug>2)printf ("\ninsertNewParticle1: new_particle_Idx=%u,", new_particle_Idx);
     // Inserts particle at newParticlePos AND redistributes bonds with neighbours.
     // addParticle(parentParticleIndx, new_particle_Idx);
@@ -1871,8 +1871,8 @@ extern "C" __global__ void cleanBonds (int pnum){                               
 
     gc -= (1*fparam.gridRes.z + 1)*fparam.gridRes.x + 1;
     /*
-    register float3 force, eterm, dist;                                             // request to compiler to store in a register for speed.
-    force = make_float3(0,0,0);    eterm = make_float3(0,0,0);     dist  = make_float3(0,0,0);
+    register cl_float3 force, eterm, dist;                                             // request to compiler to store in a register for speed.
+    force = make_cl_float3(0,0,0);    eterm = make_cl_float3(0,0,0);     dist  = make_cl_float3(0,0,0);
     
     float dsq, abs_dist;                                                            // elastic force // new version computes here using particle index rather than ID.
     uint bondsToFill = 0;
@@ -1935,12 +1935,12 @@ extern "C" __global__ void cleanBonds (int pnum){                               
 }
 
 
-extern "C" __device__ void contribFindBonds ( int i, float3 ipos, int cell, int bond, uint _bondToIdx[BONDS_PER_PARTICLE], float*_bond_dsq, float*_best_theta, uint _pnum)
+extern "C" __device__ void contribFindBonds ( int i, cl_float3 ipos, int cell, int bond, uint _bondToIdx[BONDS_PER_PARTICLE], float*_bond_dsq, float*_best_theta, uint _pnum)
 {
     if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return;                                                   // If the cell is empty, skip it.
     uint    j;
     float   dsq;
-    float3  dist    = make_float3(0,0,0); 
+    cl_float3  dist    = make_cl_float3(0,0,0); 
     int     clast   = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];                        // index of last particle in this cell
     
     for ( int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++ ) {                            // For particles in this cell.
@@ -1950,7 +1950,7 @@ extern "C" __device__ void contribFindBonds ( int i, float3 ipos, int cell, int 
         dsq     = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);                                  // scalar distance squared
         
         if ( dsq < fparam.rd2 && dsq > 0) {                                                         // IF in-range && not the same particle
-            float3 u,v;
+            cl_float3 u,v;
             u               = dist;
             float theta     = 0;
             uint  bondCount = 0;
@@ -1987,7 +1987,7 @@ extern "C" __global__ void initialize_bonds (int ActivePoints, uint list_length,
     uint bondToIdx[BONDS_PER_PARTICLE]; for(int bond=0; bond<BONDS_PER_PARTICLE; bond++) bondToIdx[bond]=UINT_MAXSIZE;
     //printf("\n initialize_bonds()2: i=%u,  ",i);
     
-    float3 tpos         = bufF3(&fbuf, FPOS)[ i ];
+    cl_float3 tpos         = bufF3(&fbuf, FPOS)[ i ];
     uint  * uintptr     = &bufI(&fbuf, FELASTIDX)[i*BOND_DATA];
     float * floatptr    = &bufF(&fbuf, FELASTIDX)[i*BOND_DATA];
     //printf("\n initialize_bonds()3: i=%u,  ",i);
@@ -2061,8 +2061,8 @@ extern "C" __global__ void heal (int ActivePoints, uint list_length, int change_
     
     float best_theta= FLT_MAX, bond_dsq = fparam.rd2;                                              // used to compare potential bonds
     
-    float3 tpos = bufF3(&fbuf, FPOS)[ i ];
-    float3 ipos = tpos;
+    cl_float3 tpos = bufF3(&fbuf, FPOS)[ i ];
+    cl_float3 ipos = tpos;
     uint rnd_nmbr = curand(&fbuf.bufCuRNDST(FCURAND_STATE)[i]);                                    // NB bitshift and mask to get rand bool to choose bond
     float max_len = sqrt(fparam.rd2);
     
@@ -2129,7 +2129,7 @@ return;  // suspend use of this kernel for now.
         return; 
     }
     uint new_particle_Idx  =  startNewPoints + particle_index;
-    float3 newParticlePos =  bufF3(&fbuf, FPOS)[i] - 0.5*(bufF3(&fbuf, FPOS)[i] - bufF3(&fbuf, FPOS)[secondParticleIdx]); // placed near second particle to ensure selection of this bond
+    cl_float3 newParticlePos =  bufF3(&fbuf, FPOS)[i] - 0.5*(bufF3(&fbuf, FPOS)[i] - bufF3(&fbuf, FPOS)[secondParticleIdx]); // placed near second particle to ensure selection of this bond
     bufF3(&fbuf, FPOS)[new_particle_Idx] = newParticlePos;
     
     if (fparam.debug>2)printf("\nlengthen_muscle:  bondIdx_reciprocal=%u, newParticlePos=(%f,%f,%f)  ",bondIdx_reciprocal, newParticlePos.x, newParticlePos.y, newParticlePos.z );
@@ -2244,7 +2244,7 @@ extern "C" __global__ void lengthen_tissue ( int ActivePoints, int list_length, 
     __syncthreads;
     
     //bufF3(&fbuf, FPOS)[new_particle_Idx]          = bufF3(&fbuf, FPOS)[i] + (bufF3(&fbuf, FPOS)[i] - bufF3(&fbuf, FPOS)[next_particle_Idx])/2;
-    float3 newParticlePos  = bufF3(&fbuf, FPOS)[i] + (bufF3(&fbuf, FPOS)[next_particle_Idx]  -  bufF3(&fbuf, FPOS)[i])/2;                                     // ie (FPOS)[parent] + 1/2 * (dist to next particle)
+    cl_float3 newParticlePos  = bufF3(&fbuf, FPOS)[i] + (bufF3(&fbuf, FPOS)[next_particle_Idx]  -  bufF3(&fbuf, FPOS)[i])/2;                                     // ie (FPOS)[parent] + 1/2 * (dist to next particle)
     
     /**/if (fparam.debug>2  && (threadIdx.x<10 || particle_index==0)  ) printf("\nlengthen_tissue chk7:  i=%u, next_particle_Idx=%u, new_particle_Idx=%u, new_particle_ID=%u, newParticlePos=(%f,%f,%f) ",
             i, next_particle_Idx, new_particle_Idx, bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx], newParticlePos.x, newParticlePos.y, newParticlePos.z );
@@ -2275,7 +2275,7 @@ extern "C" __global__ void lengthen_tissue ( int ActivePoints, int list_length, 
     
     if (fparam.debug>2  && (threadIdx.x==0 || particle_index==0)  ) printf("\nlengthen_tissue() completed i=%u \t",i);
     {//Notes
-    //__device__ int  insertNewParticle(uint new_particle_Idx, float3 newParticlePos, uint parentParticleIndx, uint bondIdx, uint secondParticleIdx, uint otherParticleBondIndex, uint bond_type[BONDS_PER_PARTICLE]);
+    //__device__ int  insertNewParticle(uint new_particle_Idx, cl_float3 newParticlePos, uint parentParticleIndx, uint bondIdx, uint secondParticleIdx, uint otherParticleBondIndex, uint bond_type[BONDS_PER_PARTICLE]);
     /*
     
     //makeBond (uint thisParticleIdx, uint otherParticleIdx, uint bondIdx, uint otherParticleBondIdx, uint bondType /_* elastin, collagen, apatite *_/)
@@ -2362,7 +2362,7 @@ extern "C" __global__ void lengthen_tissue ( int ActivePoints, int list_length, 
     // NB must select correct "float max_rest_length = params_[0].param[params_->max_rest_length];"
     
     for (int c=0; c < fparam.gridAdjCnt; c++) find_potential_bonds ( i, bufF3(&fbuf, FPOS)[ i ], gc + fparam.gridAdj[c], bonds, bond_dsq, max_rest_length*max_rest_length); 
-                                            //find_potential_bonds (int i, float3 ipos, int cell, uint _bonds[BONDS_PER_PARTICLE][2], float _bond_dsq[BONDS_PER_PARTICLE], float max_len_sq);
+                                            //find_potential_bonds (int i, cl_float3 ipos, int cell, uint _bonds[BONDS_PER_PARTICLE][2], float _bond_dsq[BONDS_PER_PARTICLE], float max_len_sq);
         // Add new bonds /////////////////////////////////////////////////////////////////////////////
     for (int a =0; a< BONDS_PER_PARTICLE; a++){
         int otherParticleBondIndex = BONDS_PER_PARTICLE*2*bonds[a][0] + 2*a /_*bonds[a][1]*_/; // bufI(&fbuf, FPARTICLEIDX)[otherParticleBondIndex]
@@ -2473,7 +2473,7 @@ extern "C" __global__ void shorten_tissue ( int ActivePoints, int list_length, i
         */
     }
     // remove the second particle
-    bufF3(&fbuf, FPOS)[next_particle_Idx]=make_float3(20);//FLT_MAX  fparam.gridMax;  // place particle outside sim. // TODO create standard "out of use" float3 for FPOS
+    bufF3(&fbuf, FPOS)[next_particle_Idx]=make_cl_float3(20);//FLT_MAX  fparam.gridMax;  // place particle outside sim. // TODO create standard "out of use" cl_float3 for FPOS
     
 }
 
@@ -3023,7 +3023,7 @@ extern "C" __global__ void weaken_tissue ( int ActivePoints, int list_length, in
 #define DIFFUSE_RATE 10.0   // - replace with: FGenome->difusability[NUM_GENES][2] (above)
 
 //! loops over all the chemicals in the given particle and exchanges chemicals
-extern "C" __device__ void contributeDiffusion(uint i, float3 p, int cell, const float currentConc[NUM_TF], float newConc[NUM_TF], uint diffusability[NUM_TF]){  
+extern "C" __device__ void contributeDiffusion(uint i, cl_float3 p, int cell, const float currentConc[NUM_TF], float newConc[NUM_TF], uint diffusability[NUM_TF]){  
     // if the cell is empty, skip it
     if (bufI(&fbuf, FGRIDCNT)[cell] == 0) return;
 
@@ -3039,7 +3039,7 @@ extern "C" __device__ void contributeDiffusion(uint i, float3 p, int cell, const
         int pndx = bufI(&fbuf, FGRID)[cndx];
 
         // distance between this particle and considered particle (scalar distance squared, to save time I presume)
-        float3 dist = p - bufF3(&fbuf, FPOS) [pndx];
+        cl_float3 dist = p - bufF3(&fbuf, FPOS) [pndx];
         float dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
 
         // if the particle is in range, and not ourselves
@@ -3090,7 +3090,7 @@ extern "C" __global__ void computeDiffusion(int pnum){
     gc -= nadj;
 
     // Now we work to exchange diffusion, by adding our neighbours chemicals and subtracting our own chemicals
-    float3 pos = bufF3(&fbuf, FPOS) [i];
+    cl_float3 pos = bufF3(&fbuf, FPOS) [i];
     // bin loop: visit the bins
     for (int c = 0; c < fparam.gridAdjCnt; c++) {
         contributeDiffusion(i, pos, gc + fparam.gridAdj[c], currentConc, newConc, diffusability);
@@ -3164,12 +3164,12 @@ Hessian                      H      := del^2 = del.del^T
 Tensor derivative                   := del circle_cross v
     
 */
-extern "C" __device__ float3 contributeForce ( int i, float3 ipos, float3 iveleval, float ipress, float idens, int cell)
+extern "C" __device__ cl_float3 contributeForce ( int i, cl_float3 ipos, cl_float3 iveleval, float ipress, float idens, int cell)
 {			
-	if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return make_float3(0,0,0);                                        // If the cell is empty, skip it.
+	if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return make_cl_float3(0,0,0);                                        // If the cell is empty, skip it.
 	float  dsq, sdist, c, r, sr=fparam.psmoothradius;//1.0;//
-    float3 pterm= make_float3(0,0,0), sterm= make_float3(0,0,0), vterm= make_float3(0,0,0), forcej= make_float3(0,0,0), delta_v= make_float3(0,0,0);                                                              // pressure, surface tension and viscosity terms.
-	float3 dist     = make_float3(0,0,0),      eterm = make_float3(0,0,0),    force = make_float3(0,0,0);
+    cl_float3 pterm= make_cl_float3(0,0,0), sterm= make_cl_float3(0,0,0), vterm= make_cl_float3(0,0,0), forcej= make_cl_float3(0,0,0), delta_v= make_cl_float3(0,0,0);                                                              // pressure, surface tension and viscosity terms.
+	cl_float3 dist     = make_cl_float3(0,0,0),      eterm = make_cl_float3(0,0,0),    force = make_cl_float3(0,0,0);
 	uint   j;
 	int    clast    = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];                                // index of last particle in this cell
     uint k =0 ;
@@ -3215,7 +3215,7 @@ extern "C" __device__ float3 contributeForce ( int i, float3 ipos, float3 ivelev
              pterm   = (dist/sdist) * pow((fparam.psmoothradius - sqrt(dsq)), 3) * (fparam.psmoothradius - dsq) ;
              * fparam.psimscale * -0.5f * c * fparam.spikykern   * ( ipress + bufF(&fbuf, FPRESS)[ j ] )/ sdist )  ;       // pressure term
             //sterm   = (dist/dsq) * fparam.sterm * cos(3*CUDART_PI_F*r/(2*fparam.psmoothradius));  // can we use sdist in placeof r ?  or in place od dsq? What about pressure?
-			//vterm   =  fparam.vterm * ( bufF3(&fbuf, FVEVAL)[ j ] - iveleval );  // make_float3(0,0,0);//
+			//vterm   =  fparam.vterm * ( bufF3(&fbuf, FVEVAL)[ j ] - iveleval );  // make_cl_float3(0,0,0);//
 			forcej  += ( pterm + sterm + vterm) * c * idens * (bufF(&fbuf, FDENSITY)[ j ] );  // fluid force
             */
             force   +=  pterm + vterm  ;
@@ -3242,8 +3242,8 @@ extern "C" __global__ void computeForce ( int pnum, bool freeze, uint frame)
 	if ( gc == GRID_UNDEF ) return;                                                 // particle out-of-range
 
 	gc -= (1*fparam.gridRes.z + 1)*fparam.gridRes.x + 1;
-	register float3 force, eterm, dist;                                             // request to compiler to store in a register for speed.
-	force = make_float3(0,0,0);    eterm = make_float3(0,0,0);     dist  = make_float3(0,0,0);
+	register cl_float3 force, eterm, dist;                                             // request to compiler to store in a register for speed.
+	force = make_cl_float3(0,0,0);    eterm = make_cl_float3(0,0,0);     dist  = make_cl_float3(0,0,0);
     float dsq, abs_dist;                                                            // elastic force // new version computes here using particle index rather than ID.
     uint bondsToFill = 0;
     uint bonds[BONDS_PER_PARTICLE][2];                                              // [0] = index of other particle, [1] = bond_index
@@ -3257,7 +3257,7 @@ extern "C" __global__ void computeForce ( int pnum, bool freeze, uint frame)
     //if(bufI(&fbuf, FPARTICLE_ID)[i]<10) printf("\ncomputeForce() chk2: ParticleID=%u  ",bufI(&fbuf, FPARTICLE_ID)[i] );  
     //__syncthreads();
     
-    float3  pvel = {bufF3(&fbuf, FVEVAL)[ i ].x,  bufF3(&fbuf, FVEVAL)[ i ].y,  bufF3(&fbuf, FVEVAL)[ i ].z}; // copy i's FEVAL to thread memory
+    cl_float3  pvel = {bufF3(&fbuf, FVEVAL)[ i ].x,  bufF3(&fbuf, FVEVAL)[ i ].y,  bufF3(&fbuf, FVEVAL)[ i ].z}; // copy i's FEVAL to thread memory
     bool hide;
     bool long_bonds = false;
     for (int a=0;a<BONDS_PER_PARTICLE;a++){                                         // compute elastic force due to bonds /////////////////////////////////////////////////////////
@@ -3272,12 +3272,12 @@ extern "C" __global__ void computeForce ( int pnum, bool freeze, uint frame)
             uint  other_particle_ID = bufI(&fbuf, FELASTIDX)[bond + 5];
             uint  bondIndex         = bufI(&fbuf, FELASTIDX)[bond + 6];
             
-            float3 j_pos = make_float3(bufF3(&fbuf, FPOS)[ j ].x,  bufF3(&fbuf, FPOS)[ j ].y,  bufF3(&fbuf, FPOS)[ j ].z); // copy j's FPOS to thread memory
+            cl_float3 j_pos = make_cl_float3(bufF3(&fbuf, FPOS)[ j ].x,  bufF3(&fbuf, FPOS)[ j ].y,  bufF3(&fbuf, FPOS)[ j ].z); // copy j's FPOS to thread memory
         
             dist            = ( bufF3(&fbuf, FPOS)[ i ] - j_pos  );                   // dist in cm (Rama's comment)  /*bufF3(&fbuf, FPOS)[ j ]*/
             dsq             = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);      // scalar distance squared
             abs_dist        = sqrt(dsq) + FLT_MIN;                                  // FLT_MIN adds minimum +ve float, to prevent division by abs_dist=zero
-            float3 rel_vel  = bufF3(&fbuf, FVEVAL)[ j ] - pvel;                       // add optimal damping:  -l*v , were v is relative velocity, and l= 2*sqrt(m*k)  
+            cl_float3 rel_vel  = bufF3(&fbuf, FVEVAL)[ j ] - pvel;                       // add optimal damping:  -l*v , were v is relative velocity, and l= 2*sqrt(m*k)  
                                                                                     // where k is the spring stiffness.
                                                                                     // eterm = (bool within elastic limit) * (spring force + damping)
             float spring_strain = fmaxf(0.0, (abs_dist-restlength)/restlength);     // NB _count_only_tension_ not compression or slack. ? What about bone? and collagen ? 
@@ -3291,7 +3291,7 @@ extern "C" __global__ void computeForce ( int pnum, bool freeze, uint frame)
           //if(bufI(&fbuf, FPARTICLE_ID)[i]<10) printf("\ncomputeForce() chk3: ParticleID=%u, bond=%u, restlength=%f, modulus=%f , abs_dist=%f , spring_strain=%f , strain_integrator=%f  ",bufI(&fbuf, FPARTICLE_ID)[i], a, restlength , modulus , abs_dist , spring_strain , bufF(&fbuf, FELASTIDX)[bond + 7]  );  
             
             eterm = ((float)(abs_dist < elastic_limit)) * ( ((dist/abs_dist) * spring_strain * modulus) - damping_coeff*rel_vel) /(fparam.pmass); //Accel due to elastic bond. NB equal masses particles
-            //eterm = make_float3(0,0,0);
+            //eterm = make_cl_float3(0,0,0);
             
             if(fparam.debug >0  && abs_dist>1.5 /* i==uint(pnum/2) */  /*bufF(&fbuf, FEPIGEN)[i +  12*fparam.maxPoints]*/) {                      // if "external actuation" particle
                 long_bonds=true;
@@ -3310,7 +3310,7 @@ extern "C" __global__ void computeForce ( int pnum, bool freeze, uint frame)
                 force -= eterm;                                                     // elastic force towards other particle, if (rest_len -abs_dist) is -ve
                 atomicAdd( &bufF3(&fbuf, FFORCE)[ j ].x, eterm.x);                    // NB Must send equal and opposite force to the other particle
                 atomicAdd( &bufF3(&fbuf, FFORCE)[ j ].y, eterm.y);
-                atomicAdd( &bufF3(&fbuf, FFORCE)[ j ].z, eterm.z);                    // temporary hack, ? better to write a float3 attomicAdd using atomicCAS  #########
+                atomicAdd( &bufF3(&fbuf, FFORCE)[ j ].z, eterm.z);                    // temporary hack, ? better to write a cl_float3 attomicAdd using atomicCAS  #########
             }
             if (abs_dist >= elastic_limit  && freeze==false){                       // If (out going bond broken)  nb 'freeze'=> initializing bonds
                 bufF(&fbuf, FELASTIDX)[i*BOND_DATA + a*DATA_PER_BOND +2]=0.0;         // remove broken bond by setting rest length to zero.
@@ -3332,10 +3332,10 @@ extern "C" __global__ void computeForce ( int pnum, bool freeze, uint frame)
     //if(i<10) printf("\n computeForce()1: i=,%u, elastic force=(,%f,%f,%f,) ",i, force.x,force.y,force.z);
 	
     bondsToFill=BONDS_PER_PARTICLE; // remove and use result from loop above ? ############
-    float3 fluid_force_sum = make_float3(0,0,0);
+    cl_float3 fluid_force_sum = make_cl_float3(0,0,0);
     for (int c=0; c < fparam.gridAdjCnt; c++) {                                     // Call contributeForce(..) for fluid forces AND potential new bonds /////////////////////////
         
-        float3 fluid_force = make_float3(0,0,0);
+        cl_float3 fluid_force = make_cl_float3(0,0,0);
         fluid_force = contributeForce ( i, bufF3(&fbuf, FPOS)[ i ], bufF3(&fbuf, FVEVAL)[ i ], bufF(&fbuf, FPRESS)[ i ], bufF(&fbuf, FDENSITY)[ i ], gc + fparam.gridAdj[c]); 
         //if (freeze==true) fluid_force *=0.1;                                      // slow fluid movement while forming bonds
         fluid_force_sum += fluid_force;
@@ -3353,7 +3353,7 @@ extern "C" __global__ void computeForce ( int pnum, bool freeze, uint frame)
 	//__syncthreads();   // when is this needed ? ############
     atomicAdd(&bufF3(&fbuf, FFORCE)[ i ].x, force.x);                                 // atomicAdd req due to other particles contributing forces via incomming bonds. 
     atomicAdd(&bufF3(&fbuf, FFORCE)[ i ].y, force.y);                                 // NB need to reset FFORCE to zero in  CountingSortFull(..)
-    atomicAdd(&bufF3(&fbuf, FFORCE)[ i ].z, force.z);                                 // temporary hack, ? better to write a float3 atomicAdd using atomicCAS ?  ########
+    atomicAdd(&bufF3(&fbuf, FFORCE)[ i ].z, force.z);                                 // temporary hack, ? better to write a cl_float3 atomicAdd using atomicCAS ?  ########
 
 }                                                                                   // end computeForce (..)
 
@@ -3377,22 +3377,22 @@ extern "C" __global__ void emitParticles ( float frame, int emit, int numPnts ) 
 	curandState_t* st = (curandState_t*) (fbuf.bufC(FSTATE) + i*sizeof(curandState_t));
 	uint v = curand( st);
 	uint j = v & (numPnts-1);
-	float3 bmin = make_float3(-170,10,-20);
-	float3 bmax = make_float3(-190,60, 20);
+	cl_float3 bmin = make_cl_float3(-170,10,-20);
+	cl_float3 bmax = make_cl_float3(-190,60, 20);
 
-	float3 pos = make_float3(0,0,0);	
+	cl_float3 pos = make_cl_float3(0,0,0);	
 	pos.x = float( v & 0xFF ) / 256.0;
 	pos.y = float((v>>8) & 0xFF ) / 256.0;
 	pos.z = float((v>>16) & 0xFF ) / 256.0;
 	pos = bmin + pos*(bmax-bmin);	
 	
 	bufF3(&fbuf, FPOS)[j] = pos;
-	bufF3(&fbuf, FVEVAL)[j] = make_float3(0,0,0);
-	bufF3(&fbuf, FVEL)[j] = make_float3(5,-2,0);
-	bufF3(&fbuf, FFORCE)[j] = make_float3(0,0,0);	
+	bufF3(&fbuf, FVEVAL)[j] = make_cl_float3(0,0,0);
+	bufF3(&fbuf, FVEL)[j] = make_cl_float3(5,-2,0);
+	bufF3(&fbuf, FFORCE)[j] = make_cl_float3(0,0,0);	
 }
 
-__device__ uint getGridCell ( float3 pos, uint3& gc )                                                                           // NB not currently used
+__device__ uint getGridCell ( cl_float3 pos, ucl_int3& gc )                                                                           // NB not currently used
 {	
 	gc.x = (int)( (pos.x - fparam.gridMin.x) * fparam.gridDelta.x);			// Cell in which particle is located
 	gc.y = (int)( (pos.y - fparam.gridMin.y) * fparam.gridDelta.y);
@@ -3400,24 +3400,24 @@ __device__ uint getGridCell ( float3 pos, uint3& gc )                           
 	return (int) ( (gc.y*fparam.gridRes.z + gc.z)*fparam.gridRes.x + gc.x);	
 }
 
-extern "C" __global__ void sampleParticles ( float* brick, uint3 res, float3 bmin, float3 bmax, int numPnts, float scalar )     // NB not currently used
+extern "C" __global__ void sampleParticles ( float* brick, ucl_int3 res, cl_float3 bmin, cl_float3 bmax, int numPnts, float scalar )     // NB not currently used
 {
-	float3 dist;
+	cl_float3 dist;
 	float dsq;
 	int j, cell;	
 	register float r2 = fparam.r2;
 	register float h2 = 2.0*r2 / 8.0;		// 8.0=smoothing. higher values are sharper
 
-	uint3 i = blockIdx * make_uint3(blockDim.x, blockDim.y, blockDim.z) + threadIdx;
+	ucl_int3 i = blockIdx * make_ucl_int3(blockDim.x, blockDim.y, blockDim.z) + threadIdx;
 	if ( i.x >= res.x || i.y >= res.y || i.z >= res.z ) return;
 	
-	float3 p = bmin + make_float3(float(i.x)/res.x, float(i.y)/res.y, float(i.z)/res.z) * (bmax-bmin);
-	//float3 v = make_float3(0,0,0);
+	cl_float3 p = bmin + make_cl_float3(float(i.x)/res.x, float(i.y)/res.y, float(i.z)/res.z) * (bmax-bmin);
+	//cl_float3 v = make_cl_float3(0,0,0);
 	float v = 0.0;
 
 	// Get search cell
 	int nadj = (1*fparam.gridRes.z + 1)*fparam.gridRes.x + 1;
-	uint3 gc;
+	ucl_int3 gc;
 	uint gs = getGridCell ( p, gc );
 	if ( gc.x < 1 || gc.x > fparam.gridRes.x-fparam.gridSrch || gc.y < 1 || gc.y > fparam.gridRes.y-fparam.gridSrch || gc.z < 1 || gc.z > fparam.gridRes.z-fparam.gridSrch ) {
 		brick[ (i.y*int(res.z) + i.z)*int(res.x) + i.x ] = 0.0;
@@ -3473,16 +3473,16 @@ extern "C" __global__ void advanceParticles ( float time, float dt, float ss, in
 	if ( i >= numPnts ) return;
 	
 	if ( bufI(&fbuf, FGCELL)[i] == GRID_UNDEF ) {
-		bufF3(&fbuf, FPOS)[i] = make_float3(fparam.pboundmin.x,fparam.pboundmin.y,fparam.pboundmin.z-2*fparam.gridRes.z);
-		bufF3(&fbuf, FVEL)[i] = make_float3(0,0,0);
+		bufF3(&fbuf, FPOS)[i] = make_cl_float3(fparam.pboundmin.x,fparam.pboundmin.y,fparam.pboundmin.z-2*fparam.gridRes.z);
+		bufF3(&fbuf, FVEL)[i] = make_cl_float3(0,0,0);
 		return;
 	}
 			
 	// Get particle vars
-	register float3 accel, norm;
+	register cl_float3 accel, norm;
 	register float diff, adj, speed;
-	register float3 pos = bufF3(&fbuf, FPOS)[i];
-	register float3 veval = bufF3(&fbuf, FVEVAL)[i];
+	register cl_float3 pos = bufF3(&fbuf, FPOS)[i];
+	register cl_float3 veval = bufF3(&fbuf, FVEVAL)[i];
 
 	// Leapfrog integration						
 	accel = bufF3(&fbuf, FFORCE)[i];
@@ -3493,14 +3493,14 @@ extern "C" __global__ void advanceParticles ( float time, float dt, float ss, in
 	// Y-axis
 	diff = fparam.pradius - (pos.y - (fparam.pboundmin.y + (pos.x-fparam.pboundmin.x)*fparam.pground_slope )) ; // * ss;
 	if ( diff > EPSILON ) {
-		norm = make_float3( -fparam.pground_slope, 1.0 - fparam.pground_slope, 0);
+		norm = make_cl_float3( -fparam.pground_slope, 1.0 - fparam.pground_slope, 0);
 		adj = fparam.pextstiff * diff - fparam.pdamp * dot(norm, veval );
 		norm *= adj; accel += norm;
 	}
 
 	diff = fparam.pradius - ( fparam.pboundmax.y - pos.y ) ; // * ss;
 	if ( diff > EPSILON ) {
-		norm = make_float3(0, -1, 0);
+		norm = make_cl_float3(0, -1, 0);
 		adj = fparam.pextstiff * diff - fparam.pdamp * dot(norm, veval );
 		norm *= adj; accel += norm;
 	}
@@ -3509,14 +3509,14 @@ extern "C" __global__ void advanceParticles ( float time, float dt, float ss, in
 	//diff = fparam.pradius - (pos.x - (fparam.pboundmin.x + (sin(time*fparam.pforce_freq)+1)*0.5 * fparam.pforce_min))*ss;  //wave machine NB fparam.pforce_freq
 	diff = fparam.pradius - (pos.x - fparam.pboundmin.x ) ; // * ss;
 	if ( diff > EPSILON ) {
-		norm = make_float3( 1, 0, 0);
+		norm = make_cl_float3( 1, 0, 0);
 		adj = (fparam.pforce_min+1) * fparam.pextstiff * diff - fparam.pdamp * dot(norm, veval );
 		norm *= adj; accel += norm;
 	}
 	//diff = fparam.pradius - ( (fparam.pboundmax.x - (sin(time*fparam.pforce_freq)+1)*0.5*fparam.pforce_max) - pos.x)*ss;  //wave machine
 	diff = fparam.pradius - ( fparam.pboundmax.x - pos.x ) ; // * ss;
 	if ( diff > EPSILON ) {
-		norm = make_float3(-1, 0, 0);
+		norm = make_cl_float3(-1, 0, 0);
 		adj = (fparam.pforce_max+1) * fparam.pextstiff * diff - fparam.pdamp * dot(norm, veval );
 		norm *= adj; accel += norm;
 	}
@@ -3524,22 +3524,22 @@ extern "C" __global__ void advanceParticles ( float time, float dt, float ss, in
 	// Z-axis
 	diff = fparam.pradius - (pos.z - fparam.pboundmin.z ) ; // * ss;
 	if ( diff > EPSILON ) {
-		norm = make_float3( 0, 0, 1 );
+		norm = make_cl_float3( 0, 0, 1 );
 		adj = fparam.pextstiff * diff - fparam.pdamp * dot(norm, veval );
 		norm *= adj; accel += norm;
 	}
 	diff = fparam.pradius - ( fparam.pboundmax.z - pos.z ) ; // * ss;
 	if ( diff > EPSILON ) {
-		norm = make_float3( 0, 0, -1 );
+		norm = make_cl_float3( 0, 0, -1 );
 		adj = fparam.pextstiff * diff - fparam.pdamp * dot(norm, veval );
 		norm *= adj; accel += norm;
 	}
 	
 	// Shield for particle store at fparam.pboundmax . ? does this exist implicitly due to the other boundaries ? 
-	float3 dist = fparam.pboundmax - pos;
+	cl_float3 dist = fparam.pboundmax - pos;
 	diff = 2*fparam.pradius - (dist.x + dist.y + dist.z) ; // * ss;                  // use Manhatan norm for speed & 2*pradius for safety
 	if ( diff > EPSILON ) {
-        norm = make_float3( 1, 1, 1 );                                          // NB planar norm for speed, not spherical
+        norm = make_cl_float3( 1, 1, 1 );                                          // NB planar norm for speed, not spherical
         adj = fparam.pextstiff * diff - fparam.pdamp * dot(norm, veval );
 		norm *= adj; accel += norm;
     }
@@ -3566,7 +3566,7 @@ extern "C" __global__ void advanceParticles ( float time, float dt, float ss, in
 	}
 
 	// Velocity Limit
-	float3 vel = bufF3(&fbuf, FVEL)[i];
+	cl_float3 vel = bufF3(&fbuf, FVEL)[i];
     
 	speed = vel.x*vel.x + vel.y*vel.y + vel.z*vel.z;
     /*
@@ -3585,7 +3585,7 @@ extern "C" __global__ void advanceParticles ( float time, float dt, float ss, in
 	/*
 	// Brownian motion : helps to prevent partice collapse in the heavily damped corners of the simulation space.
     uint rnd_nmbr = curand(&fbuf.bufCuRNDST(FCURAND_STATE)[i]);                                                 // NB bitshift and mask to get rand bool to choose bond
-    float3 bmotion;
+    cl_float3 bmotion;
     bmotion.x = 0.04/float(4+(rnd_nmbr&7))     *(-1*float(1&(rnd_nmbr>>3))  );                                 // shift tpos by a random step < max_len, randomises bond.
     bmotion.y = 0.04/float(4+((rnd_nmbr>>4)&7))*(-1*float(1&(rnd_nmbr>>7))  );
     bmotion.z = 0.04/float(4+((rnd_nmbr>>8)&7))*(-1*float(1&(rnd_nmbr>>11)) );
@@ -3593,7 +3593,7 @@ extern "C" __global__ void advanceParticles ( float time, float dt, float ss, in
     
 	// Leap-frog Integration                                                    // Write to ftemp.buf*(FEVEL/FVEL/FPOS)
                                                                                 // Allows specialParticles() to read old values.
-	float3 vnext           = accel*dt + vel;                                    // v(t+1/2) = v(t-1/2) + a(t) dt		
+	cl_float3 vnext           = accel*dt + vel;                                    // v(t+1/2) = v(t-1/2) + a(t) dt		
 	ftemp.bufF3(FVEVAL)[i] = (vel + vnext) * 0.5;                               // v(t+1) = [v(t-1/2) + v(t+1/2)] * 0.5			
 	ftemp.bufF3(FVEL)[i]   = vnext;
 	ftemp.bufF3(FPOS)[i]   += (vnext * dt); /*(dt/ss)) + bmotion*/              // p(t+1) = p(t) + v(t+1/2) dt		
@@ -3623,10 +3623,10 @@ extern "C" __global__ void externalActuation (uint list_len,  float time, float 
   //if (fparam.debug>2)printf("\nexternalActuation(): i=%u\t",i);
     
     // Get particle vars
-	register float3 accel={0};//, norm;
+	register cl_float3 accel={0};//, norm;
 	register float speed; //diff, adj, 
-	register float3 pos = bufF3(&fbuf, FPOS)[i];
-	register float3 veval = bufF3(&fbuf, FVEVAL)[i];
+	register cl_float3 pos = bufF3(&fbuf, FPOS)[i];
+	register cl_float3 veval = bufF3(&fbuf, FVEVAL)[i];
 
 	// Leapfrog integration						
 	accel = bufF3(&fbuf, FFORCE)[i];
@@ -3655,7 +3655,7 @@ extern "C" __global__ void externalActuation (uint list_len,  float time, float 
 	}
 
 	// Velocity Limit
-	float3 vel = bufF3(&fbuf, FVEL)[i];
+	cl_float3 vel = bufF3(&fbuf, FVEL)[i];
     
 	speed = vel.x*vel.x + vel.y*vel.y + vel.z*vel.z;
 	if ( speed > fparam.VL2 ) {
@@ -3665,7 +3665,7 @@ extern "C" __global__ void externalActuation (uint list_len,  float time, float 
 	
 	// Leap-frog Integration                                                    // Write to ftemp.buf*(FEVEL/FVEL/FPOS)
                                                                                 // Allows specialParticles() to read old values.
-	float3 vnext = accel*dt + vel;					// v(t+1/2) = v(t-1/2) + a(t) dt		
+	cl_float3 vnext = accel*dt + vel;					// v(t+1/2) = v(t-1/2) + a(t) dt		
 	ftemp.bufF3(FVEVAL)[i] = (vel + vnext) * 0.5;	// v(t+1) = [v(t-1/2) + v(t+1/2)] * 0.5			
 	ftemp.bufF3(FVEL)[i] = vnext;
 	ftemp.bufF3(FPOS)[i] += vnext * (dt/ss);		// p(t+1) = p(t) + v(t+1/2) dt		

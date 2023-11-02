@@ -1,0 +1,50 @@
+{
+    "verbosity":0,                                                      // -1= none, 0=errors only, 1=basic, 2=lots.
+    "imagesPerCV":30,
+    "cameraMatrix":[481.20,   0.0,  319.5, 	0.0,  480.0,  239.5, 	0.0,    0.0,    1.0],
+    "":"",
+    "out_path":"",                                                      // Can add either relative or absolute path. NB Uses BoostFileSystem for OS portablitity.
+    "data_path":"/home/nick/Programming/ComputerVision/DataSets/",      // /home/hockingsn/Programming/computer_vision_data/   // /home/nick/programming/ComputerVision/DataSets
+    "data_file":"ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/200fps_GT_archieve",
+    "data_file_increment":1,
+    "data_file_offset":0,       //475;//10;//46;//462;//380;//0;
+    "":"",
+    "layers":256,               //32;//64;//128;//256;
+    "max_depth":450.0,                                                  // See values in DTAM_mapping/input/*.json file for each dataset.
+    "min_depth":70.0,           //70.0;//3289.0;
+    "occlusionThreshold":0.05,
+    "startAt":0,
+    "max_opt_count":60,
+    "":"",
+    "initialCost":1.0,          //3.0,
+    "initialWeight":0.0000001,
+    "":"",
+    "thetaStart":0.2,           //0.2;		//200.0*off;                // DTAM paper & DTAM_Mapping has Theta_start = 0.2
+    "thetaMin":9.9e-8,          //1.0e-4;	//1.0*off;                  // DTAM paper NB theta depends on (i)photometric scale, (ii)num layers, (iii) inv_depth scale
+    "thetaStep":0.87,
+    "beta_g":1.5,               // DTAM paper: beta=0.001 while theta>0.001, else beta=0.0001  // used in __kernel void CacheG4, with correction for CV_8UC3 -> CV_32FC3
+    "alpha_g":0.015,
+    "epsilon":1.0e-4,                                                   // used in __kernel void UpdateQD
+    "lambda":1.0,                                                       // used in __kernel void UpdateA2
+    "L":4.0,                                                            // used in CostVol computeSigmas
+    "scale_E_aux":10000,        //1.0;                                  // from DTAM_Mapping input/json/icl_numin.json
+    "":"",
+    "kernel_filepath":"../DTAM_kernels2.cl",                            // need file paths for building kernels
+    "opencl_platform":0,        // ThinkPad 2, Clevo 0, WS 0 or 1       // need platform & device GPU choices
+    "opencl_device":0,
+    "":"",
+    "":"",
+    "":"",
+    "":"",
+    "":"",
+    "":"",
+    "":""
+                                //"/home/nick/programming/ComputerVision/DataSets/ahanda-icl/office_room/office_room_traj3_loop",
+                                //"/home/nick/programming/ComputerVision/DataSets/ahanda-icl/Trajectory_for_Variable_Frame-Rate/20fps/20fps_GT_archieve (1)", // does not work
+                                //"DATASETS/ahanda-icl/Trajectory_for_Variable_Frame-Rate/200fps/200fps_GT_archieve",
+                                //"/home/nick/programming/ComputerVision/DataSets/ahanda-icl/office_room/office_room_traj0_loop",  // offset 46
+                                //"/home/nick/programming/ComputerVision/DataSets/ahanda-icl/office_room/office_room_traj0_loop",
+                                //"/home/nick/programming/ComputerVision/DataSets/ahanda-icl/LivingRoom'lt kt0'/living_room_traj0_loop",
+                                //"/home/hockingsn/Programming/OpenCV/OpenDTAM/data/Trajectory_30_seconds",
+                                //"D:\\projects\\DTAM-master\\DTAM-master\\Trajectory_30_seconds\\",
+}

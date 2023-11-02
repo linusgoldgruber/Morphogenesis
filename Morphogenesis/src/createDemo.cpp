@@ -25,7 +25,6 @@
 
 int main ( int argc, const char** argv )
 {
-    uint debug =2;
     char input_folder[256];
     char output_folder[256];
         uint num_particles, demoType, simSpace;
@@ -100,6 +99,9 @@ int main ( int argc, const char** argv )
     // Clear all buffers
     fluid.Initialize();
 
+    uint debug =2;
+    fluid.SetDebug ( debug );
+
     fluid.ReadSpecificationFile ( input_folder );
     std::cout<<"\n\ncreate_demo2 chk1, fluid.launchParams.debug="<<fluid.launchParams.debug<<", fluid.launchParams.genomePath=" <<fluid.launchParams.genomePath  << ",  fluid.launchParams.spacing="<<fluid.launchParams.spacing<<std::flush;
 
@@ -108,12 +110,18 @@ int main ( int argc, const char** argv )
     //for(int i=0; i<256; i++){fluid.launchParams.genomePath[i] = input_folder[i];} // obtained from SpecificationFile.txt above.
     if(argc==3)for(int i=0; i<256; i++){fluid.launchParams.outPath[i] = output_folder[i];}
 
-    if(mkdir(output_folder, 0755) == -1) cerr << "\nError :  failed to create output_folder: " << strerror(errno) << std::flush;
+    if(mkdir(output_folder, 0755) == -1) cerr << "\nOutput folder: " << strerror(errno) << std::flush;
     else cout << "\n\noutput_folder created\n"<<std::flush; // NB 0755 = rwx owner, rx for others.
 
-    std::cout<<"\n\nFluidSystem: WriteDemoSimParams starting..."<<std::flush;
+    //fluid.WriteDemoSimParams(fluid.launchParams.paramsPath, GPU_OFF, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/
 
-    fluid.WriteDemoSimParams(fluid.launchParams.paramsPath, GPU_OFF, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/
+
+    std::cout << "This is some text ";
+    std::cout << "that is not immediately flushed." << std::flush;
+
+    // The text above might not be immediately visible in the console without flushing.
+
+    std::cout << "This text is immediately flushed." << std::endl;
 
     if(argc !=1){                                           // i.e not relying on defaults in simspace 8
     fluid.launchParams.num_particles    = num_particles;    // Write default values to fluid.launchParams...

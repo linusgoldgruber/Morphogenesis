@@ -13,6 +13,21 @@
 #include <vtkPointData.h>
 #include <vtkXMLPolyDataWriter.h>
 
+template <typename T>
+void printParam(const char* paramName, T paramValue) {
+    const char* formatSpecifier = "%p";
+
+    if (std::is_same<T, int>::value || std::is_same<T, unsigned int>::value || std::is_same<T, char>::value || std::is_same<T, char*>::value) {
+        formatSpecifier = "%s";
+    } else if (std::is_same<T, float>::value) {
+        formatSpecifier = "%f";
+    }
+
+    printf("%s = ", paramName);
+    printf(formatSpecifier, paramValue);
+    printf("\n");
+}
+
 int iDivUp (int a, int b) {
     return (a % b != 0) ? (a / b + 1) : (a / b);
 }
@@ -314,7 +329,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
 
     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
     if (gpu_mode != GPU_OFF) {     // create CUDA instance etc..
-        FluidSetupCL ( mMaxPoints, m_GridSrch, *(int3*)& m_GridRes, *(float3*)& m_GridSize, *(float3*)& m_GridDelta, *(float3*)& m_GridMin, *(float3*)& m_GridMax, m_GridTotal, 0 );
+        FluidSetupCL ( mMaxPoints, m_GridSrch, *(cl_int3*)& m_GridRes, *(cl_float3*)& m_GridSize, *(cl_float3*)& m_GridDelta, *(cl_float3*)& m_GridMin, *(cl_float3*)& m_GridMax, m_GridTotal, 0 );
         UpdateParams();            //  sends simulation params to device.
         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
     }
@@ -448,7 +463,7 @@ void FluidSystem::ReadPointsCSV2_DEBUG ( const char * relativePath, int gpu_mode
 
     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
     if (gpu_mode != GPU_OFF) {     // create CUDA instance etc..
-        FluidSetupCL ( mMaxPoints, m_GridSrch, *(int3*)& m_GridRes, *(float3*)& m_GridSize, *(float3*)& m_GridDelta, *(float3*)& m_GridMin, *(float3*)& m_GridMax, m_GridTotal, 0 );
+        FluidSetupCL ( mMaxPoints, m_GridSrch, *(cl_int3*)& m_GridRes, *(cl_float3*)& m_GridSize, *(cl_float3*)& m_GridDelta, *(cl_float3*)& m_GridMin, *(cl_float3*)& m_GridMax, m_GridTotal, 0 );
         UpdateParams();            //  sends simulation params to device.
         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
     }
@@ -735,14 +750,17 @@ void FluidSystem::WriteSimParams ( const char * relativePath ){
 
 void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, int cpu_mode, uint num_particles, float spacing, float x_dim, float y_dim, float z_dim, uint demoType, uint simSpace, uint debug){
     m_FParams.debug=debug;
-    cout << "\nm_FParams.debug= " << m_FParams.debug << "\n";
+
+    std::cout<<"\n\n-----FluidSystem: WriteDemoSimParams started--------"<<std::flush;
+
+    cout << "\nm_FParams.debug= " << m_FParams.debug << "\n" << flush;
 
     if (m_FParams.debug>1)std::cout<<"\nWriteDemoSimParams chk1, num_particles="<<num_particles<<", m_FParams.debug="<<m_FParams.debug <<", launchParams.genomePath="<< launchParams.genomePath  <<std::flush;
 
     m_Param[PEXAMPLE] = simSpace;          // simSpace==2 : wave pool example.
     m_Param[PGRID_DENSITY] = 2.0;   // gives gridsize = 2*smoothradius/griddensity = smoothradius.
     m_Param[PNUM] = num_particles;  // 1000000;    //1000 = minimal simulation, 1000000 = large simulation
-    AllocateBuffer ( FPARAMS, sizeof(FParams), 1,0, GPU_OFF, CPU_YES );
+    AllocateBuffer ( FPARAMS, sizeof(FParams), 1,1, GPU_OFF, CPU_YES );
     m_Time = 0;
     mNumPoints = 0;			        // reset count
 
@@ -762,6 +780,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     }               // make_demo2.cpp reads Specification_File.txt, which may give launchParams.read_genome='y', to use an edited genome.
 
     SetupSimulation(gpu_mode, cpu_mode);
+
     /*
     mMaxPoints = m_Param[PNUM];
     m_Param[PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
@@ -815,9 +834,10 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
         <<"), spacing="<<spacing<<", 0.1f, demoType="<<demoType
         <<")\n"<<std::flush;
     }
-    cout << "############################### SO fAR SO GOOD ###############################";
+    cout << "############################### SO fAR SO GOOD ###############################" << std::flush;
 
-    SetupAddVolumeMorphogenesis2(m_Vec[PINITMIN], pinit_max, spacing, 0.1f, demoType);
+    //SetupAddVolumeMorphogenesis2(m_Vec[PINITMIN], pinit_max, spacing, 0.1f, demoType);
+
     if (m_FParams.debug>1)std::cout<<"\nWriteDemoSimParams chk4, relativePath="<<relativePath<<"\n "<<std::flush;
 
     WriteSimParams ( relativePath );    if (m_FParams.debug>1) std::cout << "\n WriteSimParams ( relativePath );  completed \n" << std::flush ;  // write data to file
@@ -833,6 +853,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
 
 void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     char SimParams_file_path[256];
+
     sprintf ( SimParams_file_path, "%s/SpecificationFile.txt", relativePath );
     //sprintf ( SimParams_file_path, "%s/SpecificationFile.txt",  );
 
@@ -969,6 +990,90 @@ void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ /
     //const char * SimParams_file_path = relativePath;
     FILE * SpecFile = fopen ( Specification_file_path, "w" );
     int ret =0;
+
+    printParam("num_particles", launchParams.num_particles);
+    printParam("demoType", launchParams.demoType);
+    printParam("simSpace", launchParams.simSpace);
+
+    // Add similar checks for other parameters
+    printParam("m_Time", m_Time);
+    printParam("m_DT", m_DT);
+
+    printParam("gridsize", m_Param[PGRIDSIZE]);
+    printParam("spacing", m_Param[PSPACING]);
+
+    printParam("simscale", m_Param[PSIMSCALE]);
+    printParam("smooth_radius", m_Param[PSMOOTHRADIUS]);
+
+    printParam("visc", m_Param[PVISC]);
+    printParam("surface_t", m_Param[PSURFACE_TENSION]);
+
+    printParam("mass", m_Param[PMASS]);
+    printParam("radius", m_Param[PRADIUS]);
+
+    printParam("int_stiff", m_Param[PINTSTIFF]);
+    printParam("ext_stiff", m_Param [ PEXTSTIFF ]);
+    printParam("ext_damp", m_Param [ PEXTDAMP ]);
+
+    printParam("accel_limit", m_Param [ PACCEL_LIMIT ]);
+    printParam("vel_limit", m_Param [ PVEL_LIMIT ]);
+
+    printParam("grav", m_Param [ PGRAV ]);
+    printParam("slope", m_Param [ PRADIUS ]);
+
+    printParam("force_min", m_Param [ PFORCE_MIN ]);
+    printParam("force_max", m_Param [ PFORCE_MAX ]);
+    printParam("force_freq", m_Param [ PFORCE_FREQ ]);
+
+    printParam("x_dim", launchParams.x_dim);
+    printParam("y_dim", launchParams.y_dim);
+    printParam("z_dim", launchParams.z_dim);
+
+    printParam("pos_x", launchParams.pos_x);
+    printParam("pos_y", launchParams.pos_y);
+    printParam("pos_z", launchParams.pos_z);
+
+    printParam("volmin_x", m_Vec [ PVOLMIN ].x);
+    printParam("volmin_y", m_Vec [ PVOLMIN ].y);
+    printParam("volmin_z", m_Vec [ PVOLMIN ].z);
+
+    printParam("volmax_x", m_Vec [ PVOLMAX ].x);
+    printParam("volmax_y", m_Vec [ PVOLMAX ].y);
+    printParam("volmax_z", m_Vec [ PVOLMAX ].z);
+
+    printParam("initmin_x", m_Vec [ PINITMIN ].x);
+    printParam("initmin_y", m_Vec [ PINITMIN ].y);
+    printParam("initmin_z", m_Vec [ PINITMIN ].z);
+
+
+    printParam("initmax_x", m_Vec [ PINITMAX ].x);
+    printParam("initmax_y", m_Vec [ PINITMAX ].y);
+    printParam("initmax_z", m_Vec [ PINITMAX ].z);
+
+    printParam("paramsPath", launchParams.paramsPath);
+    printParam("pointsPath", launchParams.pointsPath);
+    printParam("genomePath", launchParams.genomePath);
+    printParam("outPath", launchParams.outPath);
+
+    printParam("num_files",  launchParams.num_files);
+    printParam("steps_per_InnerPhysicalLoop", launchParams.steps_per_InnerPhysicalLoop);
+    printParam("steps_per_file", launchParams.steps_per_file);
+    printParam("freeze_steps", launchParams.freeze_steps);
+
+    printParam("debug", launchParams.debug);
+    printParam("file_num", launchParams.file_num);
+
+    //printParam("save_ply", launchParams.save_ply]);
+    printParam("save_csv", launchParams.save_csv);
+    printParam("save_vtp", launchParams.save_vtp);
+
+    printParam("gene_activity", launchParams.gene_activity);
+    printParam("remodelling", launchParams.remodelling);
+    printParam("read_genome", launchParams.read_genome);
+
+    printParam("actuation_factor", m_Param[PACTUATION_FACTOR]);
+    printParam("actuation_period", m_Param[PACTUATION_PERIOD]);
+
 
     ret += std::fprintf ( SpecFile, "num_particles = %u\n ", launchParams.num_particles );
     ret += std::fprintf ( SpecFile, "demoType = %u\n ", launchParams.demoType );

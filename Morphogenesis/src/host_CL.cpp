@@ -47,7 +47,7 @@ void FluidSystem::TransferFromTempCL ( int buf_id, int sz ){
     clCheck ( clEnqueueCopyBuffer(m_queue, gpuVar(&m_FluidTemp, buf_id), gpuVar(&m_Fluid, buf_id), 0, 0, sz, 0, NULL, NULL), "TransferFromTempCL", "clEnqueueCopyBuffer", "m_Fluid", mbDebug);
 }
 
-void FluidSystem::FluidSetupCL ( int num, int gsrch, int3 res, float3 size, float3 delta, float3 gmin, float3 gmax, int total, int chk ){
+void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size, cl_float3 delta, cl_float3 gmin, cl_float3 gmax, int total, int chk ){
     m_FParams.pnum = num;
     m_FParams.maxPoints = num;
     m_FParams.freeze = false;
@@ -60,7 +60,7 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, int3 res, float3 size, floa
     m_FParams.gridSrch = gsrch;
     m_FParams.gridAdjCnt = gsrch*gsrch*gsrch;
     m_FParams.gridScanMax = res;
-    int3 temp = make_int3(m_FParams.gridSrch, m_FParams.gridSrch, m_FParams.gridSrch);
+    cl_int3 temp = make_cl_int3(m_FParams.gridSrch, m_FParams.gridSrch, m_FParams.gridSrch);
     m_FParams.gridScanMax.x -= temp.x;
     m_FParams.gridScanMax.y -= temp.y;
     m_FParams.gridScanMax.z -= temp.z;

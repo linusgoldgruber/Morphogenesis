@@ -24,42 +24,33 @@
 #ifndef DEF_FLUID
 	#define DEF_FLUID
 
-// #ifndef CL_KERNEL
-//     #include <CL/cl.h>
+#ifndef CL_KERNEL
+    #include <CL/cl.h>
+#endif
+//{
+//     #ifndef CL_KERNEL
+//     struct  cl_float3
+// 	{
+// 		float x, y, z;
+// 	};
 //
-//     typedef cl_float3 xxx_float3;
-//     typedef cl_int3 xxx_int3;
+// 	struct  cl_int3
+// 	{
+// 		int x, y, z;
+// 	};
+//     #endif
 //
-// #endif
-
-// #ifdef CL_KERNEL
-//     typedef float3 xxx_float3;
-//     typedef int3 xxx_int3;
+// 	    cl_float3 make_cl_float3(float x, float y, float z)
+//     {
+//         cl_float3 t; t.x = x; t.y = y; t.z = z; return t;
+//     }
 //
-// #endif
-    #ifndef CL_KERNEL
-    struct  float3
-	{
-		float x, y, z;
-	};
+//     cl_int3 make_cl_int3(int x, int y, int z)
+//     {
+//         cl_int3 t; t.x = x; t.y = y; t.z = z; return t;
+//     }
 
-	struct  int3
-	{
-		int x, y, z;
-	};
-    #endif
-
-	    float3 make_float3(float x, float y, float z)
-    {
-        float3 t; t.x = x; t.y = y; t.z = z; return t;
-    }
-
-    int3 make_int3(int x, int y, int z)
-    {
-        int3 t; t.x = x; t.y = y; t.z = z; return t;
-    }
-
-
+//}
 
 
 	//#include <cuda.h>
@@ -243,15 +234,14 @@
 
     #ifdef CL_KERNEL
         typedef struct FBufs {
+
                 char* mgpu[MAX_BUF];
 
         } FBufs;
 
-            Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mgpu[n]; }
-            float3* bufF3(__constant FBufs* fb, int n) { return (float3*) fb->mgpu[n]; }
+            //Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mgpu[n]; }
+            cl_float3* bufF3(__constant FBufs* fb, int n) { return (cl_float3*) fb->mgpu[n]; }
             float*  bufF (__constant FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
-            //atomic_float**  bufAF ( FBufs* fb, int n) { return (atomic_float**)  fb->mgpu[n]; }
-            //atomic_float* bufAF(__constant FBufs* fb, int n) { return (atomic_float*) fb ->mgpu[n];}
             uint*   bufI (__constant FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
             char*   bufC (__constant FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
             uint**  bufII (__constant FBufs* fb, int n) { return (uint**)  fb->mgpu[n]; }
@@ -259,14 +249,29 @@
             unsigned long long*  bufULL(__constant FBufs* fb, int n) { return (unsigned long long*) fb->mgpu[n]; }
 
     #else
+    //TODO Check use of "__constant" in kernel code
+
+       typedef struct FBufs {
+                char* mcpu[MAX_BUF];
+                cl_mem mgpu[MAX_BUF];
+        } FBufs;
+            // NB in host code, use cl_float3 for cl_float3 in the kernel.
+            Vector3DF*              bufV3           (const FBufs* fb, int n) { return (cl_float3*)             fb->mgpu[n]; }
+            cl_float3*              bufF3           (const FBufs* fb, int n) { return (cl_float3*)             fb->mgpu[n]; }
+            float*                  bufF            (const FBufs* fb, int n) { return (float*)                 fb->mgpu[n]; }
+            uint*                   bufI            (const FBufs* fb, int n) { return (uint*)                  fb->mgpu[n]; }
+            char*                   bufC            (const FBufs* fb, int n) { return (char*)                  fb->mgpu[n]; }
+            uint**                  bufII           (const FBufs* fb, int n) { return (uint**)                 fb->mgpu[n]; }
+            well512_state*          bufWell512State (const FBufs* fb, int n) { return (well512_state*)         fb->mgpu[n]; }
+            unsigned long long*     bufULL          (const FBufs* fb, int n) { return (unsigned long long*)    fb->mgpu[n]; }
     #endif
 
 	// Temporary sort buffer offsets
 	#define BUF_POS			0
-	#define BUF_VEL			(sizeof(float3))
-	#define BUF_VELEVAL		(BUF_VEL + sizeof(float3))
-	#define BUF_FORCE		(BUF_VELEVAL + sizeof(float3))
-	#define BUF_PRESS		(BUF_FORCE + sizeof(float3))
+	#define BUF_VEL			(sizeof(cl_float3))
+	#define BUF_VELEVAL		(BUF_VEL + sizeof(cl_float3))
+	#define BUF_FORCE		(BUF_VELEVAL + sizeof(cl_float3))
+	#define BUF_PRESS		(BUF_FORCE + sizeof(cl_float3))
 	#define BUF_DENS		(BUF_PRESS + sizeof(float))
 	#define BUF_GCELL		(BUF_DENS + sizeof(float))
 	#define BUF_GNDX		(BUF_GCELL + sizeof(uint))
@@ -299,23 +304,36 @@
 		float			pradius, psmoothradius, r2, psimscale, pvisc, psurface_t;
 		float			pforce_min, pforce_max, pforce_freq, pground_slope;
 		float			pvel_limit, paccel_limit, pdamp;
-		float3			pboundmin, pboundmax, pgravity;
+
+
 		float			AL, AL2, VL, VL2;
 		float			H, d2, rd2, vterm;		// used in force calculation
 		float			poly6kern, spikykern, lapkern, gausskern, wendlandC2kern;
-		float3			gridSize, gridDelta, gridMin, gridMax;
-		int3			gridRes, gridScanMax;
 		int				gridSrch, gridTotal, gridAdjCnt, gridActive;
 		int				gridAdj[64];
         float           actuation_factor;
         float           actuation_period;
 
+        #ifndef CL_KERNEL
+		cl_float3			pboundmin, pboundmax, pgravity;
+		cl_float3			gridSize, gridDelta, gridMin, gridMax;
+        cl_float3*			mpos;			// particle buffers
+		cl_float3*			mvel;
+		cl_float3*			mveleval;
+		cl_float3*			mforce;
+		cl_int3			    gridRes, gridScanMax;
 
+        #else
+        float3			pboundmin, pboundmax, pgravity;
+		float3			gridSize, gridDelta, gridMin, gridMax;
         float3*			mpos;			// particle buffers
-
 		float3*			mvel;
 		float3*			mveleval;
 		float3*			mforce;
+		int3			gridRes, gridScanMax;
+
+        #endif
+
 		float*			mpress;
 		float*			mdensity;
 		ushort*			mage;
@@ -415,6 +433,8 @@
     };                                              // NB gene functions need to be in fluid_system_cuda.cu
 
 
+
+
     struct FPrefix{
 
         int     t_numElem1;
@@ -424,6 +444,7 @@
 
 
     };
+
     ///////////////////////
     // Multi-scale particles
     // - use radius parameter in FELASTIDX buffer, 0=self UID, mass, radius.

@@ -26,7 +26,7 @@ void FluidSystem::TransferFromTempCL ( int buf_id, int sz ){
     clCheck ( cuMemcpyDtoD ( gpuVar(&m_Fluid, buf_id), gpuVar(&m_FluidTemp, buf_id), sz ), "TransferFromTempCL", "cuMemcpyDtoD", "m_Fluid", mbDebug);
 }
 
-void FluidSystem::FluidSetupCL ( int num, int gsrch, int3 res, float3 size, float3 delta, float3 gmin, float3 gmax, int total, int chk ){
+void FluidSystem::FluidSetupCL ( int num, int gsrch, int3 res, cl_float3 size, cl_float3 delta, cl_float3 gmin, cl_float3 gmax, int total, int chk ){
     m_FParams.pnum = num;
     m_FParams.maxPoints = num;
     m_FParams.freeze = false;
@@ -62,7 +62,7 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, int3 res, float3 size, floa
     m_FParams.szPnts = (m_FParams.numGroups  * m_FParams.numItems);
 }
 
-// void FluidSystem::FluidParamCL ( float ss, float sr, float pr, float mass, float rest, float3 bmin, float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p ){
+// void FluidSystem::FluidParamCL ( float ss, float sr, float pr, float mass, float rest, cl_float3 bmin, cl_float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p ){
 //     m_FParams.psimscale = ss;
 //     m_FParams.psmoothradius = sr;
 //     m_FParams.pradius = pr;
@@ -80,7 +80,7 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, int3 res, float3 size, floa
 //     m_FParams.pforce_max = fmax;
 //     m_FParams.pforce_freq = ffreq;
 //     m_FParams.pground_slope = gslope;
-//     m_FParams.pgravity = make_float3( gx, gy, gz );
+//     m_FParams.pgravity = make_cl_float3( gx, gy, gz );
 //     m_FParams.AL = al;
 //     m_FParams.AL2 = al * al;
 //     m_FParams.VL = vl;
