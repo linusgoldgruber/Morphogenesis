@@ -7,7 +7,7 @@
 #include "fluid_system.cpp"
 #include "fileCL_IO.cpp"
 #include <CL/cl_ext.h>
-#include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
+#include "randCL_well512.cl"
 
 
 #define UINT_MAXSIZE 65535
@@ -561,7 +561,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
     }
 }
 
-void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
+void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     if (m_FParams.debug>1) std::cout << "\nCountingSortFullCL()1: mMaxPoints="<<mMaxPoints<<", mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<".\n"<<std::flush;
 
     // get number of active particles & set short lists for later kernels
@@ -588,10 +588,10 @@ void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
 
     // Transfer particle data to temp buffers
     //  (gpu-to-gpu copy, no sync needed)
-    //TransferToTempCL ( FPOS,		mMaxPoints *sizeof(Vector3DF) );    // NB if some points have been removed, then the existing list is no longer dense,
-    //TransferToTempCL ( FVEL,		mMaxPoints *sizeof(Vector3DF) );    // hence must use mMaxPoints, not mNumPoints
-    //TransferToTempCL ( FVEVAL,	mMaxPoints *sizeof(Vector3DF) );    // { Could potentially use (old_mNumPoints + mNewPoints) instead of mMaxPoints}
-    TransferToTempCL ( FFORCE,	mMaxPoints *sizeof(Vector3DF) );    // NB buffers are declared and initialized on mMaxPoints.
+    //TransferToTempCL ( FPOS,		mMaxPoints *sizeof(cl_float3) );    // NB if some points have been removed, then the existing list is no longer dense,
+    //TransferToTempCL ( FVEL,		mMaxPoints *sizeof(cl_float3) );    // hence must use mMaxPoints, not mNumPoints
+    //TransferToTempCL ( FVEVAL,	mMaxPoints *sizeof(cl_float3) );    // { Could potentially use (old_mNumPoints + mNewPoints) instead of mMaxPoints}
+    TransferToTempCL ( FFORCE,	mMaxPoints *sizeof(cl_float3) );    // NB buffers are declared and initialized on mMaxPoints.
     TransferToTempCL ( FPRESS,	mMaxPoints *sizeof(float) );
     TransferToTempCL ( FDENSITY,	mMaxPoints *sizeof(float) );
     TransferToTempCL ( FCLR,		mMaxPoints *sizeof(uint) );
@@ -1128,7 +1128,7 @@ void FluidSystem::Init_CLRand (){
 //     }
 // }
 //
-// void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
+// void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
 //     if (m_FParams.debug>1) std::cout << "\nCountingSortFullCL()1: mMaxPoints="<<mMaxPoints<<", mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<".\n"<<std::flush;
 //     // get number of active particles & set short lists for later kernels
 //     int grid_ScanMax = (m_FParams.gridScanMax.y * m_FParams.gridRes.z + m_FParams.gridScanMax.z) * m_FParams.gridRes.x + m_FParams.gridScanMax.x;
@@ -1148,10 +1148,10 @@ void FluidSystem::Init_CLRand (){
 //
 //     // Transfer particle data to temp buffers
 //     //  (gpu-to-gpu copy, no sync needed)
-//     //TransferToTempCL ( FPOS,		mMaxPoints *sizeof(Vector3DF) );    // NB if some points have been removed, then the existing list is no longer dense,
-//     //TransferToTempCL ( FVEL,		mMaxPoints *sizeof(Vector3DF) );    // hence must use mMaxPoints, not mNumPoints
-//     //TransferToTempCL ( FVEVAL,	mMaxPoints *sizeof(Vector3DF) );    // { Could potentially use (old_mNumPoints + mNewPoints) instead of mMaxPoints}
-//     TransferToTempCL ( FFORCE,	mMaxPoints *sizeof(Vector3DF) );    // NB buffers are declared and initialized on mMaxPoints.
+//     //TransferToTempCL ( FPOS,		mMaxPoints *sizeof(cl_float3) );    // NB if some points have been removed, then the existing list is no longer dense,
+//     //TransferToTempCL ( FVEL,		mMaxPoints *sizeof(cl_float3) );    // hence must use mMaxPoints, not mNumPoints
+//     //TransferToTempCL ( FVEVAL,	mMaxPoints *sizeof(cl_float3) );    // { Could potentially use (old_mNumPoints + mNewPoints) instead of mMaxPoints}
+//     TransferToTempCL ( FFORCE,	mMaxPoints *sizeof(cl_float3) );    // NB buffers are declared and initialized on mMaxPoints.
 //     TransferToTempCL ( FPRESS,	mMaxPoints *sizeof(float) );
 //     TransferToTempCL ( FDENSITY,	mMaxPoints *sizeof(float) );
 //     TransferToTempCL ( FCLR,		mMaxPoints *sizeof(uint) );
@@ -1558,15 +1558,15 @@ void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to exe
 }
 
 void FluidSystem::TransferPosVelVeval (){
-    TransferToTempCL ( FPOS,		mMaxPoints *sizeof(Vector3DF) );    // NB if some points have been removed, then the existing list is no longer dense,
-    TransferToTempCL ( FVEL,		mMaxPoints *sizeof(Vector3DF) );    // hence must use mMaxPoints, not mNumPoints
-    TransferToTempCL ( FVEVAL,	mMaxPoints *sizeof(Vector3DF) );
+    TransferToTempCL ( FPOS,		mMaxPoints *sizeof(cl_float3) );    // NB if some points have been removed, then the existing list is no longer dense,
+    TransferToTempCL ( FVEL,		mMaxPoints *sizeof(cl_float3) );    // hence must use mMaxPoints, not mNumPoints
+    TransferToTempCL ( FVEVAL,	mMaxPoints *sizeof(cl_float3) );
 }
 
 void FluidSystem::TransferPosVelVevalFromTemp (){
-    TransferFromTempCL ( FPOS,	mMaxPoints *sizeof(Vector3DF) );    // NB if some points have been removed, then the existing list is no longer dense,
-    TransferFromTempCL ( FVEL,	mMaxPoints *sizeof(Vector3DF) );    // hence must use mMaxPoints, not mNumPoints
-    TransferFromTempCL ( FVEVAL,	mMaxPoints *sizeof(Vector3DF) );
+    TransferFromTempCL ( FPOS,	mMaxPoints *sizeof(cl_float3) );    // NB if some points have been removed, then the existing list is no longer dense,
+    TransferFromTempCL ( FVEL,	mMaxPoints *sizeof(cl_float3) );    // hence must use mMaxPoints, not mNumPoints
+    TransferFromTempCL ( FVEVAL,	mMaxPoints *sizeof(cl_float3) );
 }
 
 void FluidSystem::ZeroVelCL (){                                       // Used to remove velocity, kinetic energy and momentum during initialization.

@@ -525,7 +525,7 @@ void FluidSystem::FluidParamCL (float ss, float sr, float pr, float mass, float 
 
 void FluidSystem::UpdateParams (){
     // Update Params on GPU
-    Vector3DF grav = Vector3DF_multiplyFloat(&m_Vec[PPLANE_GRAV_DIR], m_Param[PGRAV]);
+    cl_float3 grav = cl_float3_multiplyFloat(&m_Vec[PPLANE_GRAV_DIR], m_Param[PGRAV]);
     /*FluidParamCL (runcl,  m_Param[PSIMSCALE], m_Param[PSMOOTHRADIUS], m_Param[PRADIUS], m_Param[PMASS], m_Param[PRESTDENSITY],
                       *(cl_float3*)& m_Vec[PBOUNDMIN], *(cl_float3*)& m_Vec[PBOUNDMAX], m_Param[PEXTSTIFF], m_Param[PINTSTIFF],
                       m_Param[PVISC], m_Param[PSURFACE_TENSION], m_Param[PEXTDAMP], m_Param[PFORCE_MIN], m_Param[PFORCE_MAX], m_Param[PFORCE_FREQ],
@@ -538,7 +538,7 @@ void FluidSystem::SetParam (int p, float v ){
     UpdateParams ();
 }
 
-void FluidSystem::SetVec (int p, Vector3DF v ){
+void FluidSystem::SetVec (int p, cl_float3 v ){
     m_Vec[p] = v;
     UpdateParams ();
 }
@@ -671,14 +671,14 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
 
     if (verbosity>0)std::cout<<"\n\nAllocateParticles ( cnt= "<<cnt<<", gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<m_FParams.debug<<", launchParams.debug="<<launchParams.debug<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\t";//<<std::flush;
     if (m_FParams.debug>1)std::cout<<"\n\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUAL=3, CPU_OFF=4, CPU_YES=5"<<std::flush;
-    AllocateBuffer ( FPOS,		sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
+    AllocateBuffer ( FPOS,		sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FCLR,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
-    AllocateBuffer ( FVEL,		sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
-    AllocateBuffer ( FVEVAL,	sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
+    AllocateBuffer ( FVEL,		sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
+    AllocateBuffer ( FVEVAL,	sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FAGE,		sizeof(uint),       cnt,    m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FPRESS,	sizeof(float),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FDENSITY,	sizeof(float),		cnt, 	m_FParams.szPnts,	gpu_mode, cpu_mode );//
-    AllocateBuffer ( FFORCE,	sizeof(Vector3DF),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
+    AllocateBuffer ( FFORCE,	sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FCLUSTER,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FGCELL,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FGNDX,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
@@ -818,7 +818,7 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
     }
 }
 
-int FluidSystem::AddParticleMorphogenesis2 (Vector3DF* Pos, Vector3DF* Vel, uint Age, uint Clr, uint *_ElastIdxU, float *_ElastIdxF, uint *_Particle_Idx, uint Particle_ID, uint Mass_Radius, uint NerveIdx, float* _Conc, uint* _EpiGen ){  // called by :ReadPointsCSV2 (...) where :    uint Particle_Idx[BONDS_PER_PARTICLE * 2];  AND SetupAddVolumeMorphogenesis2(....)
+int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint Age, uint Clr, uint *_ElastIdxU, float *_ElastIdxF, uint *_Particle_Idx, uint Particle_ID, uint Mass_Radius, uint NerveIdx, float* _Conc, uint* _EpiGen ){  // called by :ReadPointsCSV2 (...) where :    uint Particle_Idx[BONDS_PER_PARTICLE * 2];  AND SetupAddVolumeMorphogenesis2(....)
     if ( mNumPoints >= mMaxPoints ) return -1;
     int n = mNumPoints;
     Set(bufV3(&m_Fluid, FPOS) + n, Pos->x,Pos->y,Pos->z );
@@ -874,7 +874,7 @@ int FluidSystem::AddParticleMorphogenesis2 (Vector3DF* Pos, Vector3DF* Vel, uint
 
 void FluidSystem::AddNullPoints (){// fills unallocated particles with null data upto mMaxPoints. These can then be used to "create" new particles.
     if (m_FParams.debug>1) std::cout<<"\n AddNullPoints ()\n"<<std::flush;
-    Vector3DF Pos, Vel, binSize;
+    cl_float3 Pos, Vel, binSize;
     uint Age, Clr;
     uint  ElastIdxU[BOND_DATA];
     float ElastIdxF[BOND_DATA];
@@ -921,25 +921,25 @@ void FluidSystem::AddNullPoints (){// fills unallocated particles with null data
 }
 
 
-void FluidSystem::SetupAddVolumeMorphogenesis2(Vector3DF min, Vector3DF max, float spacing, float offs, uint demoType ){  // NB ony used in WriteDemoSimParams() called by make_demo.cpp . Creates a cuboid with all particle values definable.
+void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, float spacing, float offs, uint demoType ){  // NB ony used in WriteDemoSimParams() called by make_demo.cpp . Creates a cuboid with all particle values definable.
 if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::flush ;
-    Vector3DF pos;
+    cl_float3 pos;
     float dx, dy, dz;
     int cntx, cntz, p, c2;
     cntx = (int) ceil( (max.x-min.x-offs) / spacing );
     cntz = (int) ceil( (max.z-min.z-offs) / spacing );
     int cnt = cntx * cntz;
     //min += offs;            // NB by default offs=0.1f, & min=m_Vec[PINITMIN], when called in WriteDemoSimParams(..)
-    min = Vector3DF_addFloat(&min, offs);
+    min = cl_float3_addFloat(&min, offs);
     //max -= offs;            // m_Vec[PINITMIN] is set in SetupExampleParams()
-    max = Vector3DF_subtractFloat(&max, offs);
+    max = cl_float3_subtractFloat(&max, offs);
 
     dx = max.x-min.x;       // m_Vec[PBOUNDMIN] is set in SetupSpacing
     dy = max.y-min.y;
     dz = max.z-min.z;
-    Vector3DF rnd;
+    cl_float3 rnd;
     c2 = cnt/2;
-    Vector3DF Pos, Vel;
+    cl_float3 Pos, Vel;
     uint Age, Clr, Particle_ID, Mass_Radius, NerveIdx;
     uint  ElastIdxU[BOND_DATA];
     float ElastIdxF[BOND_DATA];
@@ -947,7 +947,7 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
     float Conc[NUM_TF];
     uint EpiGen[NUM_GENES]={0};
     Particle_ID = 0;                         // NB Particle_ID=0 means "no particle" in ElastIdx.
-    Vector3DF volV3DF = Vector3DF_subtractVector(&max, &min);
+    cl_float3 volV3DF = cl_float3_subtract_cl_float3(&max, &min);
     int num_particles_to_make = 8 * int(volV3DF.x*volV3DF.y*volV3DF.z);// 27 * //int(volV3DF.x*volV3DF.y*volV3DF.z / spacing*spacing*spacing);
     srand((unsigned int)time(NULL));
     if (m_FParams.debug>1)cout<<"\nSetupAddVolumeMorphogenesis2: num_particles_to_make="<<num_particles_to_make<<",   min=("<<min.x<<","<<min.y<<","<<min.z<<"), max=("<<max.x<<","<<max.y<<","<<max.z<<") "<<std::flush;
@@ -960,12 +960,12 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
                 Vel.x=0; Vel.y=0; Vel.z=0;
                 Age =  0;
                 // Colour of particles
-                //Vector3DF clr ( (pos.x-min.x)/dx, 0.0f, (pos.z-min.z)/dz );
-                Vector3DF clr = Vector3DF_init_with_values((pos.x-min.x)/dx, 0, (pos.z-min.z)/dz );
+                //cl_float3 clr ( (pos.x-min.x)/dx, 0.0f, (pos.z-min.z)/dz );
+                cl_float3 clr = cl_float3_init_with_values((pos.x-min.x)/dx, 0, (pos.z-min.z)/dz );
                 //clr *= 0.8;
-                clr = *Vector3DF_multiplyDouble(&clr, 0.8);
+                clr = *cl_float3_multiplyDouble(&clr, 0.8);
                 //clr += 0.2;
-                clr = Vector3DF_addFloat(&clr, 0.2);
+                clr = cl_float3_addFloat(&clr, 0.2);
                 clr = Clamp(&clr, 0, 1.0);
                 Clr = COLORA( clr.x, clr.y, clr.z, 1);
                 // Modulus & length of elastic bonds
@@ -1012,8 +1012,8 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
                 }                                                           // => (i) French flag, (ii) polartity, (iii) clock & wave front
 
 //                 p = AddParticleMorphogenesis2 (
-//                 /* Vector3DF* */ &Pos,
-//                 /* Vector3DF* */ &Vel,
+//                 /* cl_float3* */ &Pos,
+//                 /* cl_float3* */ &Vel,
 //                 /* uint */ Age,
 //                 /* uint */ Clr,
 //                 /* uint *_*/ ElastIdxU,
@@ -1169,12 +1169,12 @@ void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2Remodelling()end";
 }
 
-void FluidSystem::SetupGrid ( Vector3DF min, Vector3DF max, float sim_scale, float cell_size){
+void FluidSystem::SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, float cell_size){
     float world_cellsize = cell_size / sim_scale;
     m_GridMin = min;
     m_GridMax = max;
     m_GridSize = m_GridMax;
-    m_GridSize = Vector3DF_subtractVector3DF(&m_GridSize,&m_GridMin);
+    m_GridSize = cl_float3_subtract_cl_float3(&m_GridSize,&m_GridMin);
     //m_GridSize -= m_GridMin;
     m_GridRes.x = (int) ceil ( m_GridSize.x / world_cellsize );		// Determine grid resolution
     m_GridRes.y = (int) ceil ( m_GridSize.y / world_cellsize );
@@ -1182,8 +1182,8 @@ void FluidSystem::SetupGrid ( Vector3DF min, Vector3DF max, float sim_scale, flo
     m_GridSize.x = m_GridRes.x * cell_size / sim_scale;				// Adjust grid size to multiple of cell size
     m_GridSize.y = m_GridRes.y * cell_size / sim_scale;
     m_GridSize.z = m_GridRes.z * cell_size / sim_scale;
-    m_GridDelta = *Vector3DF_operator_equal_Vector3DI(&m_GridDelta, &m_GridRes);		// delta = translate from world space to cell #
-    m_GridDelta = Vector3DF_divideByVector3DF(&m_GridDelta, m_GridSize);
+    m_GridDelta = *cl_float3_operator_equal_cl_int3(&m_GridDelta, &m_GridRes);		// delta = translate from world space to cell #
+    m_GridDelta = cl_float3_devide_cl_float3(&m_GridDelta, &m_GridSize);
     m_GridTotal = (int)(m_GridRes.x * m_GridRes.y * m_GridRes.z);
 
     // Number of cells to search:
@@ -1216,7 +1216,7 @@ void FluidSystem::SetupSPH_Kernels (){
 }
 
 void FluidSystem::SetupDefaultParams (){
-    //  Range = +/- 10.0 * 0.006 (r) =	   0.12			m (= 120 mm = 4.7 inch)
+    //{//  Range = +/- 10.0 * 0.006 (r) =	   0.12			m (= 120 mm = 4.7 inch)
     //  Container Volume (Vc) =			   0.001728		m^3
     //  Rest Density (D) =				1000.0			kg / m^3
     //  Particle Mass (Pm) =			   0.00020543	kg						(mass = vol * density)
@@ -1249,6 +1249,7 @@ void FluidSystem::SetupDefaultParams (){
     // of the viscosity term will introduce energy into the system, rather than
     // draining the system from energy as intended."
     //    Actual visocity of water = 0.001 Pa.s    // viscosity of water at 20 deg C.
+    //}
 
     m_Time = 0.0f;							// Start at T=0
     m_DT = 0.003f;
@@ -1273,7 +1274,7 @@ void FluidSystem::SetupDefaultParams (){
     m_Param [ PFORCE_MIN ] =	0.0f;
     m_Param [ PFORCE_MAX ] =	0.0f;
     m_Param [ PFORCE_FREQ ] =	16.0f;
-    m_Vec [ PPLANE_GRAV_DIR ] = Vector3DF_init_with_values( 0, -9.8f, 0 );
+    m_Vec [ PPLANE_GRAV_DIR ] = cl_float3_init_with_values( 0, -9.8f, 0 );
 
     // Default sim config
     m_Param [PGRIDSIZE] = m_Param[PSMOOTHRADIUS] * 2;
@@ -1283,8 +1284,8 @@ void FluidSystem::SetupDefaultParams (){
 }
 
 void FluidSystem::SetupExampleParams (uint spacing){
-    Vector3DF pos;
-    Vector3DF min, max;
+    cl_float3 pos;
+    cl_float3 min, max;
     m_Param [ PSPACING ] = spacing;
 
     std::cout<<"\nSetupExampleParams()1: m_Param[PEXAMPLE] = "<<m_Param[PEXAMPLE]<<", SetupExampleParams()2: launchParams.genomePath = "<<launchParams.genomePath<<"\n"<<std::flush;
@@ -1294,13 +1295,13 @@ void FluidSystem::SetupExampleParams (uint spacing){
     case 0:	{	// Regression test. N x N x N static grid
 
         int k = (int) ceil ( pow ( (float) m_Param[PNUM], (float) 1.0f/3.0f ) );
-        m_Vec [ PVOLMIN ] = Vector3DF_init_with_values( 0, 0, 0 );
-        m_Vec [ PVOLMAX ] = Vector3DF_init_with_values( 2.0f+(k/2), 2.0f+(k/2), 2.0f+(k/2) );
-        m_Vec [ PINITMIN ] = Vector3DF_init_with_values( 1.0f, 1.0f, 1.0f );
-        m_Vec [ PINITMAX ] = Vector3DF_init_with_values( 1.0f+(k/2), 1.0f+(k/2), 1.0f+(k/2) );
+        m_Vec [ PVOLMIN ] = cl_float3_init_with_values( 0, 0, 0 );
+        m_Vec [ PVOLMAX ] = cl_float3_init_with_values( 2.0f+(k/2), 2.0f+(k/2), 2.0f+(k/2) );
+        m_Vec [ PINITMIN ] = cl_float3_init_with_values( 1.0f, 1.0f, 1.0f );
+        m_Vec [ PINITMAX ] = cl_float3_init_with_values( 1.0f+(k/2), 1.0f+(k/2), 1.0f+(k/2) );
 
         m_Param [ PGRAV ] = 0.0;
-        m_Vec [ PPLANE_GRAV_DIR ] = Vector3DF_init_with_values( 0.0, 0.0, 0.0 );
+        m_Vec [ PPLANE_GRAV_DIR ] = cl_float3_init_with_values( 0.0, 0.0, 0.0 );
         //m_Param [ PSPACING ] = spacing;//0.5;				// Fixed spacing		Dx = x-axis density
         m_Param [ PSMOOTHRADIUS ] =	m_Param [PSPACING];		// Search radius
         //m_Toggle [ PRUN ] = false;				// Do NOT run sim. Neighbors only.
@@ -1312,44 +1313,44 @@ void FluidSystem::SetupExampleParams (uint spacing){
     }
     break;
     case 1:		// Tower
-        m_Vec [ PVOLMIN ] = Vector3DF_init_with_values(   0,   0,   0 );
-        m_Vec [ PVOLMAX ] = Vector3DF_init_with_values(  256, 128, 256 );
-        m_Vec [ PINITMIN ] = Vector3DF_init_with_values(  5,   5,  5 );
-        m_Vec [ PINITMAX ] = Vector3DF_init_with_values( 256*0.3, 128*0.9, 256*0.3 );
+        m_Vec [ PVOLMIN ] = cl_float3_init_with_values(   0,   0,   0 );
+        m_Vec [ PVOLMAX ] = cl_float3_init_with_values(  256, 128, 256 );
+        m_Vec [ PINITMIN ] = cl_float3_init_with_values(  5,   5,  5 );
+        m_Vec [ PINITMAX ] = cl_float3_init_with_values( 256*0.3, 128*0.9, 256*0.3 );
         break;
     case 2:		// Wave pool
-        m_Vec [ PVOLMIN ] = Vector3DF_init_with_values(   0,   0,   0 );
-        m_Vec [ PVOLMAX ] = Vector3DF_init_with_values(  400, 200, 400 );
-        m_Vec [ PINITMIN ] = Vector3DF_init_with_values( 100, 80,  100 );
-        m_Vec [ PINITMAX ] = Vector3DF_init_with_values( 300, 190, 300 );
+        m_Vec [ PVOLMIN ] = cl_float3_init_with_values(   0,   0,   0 );
+        m_Vec [ PVOLMAX ] = cl_float3_init_with_values(  400, 200, 400 );
+        m_Vec [ PINITMIN ] = cl_float3_init_with_values( 100, 80,  100 );
+        m_Vec [ PINITMAX ] = cl_float3_init_with_values( 300, 190, 300 );
         m_Param [ PFORCE_MIN ] = 100.0f;
         m_Param [ PFORCE_FREQ ] = 6.0f;
         m_Param [ PGROUND_SLOPE ] = 0.10f;
         break;
     case 3:		// Small dam break
-        m_Vec [ PVOLMIN ] = Vector3DF_init_with_values( -40, 0, -40  );
-        m_Vec [ PVOLMAX ] = Vector3DF_init_with_values( 40, 60, 40 );
-        m_Vec [ PINITMIN ] = Vector3DF_init_with_values( 0, 8, -35 );
-        m_Vec [ PINITMAX ] = Vector3DF_init_with_values( 35, 55, 35 );
+        m_Vec [ PVOLMIN ] = cl_float3_init_with_values( -40, 0, -40  );
+        m_Vec [ PVOLMAX ] = cl_float3_init_with_values( 40, 60, 40 );
+        m_Vec [ PINITMIN ] = cl_float3_init_with_values( 0, 8, -35 );
+        m_Vec [ PINITMAX ] = cl_float3_init_with_values( 35, 55, 35 );
         m_Param [ PFORCE_MIN ] = 0.0f;
         m_Param [ PFORCE_MAX ] = 0.0f;
-        m_Vec [ PPLANE_GRAV_DIR ] = Vector3DF_init_with_values( 0.0f, -9.8f, 0.0f );
+        m_Vec [ PPLANE_GRAV_DIR ] = cl_float3_init_with_values( 0.0f, -9.8f, 0.0f );
         break;
     case 4:		// Dual-Wave pool
-        m_Vec [ PVOLMIN ] = Vector3DF_init_with_values( -100, 0, -15 );
-        m_Vec [ PVOLMAX ] = Vector3DF_init_with_values( 100, 100, 15 );
-        m_Vec [ PINITMIN ] = Vector3DF_init_with_values( -80, 8, -10 );
-        m_Vec [ PINITMAX ] = Vector3DF_init_with_values( 80, 90, 10 );
+        m_Vec [ PVOLMIN ] = cl_float3_init_with_values( -100, 0, -15 );
+        m_Vec [ PVOLMAX ] = cl_float3_init_with_values( 100, 100, 15 );
+        m_Vec [ PINITMIN ] = cl_float3_init_with_values( -80, 8, -10 );
+        m_Vec [ PINITMAX ] = cl_float3_init_with_values( 80, 90, 10 );
         m_Param [ PFORCE_MIN ] = 20.0;
         m_Param [ PFORCE_MAX ] = 20.0;
-        m_Vec [ PPLANE_GRAV_DIR ] = Vector3DF_init_with_values( 0.0f, -9.8f, 0.0f );
+        m_Vec [ PPLANE_GRAV_DIR ] = cl_float3_init_with_values( 0.0f, -9.8f, 0.0f );
         break;
     case 5:		// Microgravity
-        m_Vec [ PVOLMIN ] = Vector3DF_init_with_values( -80, 0, -80 );
-        m_Vec [ PVOLMAX ] = Vector3DF_init_with_values( 80, 100, 80 );
-        m_Vec [ PINITMIN ] = Vector3DF_init_with_values( -60, 40, -60 );
-        m_Vec [ PINITMAX ] = Vector3DF_init_with_values( 60, 80, 60 );
-        m_Vec [ PPLANE_GRAV_DIR ] = Vector3DF_init_with_values( 0, -1, 0 );
+        m_Vec [ PVOLMIN ] = cl_float3_init_with_values( -80, 0, -80 );
+        m_Vec [ PVOLMAX ] = cl_float3_init_with_values( 80, 100, 80 );
+        m_Vec [ PINITMIN ] = cl_float3_init_with_values( -60, 40, -60 );
+        m_Vec [ PINITMAX ] = cl_float3_init_with_values( 60, 80, 60 );
+        m_Vec [ PPLANE_GRAV_DIR ] = cl_float3_init_with_values( 0, -1, 0 );
         m_Param [ PGROUND_SLOPE ] = 0.1f;
         break;
     case 6:     // Morphogenesis small demo
@@ -1358,13 +1359,13 @@ void FluidSystem::SetupExampleParams (uint spacing){
         m_Param [ PSMOOTHRADIUS ] = 1.0f;
         m_Param [ PVISC ] = 0.1f;
 
-        m_Vec [ PVOLMIN ] = Vector3DF_init_with_values( 0, 0, 0 );
-        m_Vec [ PVOLMAX ] = Vector3DF_init_with_values( 10, 20, 50 ); //( 80, 50, 80 );
-        m_Vec [ PINITMIN ] = Vector3DF_init_with_values( m_Vec [ PVOLMIN ].x,  m_Vec [ PVOLMIN ].y, m_Vec [ PVOLMIN ].z );// will be reset to m_Vec[PBOUNDMIN].
-        m_Vec [ PINITMAX ] = Vector3DF_init_with_values( 10, 20, 30 );
+        m_Vec [ PVOLMIN ] = cl_float3_init_with_values( 0, 0, 0 );
+        m_Vec [ PVOLMAX ] = cl_float3_init_with_values( 10, 20, 50 ); //( 80, 50, 80 );
+        m_Vec [ PINITMIN ] = cl_float3_init_with_values( m_Vec [ PVOLMIN ].x,  m_Vec [ PVOLMIN ].y, m_Vec [ PVOLMIN ].z );// will be reset to m_Vec[PBOUNDMIN].
+        m_Vec [ PINITMAX ] = cl_float3_init_with_values( 10, 20, 30 );
 
         m_Param [ PGRAV ] = 2.000000f;
-        m_Vec [ PPLANE_GRAV_DIR ] = Vector3DF_init_with_values( 0, -1, 0 );
+        m_Vec [ PPLANE_GRAV_DIR ] = cl_float3_init_with_values( 0, -1, 0 );
         m_Param [ PGROUND_SLOPE ] = 0.1f;
         break;
     case 7:     // From SpecificationFile.txt
@@ -1441,10 +1442,10 @@ void FluidSystem::SetupExampleParams (uint spacing){
         launchParams.pos_y = 0.000000;
         launchParams.pos_z = 0.000000;
 
-        m_Vec [ PVOLMIN ] = Vector3DF_init_with_values( 0.0, 0.0, 0.0 );
-        m_Vec [ PVOLMAX ] = Vector3DF_init_with_values( 10.0, 20.0, 20.0 );
-        m_Vec [ PINITMIN ] = Vector3DF_init_with_values( 2.0, 2.0, 2.0 );
-        m_Vec [ PINITMAX ] = Vector3DF_init_with_values( 10.0, 20.0, 10.0 );
+        m_Vec [ PVOLMIN ] = cl_float3_init_with_values( 0.0, 0.0, 0.0 );
+        m_Vec [ PVOLMAX ] = cl_float3_init_with_values( 10.0, 20.0, 20.0 );
+        m_Vec [ PINITMIN ] = cl_float3_init_with_values( 2.0, 2.0, 2.0 );
+        m_Vec [ PINITMAX ] = cl_float3_init_with_values( 10.0, 20.0, 10.0 );
 
         launchParams.num_files = 4000;
         launchParams.steps_per_InnerPhysicalLoop = 3;
@@ -1592,9 +1593,9 @@ void FluidSystem::SetupSpacing (){
 
     // Particle Boundaries
     m_Vec[PBOUNDMIN] = m_Vec[PVOLMIN];
-    m_Vec[PBOUNDMIN] = *Vector3DF_addDouble(&m_Vec[PBOUNDMIN],  2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE])  );
+    m_Vec[PBOUNDMIN] = cl_float3_addDouble(&m_Vec[PBOUNDMIN],  2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE])  );
     m_Vec[PBOUNDMAX] = m_Vec[PVOLMAX];
-    m_Vec[PBOUNDMAX] = Vector3DF_subtractDouble(&m_Vec[PBOUNDMAX], 2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE])  );
+    m_Vec[PBOUNDMAX] = cl_float3_subtractDouble(&m_Vec[PBOUNDMAX], 2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE])  );
 
                                                                                                                         if(m_FParams.debug>0)std::cout<<"\n-----SetupSpacing() finished-----";
 
@@ -1606,6 +1607,7 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
     m_Param [PNUM] = launchParams.num_particles;                             // NB there is a line of text above the particles, hence -1.
     mMaxPoints = m_Param [PNUM];
     m_Param [PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
+    std::cout<<"\nX X X X X X X X X PSMOOTHRADIUS = " << m_Param[PSMOOTHRADIUS] <<std::flush;
     std::cout<<"\nSetupSimulation chk2" <<std::flush;
 
     SetupSPH_Kernels ();

@@ -14,6 +14,7 @@
 #include <vtkXMLPolyDataWriter.h>
 
 template <typename T>
+
 void printParam(const char* paramName, T paramValue) {
     const char* formatSpecifier = "%p";
 
@@ -37,6 +38,7 @@ void computeNumBlocks (int numPnts, int minThreads, int &numGroups, int &numItem
     cout << "-------Running computeNumBlocks() with " << numPnts <<" Points and " << minThreads << " minThreads.";
     numItems = min( minThreads, numPnts );
     numGroups = (numItems==0) ? 1 : iDivUp ( numPnts, numItems );
+
 }
 
 void FluidSystem::ReadGenome( const char * relativePath){
@@ -233,8 +235,8 @@ void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
         assert(0);
     }
     int numpnt = mMaxPoints;//NumPoints();
-    Vector3DF* Pos;
-    Vector3DF* Vel;
+    cl_float3* Pos;
+    cl_float3* Vel;
     float *Conc;
     uint* Age, *Clr, *NerveIdx, *ElastIdx, *Particle_Idx, *Particle_ID, *Mass_Radius, *EpiGen;                  // Q: why are these pointers? A: they get dereferenced below.
     uint mass, radius;
@@ -252,7 +254,7 @@ void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
     fprintf(fp, "\n");
 
     for(int i=0; i<numpnt; i++) {       // nb need get..() accessors for private data.
-        Pos = getPos(i);                // e.g.  Vector3DF* getPos ( int n )	{ return &bufV3(&m_Fluid, FPOS)[n]; }
+        Pos = getPos(i);                // e.g.  cl_float3* getPos ( int n )	{ return &bufV3(&m_Fluid, FPOS)[n]; }
         Vel = getVel(i);
         Age = getAge(i);
         Clr = getClr(i);
@@ -340,7 +342,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
     AllocateGrid(gpu_mode, cpu_mode);
     ////////////////////////////////////////
     uint Clr, Age;
-    Vector3DF Pos, Vel, PosMin, PosMax;
+    cl_float3 Pos, Vel, PosMin, PosMax;
     uint  ElastIdxU[BOND_DATA];
     float ElastIdxF[BOND_DATA];
     uint Particle_Idx[BONDS_PER_PARTICLE * 2];
@@ -476,7 +478,7 @@ void FluidSystem::ReadPointsCSV2_DEBUG ( const char * relativePath, int gpu_mode
         cout << "\n-----AllocateGrid() finished2-----\n\n" << flush;
     ////////////////////////////////////////
     uint Clr, Age;
-    Vector3DF Pos, Vel, PosMin, PosMax;
+    cl_float3 Pos, Vel, PosMin, PosMax;
     uint  ElastIdxU[BOND_DATA];
     float ElastIdxF[BOND_DATA];
     uint Particle_Idx[BONDS_PER_PARTICLE * 2];
@@ -487,11 +489,11 @@ void FluidSystem::ReadPointsCSV2_DEBUG ( const char * relativePath, int gpu_mode
     float vel_lim = GetParam ( PVEL_LIMIT );
     PosMin = GetVec ( PBOUNDMIN );  //PBOUNDMIN  // PVOLMIN
                 printf("\nVector PosMin: ");
-                printVector3DF(&PosMin);
+                cout << "PosMin: (" << PosMin.x << ", " << PosMin.y << ", " << PosMin.z << ")" << endl;
                 printf("\n");
     PosMax = GetVec ( PBOUNDMAX );  //PBOUNDMAX  // PVOLMAX
                 printf("Vector PosMax: ");
-                printVector3DF(&PosMax);
+                cout << "PosMax: (" << PosMax.x << ", " << PosMax.y << ", " << PosMax.z << ")" << endl;
                 printf("\n");
 
     if (m_FParams.debug>1) cout<<"\n\nPosMin = PBOUNDMIN=("<<m_Vec[PBOUNDMIN].x <<","<<m_Vec[PBOUNDMIN].y <<","<<m_Vec[PBOUNDMIN].z
@@ -598,7 +600,7 @@ void FluidSystem::ReadSimParams ( const char * relativePath ) { // transcribe Si
     while ( EOF != ( ch=getc ( SimParams_file ) ) )   if ( '\n' == ch )  ++number_of_lines; // chk num lines
     if (m_FParams.debug>1) std::cout << "\nNumber of lines in SimParams_file = " << number_of_lines << std::flush;
 
-    Vector3DF pplane_grav_dir, pvolmin, pvolmax, pinitmin, pinitmax;
+    cl_float3 pplane_grav_dir, pvolmin, pvolmax, pinitmin, pinitmax;
 
     std::fseek(SimParams_file, 0, SEEK_SET);
     int ret = std::fscanf ( SimParams_file, " m_Time = %f\n ", &m_Time );
@@ -652,7 +654,7 @@ void FluidSystem::ReadSimParams ( const char * relativePath ) { // transcribe Si
 }
 
 void FluidSystem::WriteSimParams ( const char * relativePath ){
-    Vector3DF /*point_grav_pos,*/ pplane_grav_dir, /* pemit_pos, pemit_rate, pemit_ang, pemit_dang,*/ pvolmin, pvolmax, pinitmin, pinitmax;
+    cl_float3 /*point_grav_pos,*/ pplane_grav_dir, /* pemit_pos, pemit_rate, pemit_ang, pemit_dang,*/ pvolmin, pvolmax, pinitmin, pinitmax;
 
     //int pwrapx, pwall_barrier, plevy_barrier, pdrain_barrier, prun;
 
@@ -806,9 +808,9 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     m_Vec[PINITMIN].z = std::max(m_Vec[PINITMIN].z , m_Vec[PBOUNDMIN].z+1 );
 
 
-    Vector3DF pinit_max = {x_dim,y_dim,z_dim};
+    cl_float3 pinit_max = {x_dim,y_dim,z_dim};
     //pinit_max += m_Vec[PINITMIN];
-    pinit_max = *Vector3DF_addVector3DF(&pinit_max, &m_Vec[PINITMIN]);
+    pinit_max = cl_float3_add_cl_float3(&pinit_max, m_Vec[PINITMIN]);
     m_Vec[PBOUNDMAX].x= m_Vec[PVOLMAX].x - 2*(m_Param[PGRIDSIZE]/m_Param[PSIMSCALE]);
     m_Vec[PBOUNDMAX].y= m_Vec[PVOLMAX].y - 2*(m_Param[PGRIDSIZE]/m_Param[PSIMSCALE]);
     m_Vec[PBOUNDMAX].z= m_Vec[PVOLMAX].z - 2*(m_Param[PGRIDSIZE]/m_Param[PSIMSCALE]);
@@ -882,6 +884,7 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     ret += std::fscanf ( SpecFile, "\n");
 
     ret += std::fscanf ( SpecFile, "gridsize = %f\n ", &launchParams.gridsize);
+    std::cout << "\nX X X X X X X X X X X X X X X X X X X X X X X  " << launchParams.gridsize << std::flush;
     ret += std::fscanf ( SpecFile, "spacing = %f\n ", &launchParams.spacing);
     ret += std::fscanf ( SpecFile, "\n");
 
@@ -985,15 +988,23 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
 }
 
 void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ // writes a default version
+
     char Specification_file_path[256];
     sprintf ( Specification_file_path, "%s/SpecificationFile.txt", relativePath );
-    //const char * SimParams_file_path = relativePath;
+    cout << "\nrelative SpecificationFile location: " << Specification_file_path << flush;
+    const char * SimParams_file_path = relativePath;
     FILE * SpecFile = fopen ( Specification_file_path, "w" );
-    int ret =0;
+        if (SpecFile == NULL) {
+            fprintf(stderr, "Error opening file %s\n", Specification_file_path);
+            return;
+        }
 
+    int ret =0;
+    /* TODO this code is probably unnecessary, as it is not part of the original function, cnat remember its purpose, prob tried to to some print statments to debug
     printParam("num_particles", launchParams.num_particles);
     printParam("demoType", launchParams.demoType);
     printParam("simSpace", launchParams.simSpace);
+
 
     // Add similar checks for other parameters
     printParam("m_Time", m_Time);
@@ -1072,7 +1083,7 @@ void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ /
     printParam("read_genome", launchParams.read_genome);
 
     printParam("actuation_factor", m_Param[PACTUATION_FACTOR]);
-    printParam("actuation_period", m_Param[PACTUATION_PERIOD]);
+    printParam("actuation_period", m_Param[PACTUATION_PERIOD]);*/
 
 
     ret += std::fprintf ( SpecFile, "num_particles = %u\n ", launchParams.num_particles );
@@ -1180,8 +1191,8 @@ void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ /
 
     ret += std::fprintf ( SpecFile, "\n");
 
-    fclose ( SpecFile );
-    return;
+     fclose ( SpecFile );
+     return;
 }
 
 void FluidSystem::WriteSpecificationFile_fromLaunchParams ( const char * relativePath ){ // writes a default version
@@ -1412,7 +1423,7 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
         if( *getParticle_ID(i)<=mMaxPoints ){ // if(active_particle)
             vtkIdType pid[1];
             //Point P = Model.Points[i];
-            Vector3DF* Pos = getPos(i);
+            cl_float3* Pos = getPos(i);
             pid[0] = points3D->InsertNextPoint(Pos->x, Pos->y, Pos->z);
             Vertices->InsertNextCell(1,pid);
             num_active_points++;
@@ -1429,8 +1440,8 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
 	// Inset vertices for sim volume
 	{
         vtkIdType pid[1];
-        Vector3DF  pos = {0,0,0};
-        Vector3DF* Pos =&pos;
+        cl_float3  pos = {0,0,0};
+        cl_float3* Pos =&pos;
         for(int corner=0; corner<8; corner++){
             if(corner&1) Pos->x = m_Vec[ PVOLMAX ].x; // bitmask to select axes to swap to PVOLMAX
             else Pos->x = m_Vec[ PVOLMIN ].x;
@@ -1453,8 +1464,8 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
     bondLength->SetNumberOfComponents(9);
 	bondLength->SetName("FBondLength");
     */
-    Vector3DF* Pos_i;
-    //Vector3DF* Pos_j;
+    cl_float3* Pos_i;
+    //cl_float3* Pos_j;
     //
     for ( unsigned int i = 0; i < num_active_points; ++i )
 	{
@@ -1590,7 +1601,7 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
 
 
     // FVEL 3df,
-    Vector3DF* Vel;
+    cl_float3* Vel;
     vtkSmartPointer<vtkFloatArray> fvel = vtkSmartPointer<vtkFloatArray>::New();
     fvel->SetNumberOfComponents(3);
 	fvel->SetName("FVEL");
@@ -1605,7 +1616,7 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
 
 
     // FVEVAL 3df,
-    Vector3DF* Veval;
+    cl_float3* Veval;
     vtkSmartPointer<vtkFloatArray> fveval = vtkSmartPointer<vtkFloatArray>::New();
     fveval->SetNumberOfComponents(3);
 	fveval->SetName("FVEVAL");
@@ -1620,7 +1631,7 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
 
 
     // FFORCE 3df,
-    Vector3DF* Force;
+    cl_float3* Force;
     vtkSmartPointer<vtkFloatArray> fforce = vtkSmartPointer<vtkFloatArray>::New();
     fforce->SetNumberOfComponents(3);
 	fforce->SetName("FFORCE");

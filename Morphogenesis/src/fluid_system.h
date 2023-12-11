@@ -186,148 +186,152 @@
 
 
 using namespace std;
-class RunCL
-{
-public:
-// 	Json::Value obj;
-// 	int					verbosity;
-// 	std::vector<cl_platform_id> m_platform_ids;
-// 	cl_context			m_context;
-// 	cl_device_id		m_device_id;
-// 	cl_command_queue	m_queue, uload_queue, dload_queue, track_queue;
-// 	cl_program			m_program;
-// 	cl_kernel			m_Kern[FUNC_MAX];
-// 	cl_mem				m_FParamDevice, m_FluidDevice, m_FluidTempDevice, m_FGenomeDevice;		//GPU pointer containers
-//
-// 	size_t  			global_work_size, local_work_size, image_size_bytes;
-// 	bool 				gpu, amdPlatform;
-// 	cl_device_id 		deviceId;
-// 	float 				params[16] = {0};
-// 	int 				width, height, costVolLayers, baseImage_type, count=0, keyFrameCount=0, costVolCount=0, QDcount=0, A_count=0;
-// 	std::map< std::string, std::filesystem::path > paths;
-//
-// 	RunCL(Json::Value obj_);
-// 	void createFolders();	// Called by RunCL(..) constructor, above.
-// 	void saveCostVols(float max_range);
-// 	void updateQD(float epsilon, float theta, float sigma_q, float sigma_d);
-// 	void updateA ( float lambda, float theta );
-//
-// 	void CleanUp();
-// 	void allocatemem(FParams fparam, FBufs *fbuf, FBufs *ftemp, FGenome fgenome);
-// 	void exit_(cl_int res);
-// 	~RunCL();
-//
-// 	//void DownloadAndSaveVolume_3Channel(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show );
-// 	//void initializeCostVol(float* k2k, cv::Mat &baseImage, cv::Mat &image, float *cdata, float *hdata, float thresh, int layers);
-// 	//void initializeAD();
-//
-// 	int  convertToString(const char *filename, std::string& s){
-// 		size_t size;
-// 		char*  str;
-// 		std::fstream f(filename, (std::fstream::in | std::fstream::binary));
-// 		if (f.is_open() ) {
-// 			size_t fileSize;
-// 			f.seekg(0, std::fstream::end);
-// 			size = fileSize = (size_t)f.tellg();
-// 			f.seekg(0, std::fstream::beg);
-// 			str = new char[size + 1];
-// 			if (!str) {
-// 				f.close();
-// 				return 0;
-// 			}
-// 			f.read(str, fileSize);
-// 			f.close();
-// 			str[size] = '\0';
-// 			s = str;
-// 			delete[] str;
-// 			return 0;
-// 		}
-// 											cout << "Error: failed to open file\n:" << filename << endl;
-// 		return 1;
-// 	}
-//
-// 	int waitForEventAndRelease(cl_event *event){
-// 											if(verbosity>0) cout << "\nwaitForEventAndRelease_chk0, event="<<event<<" *event="<<*event << flush;
-// 		cl_int status = CL_SUCCESS;
-// 		status = clWaitForEvents(1, event); if (status != CL_SUCCESS) { cout << "\nclWaitForEvents status=" << status << ", " <<  checkerror(status) <<"\n" << flush; exit_(status); }
-// 		status = clReleaseEvent(*event); 	if (status != CL_SUCCESS) { cout << "\nclReleaseEvent status="  << status << ", " <<  checkerror(status) <<"\n" << flush; exit_(status); }
-// 		return status;
-// 	}
 
-//
-// 	/*
-// 	void ReadOutput(uchar* outmat) {
-// 		ReadOutput(outmat, amem,  (width * height * sizeof(float)) );
-// 	}
-//
-// 	void ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset=0) {
-// 		cl_event readEvt;
-// 		cl_int status;
-// 														cout<<"\nReadOutput: &outmat="<<&outmat<<", buf_mem="<<buf_mem<<", data_size="<<data_size<<", offset="<<offset<<"\t"<<flush;
-// 		status = clEnqueueReadBuffer(dload_queue,			// command_queue
-// 											buf_mem,		// buffer
-// 											CL_FALSE,		// blocking_read
-// 											offset,			// offset
-// 											data_size,		// size
-// 											outmat,			// pointer
-// 											0,				// num_events_in_wait_list
-// 											NULL,			// event_waitlist
-// 											&readEvt);		// event
-// 														if (status != CL_SUCCESS) { cout << "\nclEnqueueReadBuffer(..) status=" << checkerror(status) <<"\n"<<flush; exit_(status);}
-// 															else if(verbosity>0) cout <<"\nclEnqueueReadBuffer(..)"<<flush;
-// 		status = clFlush(dload_queue);					if (status != CL_SUCCESS) { cout << "\nclFlush(m_queue) status = " 		<< checkerror(status) <<"\n"<<flush; exit_(status);}
-// 															else if(verbosity>0) cout <<"\nclFlush(..)"<<flush;
-// 		status = clWaitForEvents(1, &readEvt); 			if (status != CL_SUCCESS) { cout << "\nclWaitForEvents status="			<< checkerror(status) <<"\n"<<flush; exit_(status);}
-// 															else if(verbosity>0) cout <<"\nclWaitForEvents(..)"<<flush;
-// 	}*/
-};
 
+	cl_float3 make_cl_float3(float x, float y, float z)
+    {
+        cl_float3 t; t.x = x; t.y = y; t.z = z; return t;
+    }
+
+    cl_int3 make_cl_int3(int x, int y, int z)
+    {
+        cl_int3 t; t.x = x; t.y = y; t.z = z; return t;
+    }
 
 	bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
 
-/*
-		typedef struct FBufs {
-                char* mcpu[MAX_BUF];
-                cl_mem mgpu[MAX_BUF];
-        } FBufs;
+	void setBuf(FBufs *fb, int n, char* buf) {
+			fb->mcpu[n] = buf;
+	}
 
-        #ifdef CL_KERNEL
-            Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mgpu[n]; }
-            cl_float3* bufF3(__constant FBufs* fb, int n) { return (cl_float3*) fb->mgpu[n]; }
-            float*  bufF (__constant FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
-            uint*   bufI (__constant FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
-            char*   bufC (__constant FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
-            uint**  bufII (__constant FBufs* fb, int n) { return (uint**)  fb->mgpu[n]; }
-            well512_state*  bufWell512State(__constant FBufs* fb, int n) { return (well512_state*) fb->mgpu[n]; }
-            unsigned long long*  bufULL(__constant FBufs* fb, int n) { return (unsigned long long*) fb->mgpu[n]; }
+	void setGpuBuf(FBufs *fb, int n, cl_mem buf) {
+	fb->mgpu[n] = buf;
+	}
 
-        #else
-            Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mcpu[n]; }
-            cl_float3* bufF3(FBufs* fb, int n) { return (cl_float3*) fb->mcpu[n]; }
-            float*  bufF (FBufs* fb, int n) { return (float*)  fb->mcpu[n]; }
-            uint*   bufI (FBufs* fb, int n) { return (uint*)   fb->mcpu[n]; }
-            char*   bufC (FBufs* fb, int n) { return (char*)   fb->mcpu[n]; }
-            char*   bufC_TEST (FBufs* fb, int n) { return (char*)   fb->mcpu[n]; }
-            uint**  bufII (FBufs* fb, int n) { return (uint**)  fb->mcpu[n]; }          // for elastIdx[][]
-            well512_state*  bufWell512State(FBufs* fb, int n) { return (well512_state*) fb->mcpu[n]; }
-            unsigned long long*  bufULL(FBufs* fb, int n) { return (unsigned long long*) fb->mcpu[n]; }
-        #endif*/
+	cl_mem gpuVar(FBufs *fb, int n) {
+		return fb->mgpu[n];
+	}
 
-		void setBuf(FBufs *fb, int n, char* buf) {
-             fb->mcpu[n] = buf;
-		}
+	cl_mem* gpuptr(FBufs *fb, int n) {
+		return &fb->mgpu[n];
+	}
 
-		void setGpuBuf(FBufs *fb, int n, cl_mem buf) {
-		fb->mgpu[n] = buf;
-		}
+	cl_float3 cl_int3_to_cl_float3(cl_int3 op) {
+		cl_float3 result;
+		result.x = (float) op.x;
+		result.y = (float) op.y;
+		result.z = (float) op.z;
+		return result;
+	}
 
-		cl_mem gpuVar(FBufs *fb, int n) {
-			return fb->mgpu[n];
-		}
+	cl_float3 cl_float3_init_with_values(float xa, float ya, float za) {
+		cl_float3 v;
+		v.x = xa;
+		v.y = ya;
+		v.z = za;
+		return v;
+	}
 
-		cl_mem* gpuptr(FBufs *fb, int n) {
-			return &fb->mgpu[n];
-		}
+	cl_float3 cl_float3_addFloat(cl_float3 *vector, float op) {
+		cl_float3 result;
+		result.x = vector->x + op;
+		result.y = vector->y + op;
+		result.z = vector->z + op;
+		return result;
+	}
+
+	cl_float3 cl_float3_add_cl_float3(cl_float3 *vector, cl_float3 op) {
+		cl_float3 result;
+		result.x = vector->x + op.x;
+		result.y = vector->y + op.y;
+		result.z = vector->z + op.z;
+		return result;
+	}
+
+	cl_float3 cl_float3_addDouble(cl_float3 *vector, double op) {
+		cl_float3 result;
+		result.x = vector->x + op;
+		result.y = vector->y + op;
+		result.z = vector->z + op;
+		return result;
+	}
+
+	cl_float3 cl_float3_subtractFloat(cl_float3 *vector, float op) {
+		cl_float3 result;
+		result.x = vector->x - op;
+		result.y = vector->y - op;
+		result.z = vector->z - op;
+		return result;
+	}
+
+	cl_float3 cl_float3_subtractDouble(cl_float3 *vector, double op) {
+		cl_float3 result;
+		result.x = vector->x - op;
+		result.y = vector->y - op;
+		result.z = vector->z - op;
+		return result;
+	}
+
+	cl_float3 cl_float3_multiplyFloat(cl_float3 *vector, float op) {
+		cl_float3 result;
+		result.x = vector->x * op;
+		result.y = vector->y * op;
+		result.z = vector->z * op;
+		return result;
+	}
+
+	cl_float3 *cl_float3_multiplyDouble(cl_float3 *v, double op) {
+		v->x *= op;
+		v->y *= op;
+		v->z *= op;
+		return v;
+	}
+
+	cl_float3 cl_float3_subtract_cl_float3(cl_float3 *vector, cl_float3 *op) {
+		cl_float3 result;
+		result.x = vector->x - op->x;
+		result.y = vector->y - op->y;
+		result.z = vector->z - op->z;
+		return result;
+	}
+
+	cl_float3 cl_float3_devide_cl_float3(cl_float3 *vector, cl_float3 *op) {
+		cl_float3 result;
+		result.x = vector->x / op->x;
+		result.y = vector->y / op->y;
+		result.z = vector->z / op->z;
+		return result;
+	}
+
+	cl_float3 *cl_float3_operator_equal_cl_float3 (cl_float3 *v, cl_float3 *op) {
+		v->x = op->x;
+		v->y = op->y;
+		v->z = op->z;
+		return v;
+	}
+
+	cl_float3 *cl_float3_operator_equal_cl_int3 (cl_float3 *v, cl_int3 *op) {
+		v->x = (float) op->x;
+		v->y = (float) op->y;
+		v->z = (float) op->z;
+		return v;
+	}
+
+
+	void Set(cl_float3* vec, float x, float y, float z) {
+		vec->x = x;
+		vec->y = y;
+		vec->z = z;
+	}
+
+	cl_float3 Clamp(cl_float3* vec, float a, float b) {
+		cl_float3 result;
+		result.x = (vec->x < a) ? a : ((vec->x > b) ? b : vec->x);
+		result.y = (vec->y < a) ? a : ((vec->y > b) ? b : vec->y);
+		result.z = (vec->z < a) ? a : ((vec->z > b) ? b : vec->z);
+		return result;
+	}
+
 
 		class FluidSystem {
 	public:
@@ -537,17 +541,17 @@ public:
         void AllocateBufferDenseLists ( int buf_id, int stride, int gpucnt, int lists );
         void AllocateParticles ( int cnt, int gpu_mode = GPU_DUAL, int cpu_mode = CPU_YES );
         void AddNullPoints ();
-        int  AddParticleMorphogenesis2(Vector3DF* Pos, Vector3DF* Vel, uint Age, uint Clr, uint *_ElastIdxU, float *_ElastIdxF, uint *_Particle_Idx, uint Particle_ID, uint Mass_Radius, uint NerveIdx, float* _Conc, uint* _EpiGen );
+        int  AddParticleMorphogenesis2(cl_float3* Pos, cl_float3* Vel, uint Age, uint Clr, uint *_ElastIdxU, float *_ElastIdxF, uint *_Particle_Idx, uint Particle_ID, uint Mass_Radius, uint NerveIdx, float* _Conc, uint* _EpiGen );
         
         
 		//void AddEmit ( float spacing );
 		int NumPoints ()				{ return mNumPoints; }
 		int MaxPoints ()                { return mMaxPoints; }
 		int ActivePoints ()             { return mActivePoints; }
-		Vector3DF* getPos ( int n )	    { return &bufV3(&m_Fluid, FPOS)[n]; }
-		Vector3DF* getVel ( int n )	    { return &bufV3(&m_Fluid, FVEL)[n]; }
-		Vector3DF* getVeval ( int n )   { return &bufV3(&m_Fluid, FVEVAL)[n]; }
-		Vector3DF* getForce ( int n )   { return &bufV3(&m_Fluid, FFORCE)[n]; }
+		cl_float3* getPos ( int n )	    { return &bufV3(&m_Fluid, FPOS)[n]; }
+		cl_float3* getVel ( int n )	    { return &bufV3(&m_Fluid, FVEL)[n]; }
+		cl_float3* getVeval ( int n )   { return &bufV3(&m_Fluid, FVEVAL)[n]; }
+		cl_float3* getForce ( int n )   { return &bufV3(&m_Fluid, FFORCE)[n]; }
 		
 		float* getPres ( int n )        { return &bufF(&m_Fluid, FPRESS)[n];}
 		float* getDensity ( int n )     { return &bufF(&m_Fluid, FDENSITY)[n];}
@@ -568,8 +572,8 @@ public:
 		void SetupExampleParams (uint simSpace);
         void SetupExampleGenome();
 		void SetupSpacing ();
-        void SetupAddVolumeMorphogenesis2(Vector3DF min, Vector3DF max, float spacing, float offs, uint demoType );  // NB ony used in WriteDemoSimParams()
-		void SetupGrid ( Vector3DF min, Vector3DF max, float sim_scale, float cell_size);		
+        void SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, float spacing, float offs, uint demoType );  // NB ony used in WriteDemoSimParams()
+		void SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, float cell_size);
 		void AllocateGrid ();
         void AllocateGrid(int gpu_mode, int cpu_mode);
         void SetupSimulation(int gpu_mode, int cpu_mode);
@@ -598,10 +602,10 @@ public:
 		double GetDT()		{ return m_DT; }
 		
 		// Acceleration Grid
-		Vector3DF GetGridRes ()		{ return Vector3DI_to_Vector3DF(m_GridRes); }
-		Vector3DF GetGridMin ()		{ return m_GridMin; }
-		Vector3DF GetGridMax ()		{ return m_GridMax; }
-		Vector3DF GetGridDelta ()	{ return m_GridDelta; }
+		cl_float3 GetGridRes ()		{ return cl_int3_to_cl_float3(m_GridRes); }
+		cl_float3 GetGridMin ()		{ return m_GridMin; }
+		cl_float3 GetGridMax ()		{ return m_GridMax; }
+		cl_float3 GetGridDelta ()	{ return m_GridDelta; }
 
 		void FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size, cl_float3 delta, cl_float3 gmin, cl_float3 gmax, int total, int chk );
 		void FluidParamCL(float ss, float sr, float pr, float mass, float rest, cl_float3 bmin, cl_float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p);
@@ -610,7 +614,7 @@ public:
 		void InsertParticlesCL ( uint* gcell, uint* ccell, uint* gcnt );
 		void PrefixSumCellsCL ( int zero_offsets );
 		void PrefixSumCellsCL2 ( int zero_offsets );
-		void CountingSortFullCL ( Vector3DF* gpos );
+		void CountingSortFullCL ( cl_float3* gpos );
         
         void InitializeBondsCL ();
         
@@ -674,8 +678,8 @@ public:
 		//void SetParam (RunCL& runcl, int p, int v )		{ m_Param[p] = (float) v; }
 		float GetParam ( int p )			{ return (float) m_Param[p]; }
 
-		Vector3DF GetVec ( int p )			{ return m_Vec[p]; }
-		void SetVec(int p, Vector3DF v);
+		cl_float3 GetVec ( int p )			{ return m_Vec[p]; }
+		void SetVec(int p, cl_float3 v);
 		void SetDebug(uint b) { m_debug=b; m_FParams.debug=b; /*mbDebug = (bool)b;*/ 
             std::cout<<"\n\nSetDebug(uint b): b="<<b<<", m_FParams.debug = "<<m_FParams.debug<<", (m_FParams.debug>1)="<<(m_FParams.debug>1)<<"\n"<<std::flush;
         }
@@ -696,7 +700,7 @@ public:
             char save_ply='n', save_csv='n', save_vtp='n',  gene_activity='n', remodelling='n', read_genome='n';
             
             float m_Time, m_DT, gridsize, spacing, simscale, smoothradius, visc, surface_tension, mass, radius, /*dist,*/ intstiff, extstiff, extdamp, accel_limit, vel_limit, grav, ground_slope, force_min, force_max, force_freq;
-            Vector3DF volmin, volmax, initmin, initmax;
+            cl_float3 volmin, volmax, initmin, initmax;
             float actuation_factor, actuation_period;
         }launchParams ;
 	
@@ -712,7 +716,7 @@ public:
 
 		// Simulation Parameters                                //  NB MAX_PARAM = 50 
 		float						m_Param [ MAX_PARAM ];	    // 0-47 used.  see defines above. NB m_Param[1] = maximum number of points.
-		Vector3DF					m_Vec   [ MAX_PARAM ];      // 0-12 used 
+		cl_float3					m_Vec   [ MAX_PARAM ];      // 0-12 used
 
 		// SPH Kernel functions
 		float						m_R2, m_Poly6Kern, m_LapKern, m_SpikyKern;		
@@ -739,11 +743,11 @@ public:
 
 		// Acceleration Grid
 		int						m_GridTotal;			// total # cells
-		Vector3DI				m_GridRes;				// resolution in each axis
-		Vector3DF				m_GridMin;				// volume of grid (may not match domain volume exactly)
-		Vector3DF				m_GridMax;		
-		Vector3DF				m_GridSize;				// physical size in each axis
-		Vector3DF				m_GridDelta;
+		cl_int3				m_GridRes;				// resolution in each axis
+		cl_float3				m_GridMin;				// volume of grid (may not match domain volume exactly)
+		cl_float3				m_GridMax;
+		cl_float3				m_GridSize;				// physical size in each axis
+		cl_float3				m_GridDelta;
 		int						m_GridSrch;
 		int						m_GridAdjCnt;
 		int						m_GridAdj[216];         // 216 => up to 8 particles per cell

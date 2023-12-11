@@ -18,18 +18,18 @@
 #include "fluid.h"
 #include "fluid_system.h"
 #include "host_CL.cpp"
-#include <CL/cl.h>
-#include <CL/opencl.h>
 #include <chrono>
 #include <filesystem>
 
 int main ( int argc, const char** argv )
 {
+
+    // Input = 125 1 6 6 6 0 7 /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo/out
     char input_folder[256];
     char output_folder[256];
         uint num_particles, demoType, simSpace;
     float spacing, x_dim, y_dim, z_dim;
-    if ( argc != 10 && argc !=1 ) {
+    if ( argc != 10 && argc != 1 ) {
         printf ( "usage: create_demo num_particles spacing x_dim y_dim z_dim \n \
         demoType(0:free falling, 1: remodelling & actuation, 2: diffusion & epigenetics.) \n \
         simSpace(0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
@@ -37,7 +37,7 @@ int main ( int argc, const char** argv )
         return 0;
     } else if (argc == 10) {
         num_particles = atoi(argv[1]);
-        printf ( "TEST num_particles = %u\n", num_particles );
+        printf ( "num_particles = %u\n", num_particles );
 
         spacing = atof(argv[2]);
         printf ( "spacing = %f\n", spacing );
@@ -107,21 +107,13 @@ int main ( int argc, const char** argv )
 
     for(int i=0; i<256; i++){fluid.launchParams.paramsPath[i] = input_folder[i];}
     for(int i=0; i<256; i++){fluid.launchParams.pointsPath[i] = input_folder[i];}
-    //for(int i=0; i<256; i++){fluid.launchParams.genomePath[i] = input_folder[i];} // obtained from SpecificationFile.txt above.
+    for(int i=0; i<256; i++){fluid.launchParams.genomePath[i] = input_folder[i];} // obtained from SpecificationFile.txt above.
     if(argc==3)for(int i=0; i<256; i++){fluid.launchParams.outPath[i] = output_folder[i];}
 
-    if(mkdir(output_folder, 0755) == -1) cerr << "\nOutput folder: " << strerror(errno) << std::flush;
+    if(mkdir(output_folder, 0755) == -1) std::cerr << "\nOutput folder: " << strerror(errno) << std::endl;
     else cout << "\n\noutput_folder created\n"<<std::flush; // NB 0755 = rwx owner, rx for others.
 
-    //fluid.WriteDemoSimParams(fluid.launchParams.paramsPath, GPU_OFF, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/
-
-
-    std::cout << "This is some text ";
-    std::cout << "that is not immediately flushed." << std::flush;
-
-    // The text above might not be immediately visible in the console without flushing.
-
-    std::cout << "This text is immediately flushed." << std::endl;
+    fluid.WriteDemoSimParams(fluid.launchParams.paramsPath, GPU_OFF, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/
 
     if(argc !=1){                                           // i.e not relying on defaults in simspace 8
     fluid.launchParams.num_particles    = num_particles;    // Write default values to fluid.launchParams...
@@ -154,13 +146,18 @@ int main ( int argc, const char** argv )
     for(int i=0;i<genomePath.length();i++)fluid.launchParams.genomePath[i] = genomePath[i];
     for(int i=0;i<outPath.length(); i++)  fluid.launchParams.outPath[i]    = outPath[i];
 
-    fluid.WriteExampleSpecificationFile("./demo");
+    printf("paramsPath: %s\n", fluid.launchParams.paramsPath);
+    printf("pointsPath: %s\n", fluid.launchParams.pointsPath);
+    printf("genomePath: %s\n", fluid.launchParams.genomePath);
+    printf("outPath: %s\n", fluid.launchParams.outPath);
+
+    fluid.WriteExampleSpecificationFile("../demo");
     printf("\ncreate_demo finished.\n");
     //fluid.Exit_no_CL ();
     return 0;
 }
 
-// make_demo2:
+//{// make_demo2:
 //     if ((argc != 3) && (argc !=2)) {
 //         printf ( "usage: make_demo2 input_folder output_folder.\
 //         \nNB input_folder must contain \"SpecificationFile.txt\", output will be wrtitten to \"output_folder/out_data_time/\".\
@@ -230,3 +227,4 @@ int main ( int argc, const char** argv )
 //     printf ( "\nClosed make_demo2.\n" );
 //     return 0;
 // }
+//}

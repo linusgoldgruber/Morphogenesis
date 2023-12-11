@@ -36,8 +36,8 @@
 #include <CL/cl.h>
 //#include <curand.h>
 //#include <curand_kernel.h>
-#include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
-#include "well512.cl"
+//#include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
+#include <randCL_well512.cl>
 
 
 

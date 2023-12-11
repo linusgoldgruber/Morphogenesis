@@ -27,30 +27,8 @@
 #ifndef CL_KERNEL
     #include <CL/cl.h>
 #endif
-//{
-//     #ifndef CL_KERNEL
-//     struct  cl_float3
-// 	{
-// 		float x, y, z;
-// 	};
-//
-// 	struct  cl_int3
-// 	{
-// 		int x, y, z;
-// 	};
-//     #endif
-//
-// 	    cl_float3 make_cl_float3(float x, float y, float z)
-//     {
-//         cl_float3 t; t.x = x; t.y = y; t.z = z; return t;
-//     }
-//
-//     cl_int3 make_cl_int3(int x, int y, int z)
-//     {
-//         cl_int3 t; t.x = x; t.y = y; t.z = z; return t;
-//     }
 
-//}
+
 
 
 	//#include <cuda.h>
@@ -58,12 +36,12 @@
     //#include <CL/cl.h>
 	//#include <curand.h>
     //#include <string.h>
-    #include "vector.h"
+    //#include "vector.h"
     #include "masks.h"
     //#include <../cuda-11.2/targets/x86_64-linux/include/curand_kernel.h>
     //#include <curand_kernel.h>
     //#include <CL/cl.h>
-    #include </home/goldi/Documents/Libraries/RandomCL/generators/well512.cl>
+    #include "randCL_well512.cl"
 
 
 
@@ -239,8 +217,8 @@
 
         } FBufs;
 
-            //Vector3DF* bufV3(FBufs* fb, int n) { return (Vector3DF*) fb->mgpu[n]; }
-            cl_float3* bufF3(__constant FBufs* fb, int n) { return (cl_float3*) fb->mgpu[n]; }
+            //cl_float3* bufV3(FBufs* fb, int n) { return (cl_float3*) fb->mgpu[n]; }
+            float3* bufF3(__constant FBufs* fb, int n) { return (float3*) fb->mgpu[n]; }
             float*  bufF (__constant FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
             uint*   bufI (__constant FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
             char*   bufC (__constant FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
@@ -256,14 +234,14 @@
                 cl_mem mgpu[MAX_BUF];
         } FBufs;
             // NB in host code, use cl_float3 for cl_float3 in the kernel.
-            Vector3DF*              bufV3           (const FBufs* fb, int n) { return (cl_float3*)             fb->mgpu[n]; }
-            cl_float3*              bufF3           (const FBufs* fb, int n) { return (cl_float3*)             fb->mgpu[n]; }
-            float*                  bufF            (const FBufs* fb, int n) { return (float*)                 fb->mgpu[n]; }
-            uint*                   bufI            (const FBufs* fb, int n) { return (uint*)                  fb->mgpu[n]; }
-            char*                   bufC            (const FBufs* fb, int n) { return (char*)                  fb->mgpu[n]; }
-            uint**                  bufII           (const FBufs* fb, int n) { return (uint**)                 fb->mgpu[n]; }
-            well512_state*          bufWell512State (const FBufs* fb, int n) { return (well512_state*)         fb->mgpu[n]; }
-            unsigned long long*     bufULL          (const FBufs* fb, int n) { return (unsigned long long*)    fb->mgpu[n]; }
+            cl_float3*              bufV3           (const FBufs* fb, int n) { return (cl_float3*)             fb->mcpu[n]; }
+            cl_float3*              bufF3           (const FBufs* fb, int n) { return (cl_float3*)             fb->mcpu[n]; }
+            float*                  bufF            (const FBufs* fb, int n) { return (float*)                 fb->mcpu[n]; }
+            uint*                   bufI            (const FBufs* fb, int n) { return (uint*)                  fb->mcpu[n]; }
+            char*                   bufC            (const FBufs* fb, int n) { return (char*)                  fb->mcpu[n]; }
+            uint**                  bufII           (const FBufs* fb, int n) { return (uint**)                 fb->mcpu[n]; }
+            well512_state*          bufWell512State (const FBufs* fb, int n) { return (well512_state*)         fb->mcpu[n]; }
+            unsigned long long*     bufULL          (const FBufs* fb, int n) { return (unsigned long long*)    fb->mcpu[n]; }
     #endif
 
 	// Temporary sort buffer offsets
