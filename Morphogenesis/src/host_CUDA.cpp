@@ -18,9 +18,9 @@ void computeNumBlocks (int numPnts, int minThreads, int &numGroups, int &numItem
     numGroups = (numItems==0) ? 1 : iDivUp ( numPnts, numItems );
 }
 
-void FluidSystem::TransferToTempCL ( int buf_id, int sz ){
-    clCheck ( cuMemcpyDtoD ( gpuVar(&m_FluidTemp, buf_id), gpuVar(&m_Fluid, buf_id), sz ), "TransferToTempCL", "cuMemcpyDtoD", "m_FluidTemp", mbDebug);
-}
+// void FluidSystem::TransferToTempCL ( int buf_id, int sz ){
+//     clCheck ( cuMemcpyDtoD ( gpuVar(&m_FluidTemp, buf_id), gpuVar(&m_Fluid, buf_id), sz ), "TransferToTempCL", "cuMemcpyDtoD", "m_FluidTemp", mbDebug);
+// }
 
 void FluidSystem::TransferFromTempCL ( int buf_id, int sz ){
     clCheck ( cuMemcpyDtoD ( gpuVar(&m_Fluid, buf_id), gpuVar(&m_FluidTemp, buf_id), sz ), "TransferFromTempCL", "cuMemcpyDtoD", "m_Fluid", mbDebug);

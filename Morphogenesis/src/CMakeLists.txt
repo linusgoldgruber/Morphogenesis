@@ -4,7 +4,7 @@ cmake_policy(SET CMP0054 NEW)
 
 project(MinimalSim LANGUAGES C CXX)
 
-set(PROJECT_NAME create_demo)
+set(PROJECT_NAME create_demo2)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -48,7 +48,7 @@ include_directories(${JSONCPP_INCLUDE_DIRS})
 include_directories(${VTK_INCLUDE_DIRS})
 
 add_executable(${PROJECT_NAME}
-        createDemo.cpp
+        createDemo2.cpp
         )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

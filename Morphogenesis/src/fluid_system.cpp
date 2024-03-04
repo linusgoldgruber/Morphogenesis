@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <iostream>
-#include <CL/cl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <chrono>
@@ -15,7 +14,6 @@
 #include <jsoncpp/json/json.h>
 #include "fluid.h"
 #include "fluid_system.h"
-#include <CL/cl_platform.h>
 #include <thread>
 
 #define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
@@ -120,6 +118,9 @@ FluidSystem::FluidSystem (RunCL& runcl){
     //for (int n=0; n < FUNC_MAX; n++ ) runcl.m_Kern[n] = (cl_kernel) -1;
 }
 */
+
+
+
 bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall, const char* arg, bool bDebug)
 {
     // DEBUG IMPLEMENTATION MISSING!!!
@@ -183,12 +184,15 @@ FluidSystem::FluidSystem(Json::Value obj_)
 																						// Multiple queues for latency hiding: Upload, Download, Mapping, Tracking,... autocalibration, SIRFS, SPMP
 																						// NB Might want to create command queues on multiple platforms & devices.
 																						// NB might want to divde a task across multiple MPI Ranks on a multi-GPU WS or cluster.
-	const char *filename = obj["kernel_filepath"].asCString();							/*Step 5: Create program object*///////////////////////////////
-	string sourceStr;
+    const char *filename = obj["kernel_filepath"].asCString();							/*Step 5: Create program object*///////////////////////////////
+    printf("\nKernel File Path: %s\n", filename);
+
+    string sourceStr;
 	status 						= convertToString(filename, sourceStr);					if(status!=CL_SUCCESS)	{cout<<"\nconvertToString status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 	const char 	*source 		= sourceStr.c_str();
 	size_t 		sourceSize[] 	= { strlen(source) };
-	m_program 	= clCreateProgramWithSource(m_context, 1, &source, sourceSize, NULL);
+    printf("Source Size: %zu bytes. \n", sourceSize[0]); //currently 26758 bytes
+	m_program 	= clCreateProgramWithSource(m_context, 1, &source, sourceSize, &status);    if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
 
     //TODO The apsolute path here needs to be read from the jason file
 	const char includeOptions[] = "-I /lib/i386-linux-gnu -I \"/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src\""; // Paths to include directories ///// -I /usr/lib/gcc/x86_64-linux-gnu/11/include /////
@@ -291,7 +295,6 @@ void FluidSystem::InitializeOpenCL()
     m_FPrefixDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(FPrefix), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 
-
 																				if(verbosity>1) {
 																					cout << "m_FParamDevice = " 	<< m_FParamDevice << endl;
 																					cout << "m_FluidDevice = " 		<< m_FluidDevice << endl;
@@ -373,6 +376,7 @@ void FluidSystem::InitializeOpenCL()
                                                                             if(verbosity>0) cout << "-----InitializeOpenCL() finished-----\n\n" << flush;
 }
 
+
 void FluidSystem::exit_(cl_int res)
 {
 	//CleanUp();
@@ -406,10 +410,42 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
     memset ( &m_FGenome,    0,      sizeof(FGenome) );
 
 
-    mNumPoints = 100;
-    mMaxPoints = 0;
-    mPackGrid = 0x0;
-    m_Frame = 0;
+    mNumPoints = 0;
+	mMaxPoints = 0;
+	//mPackBuf = 0x0;
+	mPackGrid = 0x0;
+	//mFP = 0x0;
+/*
+	mPos = 0x0;
+	mClr = 0x0;
+	mVel = 0x0;
+	mVelEval = 0x0;
+	mAge = 0x0;
+	mPressure = 0x0;
+	mDensity = 0x0;
+	mForce = 0x0;
+	mClusterCell = 0x0;
+	mGridNext = 0x0;
+	mNbrNdx = 0x0;
+	mNbrCnt = 0x0;
+	mSelected = -1;*/
+	//m_Grid = 0x0;
+	//m_GridCnt = 0x0;
+
+	m_Frame = 0;
+
+	//m_NeighborTable = 0x0;
+	//m_NeighborDist = 0x0;
+
+	//m_Param [ PMODE ]		= RUN_CUDA_FULL;
+	m_Param [ PEXAMPLE ]	= 1;
+	m_Param [ PGRID_DENSITY ] = 2.0;
+	m_Param [ PNUM ]		= 65536 * 128;
+
+
+	//m_Toggle [ PUSE_GRID ]	=	false;
+	//m_Toggle [ PPROFILE ]	=	false;
+	//m_Toggle [ PCAPTURE ]   =	false;
     m_Time = 0;
 
     size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
@@ -420,6 +456,10 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
     // Allocate the sim parameters CUCLCUCL
     AllocateBuffer ( FPARAMS,		sizeof(FParams),	1,	1,	 GPU_OFF,     CPU_YES ); //AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
     //AllocateBuffer ( FPARAMS,		sizeof(FParams),	0,	1,	 GPU_OFF,     CPU_YES ); //AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
+
+
+
+
 
     if (m_FParams.debug>1)std::cout << "Chk1.6 \n";
 
@@ -579,6 +619,7 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
             //cout << "\n-----memcpy() src_buf to dest_buf-----" << flush;
             memcpy(dest_buf, src_buf, cpucnt * stride);
             //isBufferAllZeros(dest_buf, cpucnt, stride);
+            cout << "\n-----src_buf is NOT a nullpointer!-----" << flush;
 
             free(src_buf);
         }
@@ -922,7 +963,7 @@ void FluidSystem::AddNullPoints (){// fills unallocated particles with null data
 
 
 void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, float spacing, float offs, uint demoType ){  // NB ony used in WriteDemoSimParams() called by make_demo.cpp . Creates a cuboid with all particle values definable.
-if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::flush ;
+if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::flush;
     cl_float3 pos;
     float dx, dy, dz;
     int cntx, cntz, p, c2;
@@ -1030,9 +1071,9 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
 //                     return;
 //                 }
      }
-//     mActivePoints=mNumPoints; // Initial active points, used in make_demo2.cpp, by WriteResultsCSV()
-//     AddNullPoints ();            // If spare particles remain, fill with null points. NB these can be used to "create" particles.
-//     if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 finished \n" << std::flush ;
+    mActivePoints=mNumPoints; // Initial active points, used in make_demo2.cpp, by WriteResultsCSV()
+    AddNullPoints ();            // If spare particles remain, fill with null points. NB these can be used to "create" particles.
+    if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 finished \n" << std::flush ;
 }
 
 void FluidSystem::Run2PhysicalSort(){
@@ -1123,6 +1164,8 @@ void FluidSystem::AdvanceTime () {  // may need to prune unused details from thi
 void FluidSystem::setFreeze(bool freeze){
     m_FParams.freeze = freeze;
 
+    std::cout<<"\n-------setFreeze() started...-------"<<std::flush;
+
     if (freeze == true) {
             m_FParams.freezeBoolToInt = 1;
     }else{
@@ -1130,6 +1173,8 @@ void FluidSystem::setFreeze(bool freeze){
     }
     //clCheck ( cuMemcpyHtoD ( clFParams,	&m_FParams,		sizeof(FParams) ), "FluidParamCL", "cuMemcpyHtoD", "clFParams", mbDebug);
     clCheck ( clEnqueueWriteBuffer(m_queue, m_FParamDevice, CL_TRUE, 0 , sizeof(FParams), &m_FParams, 0, NULL, NULL ), "FluidParamCL", "cuMemcpyHtoD", "clFParams", mbDebug);
+    std::cout<<"\n-------setFreeze() finished.-------"<<std::flush;
+
 
 }
 
@@ -1170,6 +1215,7 @@ void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
 }
 
 void FluidSystem::SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, float cell_size){
+    std::cout<<"\n-------SetupGrid() started...-------"<<std::flush;
     float world_cellsize = cell_size / sim_scale;
     m_GridMin = min;
     m_GridMax = max;
@@ -1205,14 +1251,19 @@ void FluidSystem::SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, flo
 
     if ( mPackGrid != 0x0 ) free ( mPackGrid );
     mPackGrid = (int*) malloc ( sizeof(int) * m_GridTotal );
+
+    std::cout<<"\n-------SetupGrid() finished.-------"<<std::flush;
+
 }
 
 void FluidSystem::SetupSPH_Kernels (){
+    std::cout<<"\n-------SetupSPH_Kernels() started...-------"<<std::flush;
     m_Param [ PDIST ] = pow ( (float) m_Param[PMASS] / m_Param[PRESTDENSITY], 1.0f/3.0f );
     m_R2 = m_Param [PSMOOTHRADIUS] * m_Param[PSMOOTHRADIUS];
     m_Poly6Kern = 315.0f / (64.0f * 3.141592f * pow( m_Param[PSMOOTHRADIUS], 9.0f) );	// Wpoly6 kernel (denominator part) - 2003 Muller, p.4
     m_SpikyKern = -45.0f / (3.141592f * pow( m_Param[PSMOOTHRADIUS], 6.0f) );			// Laplacian of viscocity (denominator): PI h^6
     m_LapKern = 45.0f / (3.141592f * pow( m_Param[PSMOOTHRADIUS], 6.0f) );
+    std::cout<<"\n-------SetupSPH_Kernels() finished.-------\n"<<std::flush;
 }
 
 void FluidSystem::SetupDefaultParams (){
@@ -1288,7 +1339,9 @@ void FluidSystem::SetupExampleParams (uint spacing){
     cl_float3 min, max;
     m_Param [ PSPACING ] = spacing;
 
+
     std::cout<<"\nSetupExampleParams()1: m_Param[PEXAMPLE] = "<<m_Param[PEXAMPLE]<<", SetupExampleParams()2: launchParams.genomePath = "<<launchParams.genomePath<<"\n"<<std::flush;
+    //cout << "\nX X X X X m_Param[EXAMPLE]: " <<   m_Param[PEXAMPLE]  << flush; //TODO remove this debugging line
 
     switch ( (int) m_Param[PEXAMPLE] ) {
 
@@ -1607,7 +1660,7 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
     m_Param [PNUM] = launchParams.num_particles;                             // NB there is a line of text above the particles, hence -1.
     mMaxPoints = m_Param [PNUM];
     m_Param [PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
-    std::cout<<"\nX X X X X X X X X PSMOOTHRADIUS = " << m_Param[PSMOOTHRADIUS] <<std::flush;
+    //std::cout<<"\nX X X X X X X X X PSMOOTHRADIUS = " << m_Param[PSMOOTHRADIUS] <<std::flush; //TODO Remove this debug line
     std::cout<<"\nSetupSimulation chk2" <<std::flush;
 
     SetupSPH_Kernels ();
@@ -1632,7 +1685,7 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
 }
 
 void FluidSystem::Run2Simulation(){
-    printf("\n\n Run2Simulation(), m_FParams.debug=%i .", m_FParams.debug );
+    printf("\n\n Run2Simulation(), m_FParams.debug=%i .\n", m_FParams.debug );
     Init_CLRand();
     auto old_begin = std::chrono::steady_clock::now();
     TransferPosVelVeval ();

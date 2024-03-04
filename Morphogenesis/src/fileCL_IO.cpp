@@ -764,7 +764,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     m_Param[PNUM] = num_particles;  // 1000000;    //1000 = minimal simulation, 1000000 = large simulation
     AllocateBuffer ( FPARAMS, sizeof(FParams), 1,1, GPU_OFF, CPU_YES );
     m_Time = 0;
-    mNumPoints = 0;			        // reset count
+    mNumPoints = 125;			        // reset count
 
     if (m_FParams.debug>1)std::cout<<"\nWriteDemoSimParams chk2, launchParams.genomePath="<< launchParams.genomePath  <<std::flush;
 
@@ -793,8 +793,8 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     AllocateGrid(GPU_OFF, CPU_YES);                                                              if (m_FParams.debug>1) std::cout << " chk1.2 " << std::flush ;
     std::cout<<"\nWriteDemoSimParams chk2 "<<std::flush;
     */
-    cout << "XX m_Param[PGRIDSIZE]: " << m_Param[PGRIDSIZE] << endl;
-    cout << "XX m_Param[PSIMSCALE]: " << m_Param[PSIMSCALE] << endl;
+    //cout << "\nXX m_Param[PGRIDSIZE]: " << m_Param[PGRIDSIZE] << endl; //TODO remove debug line
+    //cout << "\nXX m_Param[PSIMSCALE]: " << m_Param[PSIMSCALE] << endl; //TODO remove debug line
 
     cout << "XX m_Vec[PINITMIN].x: " << m_Vec[PINITMIN].x << endl;
     cout << "XX m_Vec[PINITMIN].y: " << m_Vec[PINITMIN].y << endl;
@@ -836,7 +836,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
         <<"), spacing="<<spacing<<", 0.1f, demoType="<<demoType
         <<")\n"<<std::flush;
     }
-    cout << "############################### SO fAR SO GOOD ###############################" << std::flush;
+    cout << "\n############################### SO FAR SO GOOD ###############################\n\n\n" << std::flush;
 
     //SetupAddVolumeMorphogenesis2(m_Vec[PINITMIN], pinit_max, spacing, 0.1f, demoType);
 
@@ -884,7 +884,7 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     ret += std::fscanf ( SpecFile, "\n");
 
     ret += std::fscanf ( SpecFile, "gridsize = %f\n ", &launchParams.gridsize);
-    std::cout << "\nX X X X X X X X X X X X X X X X X X X X X X X  " << launchParams.gridsize << std::flush;
+    //std::cout << "\nX X X X X X X X X X X X X X X X X X X X X X X  " << launchParams.gridsize << std::flush; //TODO Remove this debug line
     ret += std::fscanf ( SpecFile, "spacing = %f\n ", &launchParams.spacing);
     ret += std::fscanf ( SpecFile, "\n");
 

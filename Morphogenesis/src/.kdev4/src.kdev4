@@ -67,7 +67,7 @@ parserArgumentsOpenCL=-ferror-limit=100 -fspell-checking -Wdocumentation -Wunuse
 Name=GCC
 
 [Launch]
-Launch Configurations=Launch Configuration 0,Launch Configuration 1,Launch Configuration 2,Launch Configuration 3,Launch Configuration 4,Launch Configuration 5
+Launch Configurations=Launch Configuration 0,Launch Configuration 1,Launch Configuration 2,Launch Configuration 3,Launch Configuration 4,Launch Configuration 5,Launch Configuration 6
 
 [Launch][Launch Configuration 0]
 Configured Launch Modes=execute
@@ -114,7 +114,7 @@ Name=create_demo
 Type=Native Application
 
 [Launch][Launch Configuration 2][Data]
-Arguments=125 1 6 6 6 0 7 /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out
+Arguments=125 1 6 6 6 0 8
 Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
 Dependency Action=Nothing
 EnvironmentGroup=
@@ -182,6 +182,25 @@ Project Target=src,sycl.hpp
 Use External Terminal=false
 Working Directory=
 isExecutable=false
+
+[Launch][Launch Configuration 6]
+Configured Launch Modes=execute
+Configured Launchers=nativeAppLauncher
+Name=create_demo2
+Type=Native Application
+
+[Launch][Launch Configuration 6][Data]
+Arguments=/home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out
+Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
+Dependency Action=Nothing
+EnvironmentGroup=
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/create_demo2
+External Terminal=konsole --noclose --workdir %workdir -e %exe
+Kill Before Executing Again=4194304
+Project Target=src,create_demo
+Use External Terminal=false
+Working Directory=
+isExecutable=true
 
 [Project]
 VersionControlSupport=kdevgit

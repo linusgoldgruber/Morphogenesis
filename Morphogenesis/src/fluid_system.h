@@ -44,7 +44,6 @@
 	#include <math.h>
 	#include <sys/stat.h>
     #include <sys/types.h> 
-	#include <CL/cl.h>
 	#include "fluid.h"
 
 // 	#include <vtk-9.0/vtkCellArray.h>
@@ -534,6 +533,7 @@ using namespace std;
 		void LoadKernel (int id, std::string kname );
 		void Initialize ();
         void InitializeOpenCL ();
+		void initializeFBufs(FBufs* fluid);
         void InitializeCL ();                             // used for load_sim
 
 		// Particle Utilities
@@ -596,6 +596,7 @@ using namespace std;
 		
 		void Exit ();
         void Exit_no_CL ();
+		void CreateFluidBuffers();
 		void TransferToCL ();
 		void TransferFromCL ();
         //DT=deltaTime?

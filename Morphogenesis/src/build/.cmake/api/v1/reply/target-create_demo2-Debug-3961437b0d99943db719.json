@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "create_demo"
+			"path" : "create_demo2"
 		}
 	],
 	"backtrace" : 1,
@@ -2105,7 +2105,7 @@
 			]
 		}
 	],
-	"id" : "create_demo::@6890427a1f51a3e7e1df",
+	"id" : "create_demo2::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -2919,8 +2919,8 @@
 		],
 		"language" : "CXX"
 	},
-	"name" : "create_demo",
-	"nameOnDisk" : "create_demo",
+	"name" : "create_demo2",
+	"nameOnDisk" : "create_demo2",
 	"paths" : 
 	{
 		"build" : ".",
@@ -2941,7 +2941,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "createDemo.cpp",
+			"path" : "createDemo2.cpp",
 			"sourceGroupIndex" : 0
 		}
 	],

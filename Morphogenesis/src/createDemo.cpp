@@ -23,19 +23,25 @@
 
 int main ( int argc, const char** argv )
 {
+     /*
+     * Arguments: num_particles, spacing, x_dim, y_dim, z_dim, demo_space, simSpace
+     * Inputs:       125            1       6       6     6        0          8
+     *
+     * Additional paths for old version that merged make_demo and make_demo2:
+     * /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo
+     * /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo/out
+     */
 
-    // Input = 125 1 6 6 6 0 7 /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo/out
-    char input_folder[256];
-    char output_folder[256];
-        uint num_particles, demoType, simSpace;
+    uint num_particles, demoType, simSpace;
     float spacing, x_dim, y_dim, z_dim;
-    if ( argc != 10 && argc != 1 ) {
+
+    if ( argc != 8 && argc != 1 ) {
         printf ( "usage: create_demo num_particles spacing x_dim y_dim z_dim \n \
         demoType(0:free falling, 1: remodelling & actuation, 2: diffusion & epigenetics.) \n \
         simSpace(0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
             6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n" );
         return 0;
-    } else if (argc == 10) {
+    } else if (argc == 8) {
         num_particles = atoi(argv[1]);
         printf ( "num_particles = %u\n", num_particles );
 
@@ -58,11 +64,6 @@ int main ( int argc, const char** argv )
         printf ( "simSpace = %u, (0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
             6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n\n", simSpace);
 
-        sprintf ( input_folder, "%s", argv[8] );
-
-        sprintf ( output_folder, "%s", argv[9] );
-
-        printf ( "input_folder = %s ,\noutput_folder = %s\n", input_folder, output_folder );
     }  else {
         num_particles = 4000;
         printf ( "num_particles = %u\n", num_particles );
@@ -82,7 +83,7 @@ int main ( int argc, const char** argv )
         demoType = 0;
         printf ( "demoType = %u, (0:free falling, 1: remodelling & actuation, 2: diffusion & epigenetics.)\n", demoType );
 
-        simSpace = 7;
+        simSpace = 8;
         printf ( "simSpace = %u, (0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
             6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n\n", simSpace );
     }
@@ -100,20 +101,8 @@ int main ( int argc, const char** argv )
     fluid.Initialize();
 
     uint debug =2;
-    fluid.SetDebug ( debug );
 
-    fluid.ReadSpecificationFile ( input_folder );
-    std::cout<<"\n\ncreate_demo2 chk1, fluid.launchParams.debug="<<fluid.launchParams.debug<<", fluid.launchParams.genomePath=" <<fluid.launchParams.genomePath  << ",  fluid.launchParams.spacing="<<fluid.launchParams.spacing<<std::flush;
-
-    for(int i=0; i<256; i++){fluid.launchParams.paramsPath[i] = input_folder[i];}
-    for(int i=0; i<256; i++){fluid.launchParams.pointsPath[i] = input_folder[i];}
-    for(int i=0; i<256; i++){fluid.launchParams.genomePath[i] = input_folder[i];} // obtained from SpecificationFile.txt above.
-    if(argc==3)for(int i=0; i<256; i++){fluid.launchParams.outPath[i] = output_folder[i];}
-
-    if(mkdir(output_folder, 0755) == -1) std::cerr << "\nOutput folder: " << strerror(errno) << std::endl;
-    else cout << "\n\noutput_folder created\n"<<std::flush; // NB 0755 = rwx owner, rx for others.
-
-    fluid.WriteDemoSimParams(fluid.launchParams.paramsPath, GPU_OFF, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/
+    fluid.WriteDemoSimParams("../demo", GPU_OFF, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/
 
     if(argc !=1){                                           // i.e not relying on defaults in simspace 8
     fluid.launchParams.num_particles    = num_particles;    // Write default values to fluid.launchParams...
@@ -141,15 +130,15 @@ int main ( int argc, const char** argv )
     std::string pointsPath("demo");
     std::string genomePath("demo/genome.csv");
     std::string outPath("out");
-    for(int i=0;i<paramsPath.length();i++)fluid.launchParams.paramsPath[i] = paramsPath[i];
-    for(int i=0;i<pointsPath.length();i++)fluid.launchParams.pointsPath[i] = pointsPath[i];
-    for(int i=0;i<genomePath.length();i++)fluid.launchParams.genomePath[i] = genomePath[i];
-    for(int i=0;i<outPath.length(); i++)  fluid.launchParams.outPath[i]    = outPath[i];
+    for(int i=0;i<paramsPath.length();i++)fluid.launchParams.paramsPath[i] = paramsPath [i];
+    for(int i=0;i<pointsPath.length();i++)fluid.launchParams.pointsPath[i] = pointsPath [i];
+    for(int i=0;i<genomePath.length();i++)fluid.launchParams.genomePath[i] = genomePath [i];
+    for(int i=0;i<outPath.length(); i++)  fluid.launchParams.outPath[i]    =    outPath [i];
 
     printf("paramsPath: %s\n", fluid.launchParams.paramsPath);
     printf("pointsPath: %s\n", fluid.launchParams.pointsPath);
     printf("genomePath: %s\n", fluid.launchParams.genomePath);
-    printf("outPath: %s\n", fluid.launchParams.outPath);
+    printf("outPath:    %s\n", fluid.launchParams.outPath);
 
     fluid.WriteExampleSpecificationFile("../demo");
     printf("\ncreate_demo finished.\n");
