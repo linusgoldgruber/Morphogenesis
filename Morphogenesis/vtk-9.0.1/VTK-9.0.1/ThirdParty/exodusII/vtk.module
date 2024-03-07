@@ -1,8 +1,0 @@
-NAME
-  VTK::exodusII
-LIBRARY_NAME
-  vtkexodusII
-DEPENDS
-  VTK::hdf5
-  VTK::netcdf
-THIRD_PARTY

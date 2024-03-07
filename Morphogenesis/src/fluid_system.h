@@ -653,7 +653,7 @@ using namespace std;
         void WriteDemoSimParams ( const char * relativePath, int gpu_mode, int cpu_mode, uint num_particles, float spacing, float x_dim, float y_dim, float z_dim, uint demoType, uint simSpace, uint debug); // Write standard demo to file, as demonstration of file format. 
         void WriteSimParams ( const char * relativePath );
         void ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int cpu_mode);
-        void ReadPointsCSV2_DEBUG ( const char * relativePath, int gpu_mode, int cpu_mode);
+        //void ReadPointsCSV2_DEBUG ( const char * relativePath, int gpu_mode, int cpu_mode);
 
         void ReadSpecificationFile(const char* relativePath);
         void WriteExampleSpecificationFile ( const char * relativePath );
@@ -744,7 +744,7 @@ using namespace std;
 
 		// Acceleration Grid
 		int						m_GridTotal;			// total # cells
-		cl_int3				m_GridRes;				// resolution in each axis
+		cl_int3					m_GridRes;				// resolution in each axis
 		cl_float3				m_GridMin;				// volume of grid (may not match domain volume exactly)
 		cl_float3				m_GridMax;
 		cl_float3				m_GridSize;				// physical size in each axis

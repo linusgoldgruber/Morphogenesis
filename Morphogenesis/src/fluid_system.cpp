@@ -184,7 +184,8 @@ FluidSystem::FluidSystem(Json::Value obj_)
 																						// Multiple queues for latency hiding: Upload, Download, Mapping, Tracking,... autocalibration, SIRFS, SPMP
 																						// NB Might want to create command queues on multiple platforms & devices.
 																						// NB might want to divde a task across multiple MPI Ranks on a multi-GPU WS or cluster.
-    const char *filename = obj["kernel_filepath"].asCString();							/*Step 5: Create program object*///////////////////////////////
+    //const char *filename = "../kernels/kernelTest.cl";							/*Step 5: Create program object*///////////////////////////////
+    const char *filename = obj["kernel_filepath"].asCString();
     printf("\nKernel File Path: %s\n", filename);
 
     string sourceStr;
@@ -195,7 +196,9 @@ FluidSystem::FluidSystem(Json::Value obj_)
 	m_program 	= clCreateProgramWithSource(m_context, 1, &source, sourceSize, &status);    if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
 
     //TODO The apsolute path here needs to be read from the jason file
-	const char includeOptions[] = "-I /lib/i386-linux-gnu -I \"/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src\""; // Paths to include directories ///// -I /usr/lib/gcc/x86_64-linux-gnu/11/include /////
+    cout << obj["includeOptions_filepath"].asCString();
+    const char *includeOptions =  obj["includeOptions_filepath"].asCString();
+    //const char includeOptions[] = "-I /lib/i386-linux-gnu -I \"/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src\""; // Paths to include directories ///// -I /usr/lib/gcc/x86_64-linux-gnu/11/include /////
 
 	status = clBuildProgram(m_program, 1, devices, includeOptions, NULL, NULL);					/*Step 6: Build program.*/////////////////////
 	if (status != CL_SUCCESS){
@@ -400,8 +403,7 @@ bool isBufferAllZeros(const char* buffer, int stride, int cpucnt) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void FluidSystem::Initialize(){             //Left aside for now, implement by copying from InitializeOpenCLused for CPU only for "check_demo".
-
-                                                                            if(verbosity>0) cout << "FluidSystem::Initialize()\n" << flush;
+                                                                            if(verbosity>0) cout << "-------FluidSystem::Initialize()-------\n" << flush;
     // An FBufs struct holds an array of pointers.
     // Clear all buffers
     memset ( &m_Fluid,      0,      sizeof(FBufs) );
@@ -428,9 +430,9 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
 	mGridNext = 0x0;
 	mNbrNdx = 0x0;
 	mNbrCnt = 0x0;
-	mSelected = -1;*/
-	//m_Grid = 0x0;
-	//m_GridCnt = 0x0;
+	mSelected = -1;
+	m_Grid = 0x0;
+	m_GridCnt = 0x0;*/
 
 	m_Frame = 0;
 
@@ -448,18 +450,9 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
 	//m_Toggle [ PCAPTURE ]   =	false;
     m_Time = 0;
 
-    size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
-    size_t local_work_size = m_FParams.numItems;
-
     if (m_FParams.debug>1)std::cout << "Chk1.4 \n";
 
-    // Allocate the sim parameters CUCLCUCL
-    AllocateBuffer ( FPARAMS,		sizeof(FParams),	1,	1,	 GPU_OFF,     CPU_YES ); //AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
-    //AllocateBuffer ( FPARAMS,		sizeof(FParams),	0,	1,	 GPU_OFF,     CPU_YES ); //AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
-
-
-
-
+    AllocateBuffer ( FPARAMS,		sizeof(FParams),	1,	0,	 GPU_OFF,     CPU_YES ); //AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
 
     if (m_FParams.debug>1)std::cout << "Chk1.6 \n";
 
@@ -583,6 +576,28 @@ void FluidSystem::SetVec (int p, cl_float3 v ){
     UpdateParams ();
 }
 
+void FluidSystem::Exit (){
+
+    // Free fluid buffers
+    clCheck(clFinish(m_queue), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
+    for (int n=0; n < MAX_BUF; n++ ) {
+        if (m_FParams.debug>0)std::cout << "\n n = " << n << std::flush;
+        if ( bufC(&m_Fluid, n) != 0x0 )
+            free ( bufC(&m_Fluid, n) );
+    exit(0);
+    }
+}
+
+void FluidSystem::Exit_no_CL (){
+    // Free fluid buffers
+    for (int n=0; n < MAX_BUF; n++ ) {
+        if (m_FParams.debug>0)std::cout << "\n n = " << n << std::flush;
+        if (bufC(&m_Fluid, n) != 0x0 )
+            free ( bufC(&m_Fluid, n) );
+    }
+    exit(0);
+}
+
 void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode) {
     bool rtn = true;
     cl_int err;
@@ -619,7 +634,7 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
             //cout << "\n-----memcpy() src_buf to dest_buf-----" << flush;
             memcpy(dest_buf, src_buf, cpucnt * stride);
             //isBufferAllZeros(dest_buf, cpucnt, stride);
-            cout << "\n-----src_buf is NOT a nullpointer!-----" << flush;
+            cout << "\n-> src_buf NOT a nullpointer!---------------------------------------" << flush;
 
             free(src_buf);
         }
@@ -627,40 +642,6 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
         m_Fluid.mcpu[buf_id] = dest_buf;
     }
-
-        //         if (cpumode == CPU_YES) {
-        //
-        //                 m_Fluid.mcpu[buf_id] = (char*)malloc(cpucnt * stride);
-        //                 //memset ( &m_Fluid.mcpu[buf_id],  0, cpucnt * stride );
-        //
-        //
-        //                 char* src_buf = m_Fluid.mcpu[buf_id];
-        //
-        //                             if (src_buf == nullptr) {std::cout << "\nsrc_buf = nullptr!\n" << std::flush;}
-        //
-        //                 char* dest_buf = (char*)malloc(cpucnt * stride);  // Allocate the destination buffer
-        //
-        //                 memset ( dest_buf,  0, cpucnt * stride );
-        //                             // Print buffer contents
-        //                             cout << "\n-----dest_buf before memcpy()-----\n" << flush;
-        //                             printMemoryContents(dest_buf, cpucnt * stride);
-        //
-        //                 if (src_buf != nullptr) {
-        //
-        //                     cout << "\n-----memcpy() src_buf to dest_buf-----" << flush;
-        //                     memcpy(dest_buf, src_buf, cpucnt * stride);
-        //                     isBufferAllZeros(dest_buf, cpucnt, stride);
-        //
-        //                     // Make sure to free the source buffer
-        //                     free(src_buf);
-        //                 }
-        //
-        //                 setBuf(&m_Fluid, buf_id, dest_buf);  // Store the pointer to the buffer in mcpu[buf_id]
-        //
-        //                             // Print buffer contents
-        //                             cout << "\n-----dest_buf after memcpy()-----\n" << flush;
-        //                             printMemoryContents(dest_buf, cpucnt * stride);
-        //         }
 
     if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL || gpumode == GPU_TEMP) {
 
@@ -860,7 +841,10 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
 }
 
 int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint Age, uint Clr, uint *_ElastIdxU, float *_ElastIdxF, uint *_Particle_Idx, uint Particle_ID, uint Mass_Radius, uint NerveIdx, float* _Conc, uint* _EpiGen ){  // called by :ReadPointsCSV2 (...) where :    uint Particle_Idx[BONDS_PER_PARTICLE * 2];  AND SetupAddVolumeMorphogenesis2(....)
+    cout <<"\n-----AddParticleMorphogenesis2() started-----"<<flush;
+
     if ( mNumPoints >= mMaxPoints ) return -1;
+
     int n = mNumPoints;
     Set(bufV3(&m_Fluid, FPOS) + n, Pos->x,Pos->y,Pos->z );
     Set(bufV3(&m_Fluid, FVEL) + n, Vel->x,Vel->y,Vel->z );
@@ -870,13 +854,12 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
     *(bufF(&m_Fluid, FDENSITY) + n) = 0;
     *(bufI(&m_Fluid, FGNEXT) + n) = -1;
     *(bufI(&m_Fluid, FCLUSTER)  + n) = -1;
-    cout << "bufF(): " << *(bufF(&m_Fluid, FSTATE) + n ) << flush;
-    cout << "n : " << n << flush;
-    cout << "(float) rand(): " << (float) rand() << flush;
+        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 4 XXXXXXXXXXXXXXXXX \t" << flush;
     *(bufF(&m_Fluid, FSTATE) + n ) = (float) rand();
     *(bufI(&m_Fluid, FAGE) + n) = Age;
     *(bufI(&m_Fluid, FCLR) + n) = Clr;
   //if (m_FParams.debug>1)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
+        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 5 XXXXXXXXXXXXXXXXX \t" << flush;
     uint* ElastIdx = (bufI(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     float* ElastIdxFlt = (bufF(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     for (int i = 0; i<BONDS_PER_PARTICLE;i++){
@@ -907,6 +890,7 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
         uint* EpiGen = getEpiGen(j);
         EpiGen[n]    = _EpiGen[j];                                                      // NB 'n' is particle index, from start of this gene. Data order:  FEPIGEN[gene][particle]
     }
+        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 8 XXXXXXXXXXXXXXXXX \t" << std::flush;
     mNumPoints++;
     return n;
     cout <<"-----AddParticleMorphogenesis2() finished-----";
@@ -964,6 +948,9 @@ void FluidSystem::AddNullPoints (){// fills unallocated particles with null data
 
 void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, float spacing, float offs, uint demoType ){  // NB ony used in WriteDemoSimParams() called by make_demo.cpp . Creates a cuboid with all particle values definable.
 if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::flush;
+
+    std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 1 XXXXXXXXXXXXXXXXX \t" << std::flush;
+
     cl_float3 pos;
     float dx, dy, dz;
     int cntx, cntz, p, c2;
@@ -991,7 +978,7 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
     cl_float3 volV3DF = cl_float3_subtract_cl_float3(&max, &min);
     int num_particles_to_make = 8 * int(volV3DF.x*volV3DF.y*volV3DF.z);// 27 * //int(volV3DF.x*volV3DF.y*volV3DF.z / spacing*spacing*spacing);
     srand((unsigned int)time(NULL));
-    if (m_FParams.debug>1)cout<<"\nSetupAddVolumeMorphogenesis2: num_particles_to_make="<<num_particles_to_make<<",   min=("<<min.x<<","<<min.y<<","<<min.z<<"), max=("<<max.x<<","<<max.y<<","<<max.z<<") "<<std::flush;
+    if (m_FParams.debug>1)cout<<"\nSetupAddVolumeMorphogenesis2: num_particles_to_make= "<<num_particles_to_make<<",   min=("<<min.x<<","<<min.y<<","<<min.z<<"), max=("<<max.x<<","<<max.y<<","<<max.z<<") "<<std::flush;
     for (int i=0; i<num_particles_to_make; i++){
         Pos.x =  min.x + (float(rand())/float((RAND_MAX)) * dx) ;
         Pos.y =  min.y + (float(rand())/float((RAND_MAX)) * dy) ;
@@ -1036,7 +1023,7 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
                 EpiGen[0] = fixedActive;                                        // active, i.e. not reserve
                 EpiGen[1] = fixedActive;                                        // solid, i.e. have elastic bonds
                 EpiGen[2] = fixedActive;                                        // living/telomere, i.e. has genes
-
+    std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 2 XXXXXXXXXXXXXXXXX \t" << std::flush;
                 if(demoType == 1){                                                                    ////// Remodelling & actuation demo
                                                                                 // Fixed base, bone, tendon, muscle, elastic, external actuation
                     if(Pos.z <= min.z+spacing)                                EpiGen[11]=fixedActive;   // fixed particle
@@ -1051,25 +1038,25 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
                     if(Pos.z == min.z) EpiGen[0]=fixedActive;                                           // fixed particle
                     EpiGen[2]=1;                                            // living particle NB set gene behaviour
                 }                                                           // => (i) French flag, (ii) polartity, (iii) clock & wave front
-
-//                 p = AddParticleMorphogenesis2 (
-//                 /* cl_float3* */ &Pos,
-//                 /* cl_float3* */ &Vel,
-//                 /* uint */ Age,
-//                 /* uint */ Clr,
-//                 /* uint *_*/ ElastIdxU,
-//                 /* uint *_*/ ElastIdxF,
-//                 /* unit * */ Particle_Idx,
-//                 /* uint */ Particle_ID,
-//                 /* uint */ Mass_Radius,
-//                 /* uint */ NerveIdx,
-//                 /* float* */ Conc,
-//                 /* uint* */ EpiGen
-//                 );
-//                 if(p==-1){
-//                     if (m_FParams.debug>1){std::cout << "\n SetupAddVolumeMorphogenesis2 exited on p==-1, Pos=("<<Pos.x<<","<<Pos.y<<","<<Pos.z<<"), Particle_ID="<<Particle_ID<<",  EpiGen[0]="<<EpiGen[0]<<" \n " << std::flush ;}
-//                     return;
-//                 }
+        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 3 XXXXXXXXXXXXXXXXX \t" << std::flush;
+                p = AddParticleMorphogenesis2 (
+                /* cl_float3* */ &Pos,
+                /* cl_float3* */ &Vel,
+                /* uint */ Age,
+                /* uint */ Clr,
+                /* uint *_*/ ElastIdxU,
+                /* uint *_*/ ElastIdxF,
+                /* unit * */ Particle_Idx,
+                /* uint */ Particle_ID,
+                /* uint */ Mass_Radius,
+                /* uint */ NerveIdx,
+                /* float* */ Conc,
+                /* uint* */ EpiGen
+                );
+                if(p==-1){
+                    if (m_FParams.debug>1){std::cout << "\n SetupAddVolumeMorphogenesis2 exited on p==-1, Pos=("<<Pos.x<<","<<Pos.y<<","<<Pos.z<<"), Particle_ID="<<Particle_ID<<",  EpiGen[0]="<<EpiGen[0]<<" \n " << std::flush ;}
+                    return;
+                }
      }
     mActivePoints=mNumPoints; // Initial active points, used in make_demo2.cpp, by WriteResultsCSV()
     AddNullPoints ();            // If spare particles remain, fill with null points. NB these can be used to "create" particles.
@@ -1329,6 +1316,9 @@ void FluidSystem::SetupDefaultParams (){
 
     // Default sim config
     m_Param [PGRIDSIZE] = m_Param[PSMOOTHRADIUS] * 2;
+// 	m_Param [PDRAWMODE] = 1;				// Sprite drawing
+// 	m_Param [PDRAWGRID] = 0;				// No grid
+// 	m_Param [PDRAWTEXT] = 0;				// No text
 
     m_Param [ PACTUATION_FACTOR ] = 0;
     m_Param [ PACTUATION_PERIOD ] = 1;

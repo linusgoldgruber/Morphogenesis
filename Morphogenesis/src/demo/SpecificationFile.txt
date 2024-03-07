@@ -3,33 +3,33 @@ num_particles = 125
  simSpace = 7
  
 m_Time = 0.000000
- m_DT = 0.003000
+ m_DT = 0.000000
  
-gridsize = 1.000000
- spacing = 1.000000
+gridsize = 0.000000
+ spacing = -nan
  
-simscale = 1.000000
- smooth_radius = 1.000000
+simscale = 0.000000
+ smooth_radius = 0.000000
  
-visc = 0.500000
- surface_t = 1.000000
+visc = 0.000000
+ surface_t = 0.000000
  
-mass = 0.002050
- radius = 1.000000
+mass = 0.000000
+ radius = 0.000000
  
-int_stiff = 2.000000
- ext_stiff = 50000.000000
- ext_damp = 100.000000
+int_stiff = 0.000000
+ ext_stiff = 0.000000
+ ext_damp = 0.000000
  
-accel_limit = 150.000000
- vel_limit = 3.000000
+accel_limit = 0.000000
+ vel_limit = 0.000000
  
-grav = 10.000000
- slope = 0.100000
+grav = 0.000000
+ slope = 0.000000
  
 force_min = 0.000000
  force_max = 0.000000
- force_freq = 16.000000
+ force_freq = 0.000000
  
 x_dim = 6.000000
  y_dim = 6.000000
@@ -43,20 +43,20 @@ volmin_x = 0.000000
  volmin_y = 0.000000
  volmin_z = 0.000000
  
-volmax_x = 10.000000
- volmax_y = 20.000000
- volmax_z = 20.000000
+volmax_x = 0.000000
+ volmax_y = 0.000000
+ volmax_z = 0.000000
  
-initmin_x = 3.000000
- initmin_y = 3.000000
- initmin_z = 3.000000
+initmin_x = 0.000000
+ initmin_y = 0.000000
+ initmin_z = 0.000000
  
-initmax_x = 10.000000
- initmax_y = 20.000000
- initmax_z = 10.000000
+initmax_x = 0.000000
+ initmax_y = 0.000000
+ initmax_z = 0.000000
  
 paramsPath = demo/SimParams.txt
- pointsPath = demoîG
+ pointsPath = demoö­Í
  genomePath = demo/genome.csv
  outPath = out
  
@@ -74,8 +74,8 @@ save_ply = n
  
 gene_activity = n
  remodelling = n
- read_genome = y
+ read_genome = n
  
 actuation_factor = 0.000000
- actuation_period = 1.000000
+ actuation_period = 0.000000
  

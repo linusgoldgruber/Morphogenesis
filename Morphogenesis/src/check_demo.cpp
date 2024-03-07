@@ -33,7 +33,8 @@ int main ( int argc, const char** argv )
     char genomePath[256];
     char pointsPath[256];
     char outPath[256];
-	if ( argc != 3 ){
+
+	if ( argc != 4 ){
 	    printf("usage: check_demo  simulation_data_folder  output_folder\n");
 	    return 0;
 	}else {
@@ -50,14 +51,18 @@ int main ( int argc, const char** argv )
         printf("output_folder = %s\n", outPath);
 	}
 
-    // Initialize
+// Initialize
+    ifstream ifs(argv[3]);
     Json::Reader reader;
     Json::Value obj_;
     Json::Value obj;
     obj["verbosity"] = 1;
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
-    obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
+    bool b = reader.parse(ifs, obj);
+    if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   //else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
+    cout << "\n\n\n" << endl;
+
     FluidSystem fluid(obj);
 
     uint debug = 2;
@@ -67,107 +72,23 @@ int main ( int argc, const char** argv )
     fluid.Initialize();   // where do the buffers for params and genome get allocated when there is no fluid.InitializeOpenCL (); ?
 
     fluid.ReadSimParams(paramsPath);
-
     fluid.ReadGenome(genomePath);
 
-    cout << "################################## SO FAR So GOOD ########################################";
 
-    fluid.ReadPointsCSV2_DEBUG(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
-    //fluid.ReadPointsCSV2(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
-//     printf("\nchk1\n");
-//     fluid.WriteSimParams ( outPath );
-//     printf("\nchk2\n");
-//     fluid.WriteGenome( outPath );
-//     printf("\nchk3\n");
-//     fluid.SavePointsCSV2 ( outPath, 1 );
-//     printf("\nchk4\n");
-//     fluid.SavePointsVTP2(outPath, 1 );
-//     printf("\nchk5\n");
-//
-//     printf("\ncheck_demo finished.\n");
-    //fluid.Exit_no_CL ();
+    //fluid.ReadPointsCSV2_DEBUG(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
+    fluid.ReadPointsCSV2(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
+    printf("\nchk1: ReadPointsCSV2() \n");
+    fluid.WriteSimParams ( outPath );
+    printf("\nchk2: WriteSimParams() \n");
+    fluid.WriteGenome( outPath );
+    printf("\nchk3: WriteGenome() \n");
+    fluid.SavePointsCSV2 ( outPath, 1 );
+    printf("\nchk4: SavePointsCSV2() \n");
+    fluid.SavePointsVTP2(outPath, 1 ); //TODO
+    printf("\nchk5: SavePointsVTP2() \n");
+
+    printf("\ncheck_demo finished.\n");
+    fluid.Exit_no_CL ();
     return 0;
-
-
-    /*// Function
-    void allocateAndAccessMemory(FBufs* fb, int n) {
-
-        // Allocate with malloc
-        fb->mcpu[n] = (char*)malloc(sizeof(char) * 20);
-
-        // Check if memory allocation was successful
-        if (fb->mcpu[n] != NULL) {
-
-            // Write data
-            strcpy(fb->mcpu[n], "Hello, dynamic memory!");
-
-            // Read and print data
-            std::cout << "Read from memroy: " << fb->mcpu[n] << std::endl;
-
-            // Clean up (needed?)
-            free(fb->mcpu[n]);
-            fb->mcpu[n] = NULL;
-        } else {
-            std::cerr << "alloc failed." << std::endl;
-        }
-    }
-
-int main ()
-{
-
-
-
-
-        FBufs fb;
-        int n = 0; // Index of the memory buffer
-
-        // Call the memory allocation and access function
-        allocateAndAccessMemory(&fb, n);
-
-        return 0;
-        */
-
-
-
-
-
-
-
-
-
-
-
-
-        // Example usage:
-        //     int cpucnt = 10; // Adjust the size as needed
-        //     int stride = 4; // Adjust the size as needed
-        //
-        //     char* buffer = new char[cpucnt * stride];
-        //     memset(buffer, 0, cpucnt * stride); // Fill the buffer with zeros
-        //
-        //     if (isBufferAllZeros(buffer, cpucnt, stride)) {
-        //         std::cout << "The buffer contains all zeros." << std::endl;
-        //     } else {
-        //         std::cout << "The buffer does not contain all zeros." << std::endl;
-        //     }
-        //
-        //     delete[] buffer;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }

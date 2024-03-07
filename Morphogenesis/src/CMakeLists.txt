@@ -4,7 +4,7 @@ cmake_policy(SET CMP0054 NEW)
 
 project(MinimalSim LANGUAGES C CXX)
 
-set(PROJECT_NAME create_demo2)
+set(PROJECT_NAME createDemo2)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)

@@ -25,7 +25,7 @@ int main ( int argc, const char** argv )
 {
     char input_folder[256];
     char output_folder[256];
-    if ((argc != 3) && (argc !=2)) {
+    if ((argc != 4) && (argc !=3)) {
         printf ( "usage: make_demo2 input_folder output_folder.\
         \nNB input_folder must contain \"SpecificationFile.txt\", output will be wrtitten to \"output_folder/out_data_time/\".\
         \nIf output_folder is not given the value from SpecificationFile.txt will be used.\n" );
@@ -37,13 +37,18 @@ int main ( int argc, const char** argv )
     }
 
     // Initialize
+    ifstream ifs(argv[3]);
     Json::Reader reader;
     Json::Value obj_;
     Json::Value obj;
     obj["verbosity"] = 1;
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
-    obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
+
+    bool b = reader.parse(ifs, obj);
+    if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
+    cout << "\n\n\n" << endl;
+    //obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
     FluidSystem fluid(obj);
     fluid.Initialize();
     fluid.InitializeOpenCL();
