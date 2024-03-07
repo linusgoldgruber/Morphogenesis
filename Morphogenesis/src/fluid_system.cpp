@@ -858,7 +858,8 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
     *(bufF(&m_Fluid, FSTATE) + n ) = (float) rand();
     *(bufI(&m_Fluid, FAGE) + n) = Age;
     *(bufI(&m_Fluid, FCLR) + n) = Clr;
-  //if (m_FParams.debug>1)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
+  if (m_FParams.debug>1)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
+
         std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 5 XXXXXXXXXXXXXXXXX \t" << flush;
     uint* ElastIdx = (bufI(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     float* ElastIdxFlt = (bufF(&m_Fluid, FELASTIDX) + n * BOND_DATA );
@@ -947,9 +948,7 @@ void FluidSystem::AddNullPoints (){// fills unallocated particles with null data
 
 
 void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, float spacing, float offs, uint demoType ){  // NB ony used in WriteDemoSimParams() called by make_demo.cpp . Creates a cuboid with all particle values definable.
-if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::flush;
-
-    std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 1 XXXXXXXXXXXXXXXXX \t" << std::flush;
+    if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::flush;
 
     cl_float3 pos;
     float dx, dy, dz;
@@ -1023,7 +1022,6 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
                 EpiGen[0] = fixedActive;                                        // active, i.e. not reserve
                 EpiGen[1] = fixedActive;                                        // solid, i.e. have elastic bonds
                 EpiGen[2] = fixedActive;                                        // living/telomere, i.e. has genes
-    std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 2 XXXXXXXXXXXXXXXXX \t" << std::flush;
                 if(demoType == 1){                                                                    ////// Remodelling & actuation demo
                                                                                 // Fixed base, bone, tendon, muscle, elastic, external actuation
                     if(Pos.z <= min.z+spacing)                                EpiGen[11]=fixedActive;   // fixed particle
@@ -1038,7 +1036,23 @@ if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::
                     if(Pos.z == min.z) EpiGen[0]=fixedActive;                                           // fixed particle
                     EpiGen[2]=1;                                            // living particle NB set gene behaviour
                 }                                                           // => (i) French flag, (ii) polartity, (iii) clock & wave front
-        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 3 XXXXXXXXXXXXXXXXX \t" << std::flush;
+        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX DEBUG XXXXXXXXXXXXXXXXX \t" << std::flush;
+
+        std::cout << "\n Pos: \t(" << Pos.x << ", " << Pos.y << ", " << Pos.z << ")" << std::flush;
+        std::cout << "\n Pos: \t(" << Vel.x << ", " << Vel.y << ", " << Vel.z << ")" << std::flush;
+        std::cout << "\n Age:  \t" << Age << std::flush;
+        std::cout << "\n Clr:  \t" << Clr << std::flush;
+        std::cout << "\n ElastIdxU:  \t" << *ElastIdxU << std::flush;
+        std::cout << "\n ElastIdxF:  \t" << *ElastIdxF << std::flush;
+        std::cout << "\n Particle_Idx:  \t" << *Particle_Idx << std::flush;
+        std::cout << "\n Particle_ID:  \t" << Particle_ID << std::flush;
+        std::cout << "\n Mass_Radius:  \t" << Mass_Radius << std::flush;
+        std::cout << "\n NerveIdx:  \t" << NerveIdx << std::flush;
+        std::cout << "\n Conc:  \t" << *Conc << std::flush;
+        std::cout << "\n EpiGen:  \t" << *EpiGen << std::flush;
+
+
+
                 p = AddParticleMorphogenesis2 (
                 /* cl_float3* */ &Pos,
                 /* cl_float3* */ &Vel,
