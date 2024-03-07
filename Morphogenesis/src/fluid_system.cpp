@@ -854,13 +854,13 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
     *(bufF(&m_Fluid, FDENSITY) + n) = 0;
     *(bufI(&m_Fluid, FGNEXT) + n) = -1;
     *(bufI(&m_Fluid, FCLUSTER)  + n) = -1;
-        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 4 XXXXXXXXXXXXXXXXX \t" << flush;
+        std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 2 XXXXXXXXXXXXXXXXX \t" << flush;
     *(bufF(&m_Fluid, FSTATE) + n ) = (float) rand();
     *(bufI(&m_Fluid, FAGE) + n) = Age;
     *(bufI(&m_Fluid, FCLR) + n) = Clr;
   if (m_FParams.debug>1)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
 
-        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 5 XXXXXXXXXXXXXXXXX \t" << flush;
+        std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 3 XXXXXXXXXXXXXXXXX \t" << flush;
     uint* ElastIdx = (bufI(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     float* ElastIdxFlt = (bufF(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     for (int i = 0; i<BONDS_PER_PARTICLE;i++){
