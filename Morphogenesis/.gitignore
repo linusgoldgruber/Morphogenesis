@@ -1,1 +1,4 @@
-Morphogenesis/VTK-9.3.0
+VTK-9.3.0/
+src/build
+src/demo/out
+src/verify_fluid/fluids3
