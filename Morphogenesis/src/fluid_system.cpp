@@ -119,8 +119,6 @@ FluidSystem::FluidSystem (RunCL& runcl){
 }
 */
 
-
-
 bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall, const char* arg, bool bDebug)
 {
     // DEBUG IMPLEMENTATION MISSING!!!
@@ -414,41 +412,9 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
 
     mNumPoints = 0;
 	mMaxPoints = 0;
-	//mPackBuf = 0x0;
 	mPackGrid = 0x0;
-	//mFP = 0x0;
-/*
-	mPos = 0x0;
-	mClr = 0x0;
-	mVel = 0x0;
-	mVelEval = 0x0;
-	mAge = 0x0;
-	mPressure = 0x0;
-	mDensity = 0x0;
-	mForce = 0x0;
-	mClusterCell = 0x0;
-	mGridNext = 0x0;
-	mNbrNdx = 0x0;
-	mNbrCnt = 0x0;
-	mSelected = -1;
-	m_Grid = 0x0;
-	m_GridCnt = 0x0;*/
-
 	m_Frame = 0;
-
-	//m_NeighborTable = 0x0;
-	//m_NeighborDist = 0x0;
-
-	//m_Param [ PMODE ]		= RUN_CUDA_FULL;
-	m_Param [ PEXAMPLE ]	= 1;
-	m_Param [ PGRID_DENSITY ] = 2.0;
-	m_Param [ PNUM ]		= 65536 * 128;
-
-
-	//m_Toggle [ PUSE_GRID ]	=	false;
-	//m_Toggle [ PPROFILE ]	=	false;
-	//m_Toggle [ PCAPTURE ]   =	false;
-    m_Time = 0;
+    m_Time = 0; //TODO remove
 
     if (m_FParams.debug>1)std::cout << "Chk1.4 \n";
 
@@ -559,11 +525,11 @@ void FluidSystem::FluidParamCL (float ss, float sr, float pr, float mass, float 
 void FluidSystem::UpdateParams (){
     // Update Params on GPU
     cl_float3 grav = cl_float3_multiplyFloat(&m_Vec[PPLANE_GRAV_DIR], m_Param[PGRAV]);
-    /*FluidParamCL (runcl,  m_Param[PSIMSCALE], m_Param[PSMOOTHRADIUS], m_Param[PRADIUS], m_Param[PMASS], m_Param[PRESTDENSITY],
+    FluidParamCL (m_Param[PSIMSCALE], m_Param[PSMOOTHRADIUS], m_Param[PRADIUS], m_Param[PMASS], m_Param[PRESTDENSITY],
                       *(cl_float3*)& m_Vec[PBOUNDMIN], *(cl_float3*)& m_Vec[PBOUNDMAX], m_Param[PEXTSTIFF], m_Param[PINTSTIFF],
                       m_Param[PVISC], m_Param[PSURFACE_TENSION], m_Param[PEXTDAMP], m_Param[PFORCE_MIN], m_Param[PFORCE_MAX], m_Param[PFORCE_FREQ],
                       m_Param[PGROUND_SLOPE], grav.x, grav.y, grav.z, m_Param[PACCEL_LIMIT], m_Param[PVEL_LIMIT],
-                      m_Param[PACTUATION_FACTOR], m_Param[PACTUATION_PERIOD]);*/
+                      m_Param[PACTUATION_FACTOR], m_Param[PACTUATION_PERIOD]);
 }
 
 void FluidSystem::SetParam (int p, float v ){
@@ -718,7 +684,7 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
     AllocateBuffer ( FEPIGEN,	    sizeof(uint[NUM_GENES]),	         cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
 
     // original buffers continued, TODO not part of the original AllocateParticles() though!!!
-    //AllocateBuffer ( FSTATE,	            sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
+    AllocateBuffer ( FSTATE,	            sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
     //AllocateBuffer ( FPARAMS,	            sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
 
     //AllocateBuffer ( FPARTICLEIDX,	        sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
@@ -979,6 +945,7 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
     srand((unsigned int)time(NULL));
     if (m_FParams.debug>1)cout<<"\nSetupAddVolumeMorphogenesis2: num_particles_to_make= "<<num_particles_to_make<<",   min=("<<min.x<<","<<min.y<<","<<min.z<<"), max=("<<max.x<<","<<max.y<<","<<max.z<<") "<<std::flush;
     for (int i=0; i<num_particles_to_make; i++){
+        cout << "\n\n\n\nParticle " << i << ",\n mMaxPoints: " << mMaxPoints << ",\n mNumPoints: " << mNumPoints << "\n\n\n" << flush;
         Pos.x =  min.x + (float(rand())/float((RAND_MAX)) * dx) ;
         Pos.y =  min.y + (float(rand())/float((RAND_MAX)) * dy) ;
         Pos.z =  min.z + (float(rand())/float((RAND_MAX)) * dz) ;
@@ -1036,7 +1003,7 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
                     if(Pos.z == min.z) EpiGen[0]=fixedActive;                                           // fixed particle
                     EpiGen[2]=1;                                            // living particle NB set gene behaviour
                 }                                                           // => (i) French flag, (ii) polartity, (iii) clock & wave front
-        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX DEBUG XXXXXXXXXXXXXXXXX \t" << std::flush;
+        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX DEBUG XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \t" << std::flush;
 
         std::cout << "\n Pos: \t(" << Pos.x << ", " << Pos.y << ", " << Pos.z << ")" << std::flush;
         std::cout << "\n Pos: \t(" << Vel.x << ", " << Vel.y << ", " << Vel.z << ")" << std::flush;
@@ -1232,6 +1199,7 @@ void FluidSystem::SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, flo
     m_GridDelta = *cl_float3_operator_equal_cl_int3(&m_GridDelta, &m_GridRes);		// delta = translate from world space to cell #
     m_GridDelta = cl_float3_devide_cl_float3(&m_GridDelta, &m_GridSize);
     m_GridTotal = (int)(m_GridRes.x * m_GridRes.y * m_GridRes.z);
+    cout << "\n\n\n m_GridTotal: " << m_GridTotal << "\n\n\n" << flush;
 
     // Number of cells to search:
     // n = (2r / w) +1,  where n = 1D cell search count, r = search radius, w = world cell width
@@ -1330,6 +1298,7 @@ void FluidSystem::SetupDefaultParams (){
 
     // Default sim config
     m_Param [PGRIDSIZE] = m_Param[PSMOOTHRADIUS] * 2;
+    cout << "\n\n\n++++++++++ m_Param [PGRIDSIZE] = " << m_Param[PGRIDSIZE] << flush;
 // 	m_Param [PDRAWMODE] = 1;				// Sprite drawing
 // 	m_Param [PDRAWGRID] = 0;				// No grid
 // 	m_Param [PDRAWTEXT] = 0;				// No text
@@ -1342,6 +1311,8 @@ void FluidSystem::SetupExampleParams (uint spacing){
     cl_float3 pos;
     cl_float3 min, max;
     m_Param [ PSPACING ] = spacing;
+        cout << "\nXXXXXXXXXXXXX XXXXXXXXXXXX XXXXXXXXXXXXX XXXXXXXXXXXX PSPACING: " << m_Param[PSPACING] << flush;
+
 
 
     std::cout<<"\nSetupExampleParams()1: m_Param[PEXAMPLE] = "<<m_Param[PEXAMPLE]<<", SetupExampleParams()2: launchParams.genomePath = "<<launchParams.genomePath<<"\n"<<std::flush;
@@ -1429,9 +1400,15 @@ void FluidSystem::SetupExampleParams (uint spacing){
         m_Time = launchParams.m_Time;
         m_DT = launchParams.m_DT;
         m_Param [ PGRIDSIZE ] = launchParams.gridsize;
+            cout << "\n\n\n++++++++++ m_Param [PGRIDSIZE] = " << m_Param[PGRIDSIZE] << flush;
+
         m_Param [ PSPACING ] = launchParams.spacing;
         m_Param [ PSIMSCALE ] = launchParams.simscale;
+            std::cout<<"\nX X X X X X X X X launchParams.simscale = " << launchParams.simscale <<std::flush; //TODO Remove this debug line
+
         m_Param [ PSMOOTHRADIUS ] = launchParams.smoothradius;
+            cout << "\nXXXXXXXXXXXXXXXXXXXXXXX PSMOOTHRADIUS: " << m_Param[PSMOOTHRADIUS] << flush;
+
         m_Param [ PVISC ] = launchParams.visc;
         m_Param [ PSURFACE_TENSION ] = launchParams.surface_tension;
         m_Param [ PMASS ] = launchParams.mass;
@@ -1654,21 +1631,33 @@ void FluidSystem::SetupSpacing (){
     m_Vec[PBOUNDMAX] = m_Vec[PVOLMAX];
     m_Vec[PBOUNDMAX] = cl_float3_subtractDouble(&m_Vec[PBOUNDMAX], 2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE])  );
 
-                                                                                                                        if(m_FParams.debug>0)std::cout<<"\n-----SetupSpacing() finished-----";
+                                                                                                                        if(m_FParams.debug>0)std::cout<<"\n-----SetupSpacing() finished-----\n";
 
 }
 
 void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * relativePath, int gpu_mode, int cpu_mode
      // Allocate buffers for points
     std::cout<<"\nSetupSimulation chk1 // m_FParams.debug="<<m_FParams.debug<< " // launchParams.num_particles= " << launchParams.num_particles << std::flush;
-    m_Param [PNUM] = launchParams.num_particles;                             // NB there is a line of text above the particles, hence -1.
-    mMaxPoints = m_Param [PNUM];
+    cout << " BEFORE SETUP SIMULATION: launchParams.num_particles = " << launchParams.num_particles << "<----------------------------------------------------------------------------" << flush;
+
+    m_Param[PNUM] = launchParams.num_particles;                             // NB there is a line of text above the particles, hence -1.
+
+    mMaxPoints = m_Param[PNUM];
+
     m_Param [PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
-    //std::cout<<"\nX X X X X X X X X PSMOOTHRADIUS = " << m_Param[PSMOOTHRADIUS] <<std::flush; //TODO Remove this debug line
+    std::cout<<"\nX X X X X X X X X m_Param [PGRIDSIZE] = " << m_Param [PGRIDSIZE] <<std::flush; //TODO Remove this debug line
+    std::cout<<"\nX X X X X X X X X m_Param m_Param[PSMOOTHRADIUS] = " << m_Param[PSMOOTHRADIUS] <<std::flush; //TODO Remove this debug line
+    std::cout<<"\nX X X X X X X X X m_Param m_Param[PGRID_DENSITY] = " << m_Param[PGRID_DENSITY] <<std::flush; //TODO Remove this debug line
     std::cout<<"\nSetupSimulation chk2" <<std::flush;
 
     SetupSPH_Kernels ();
     SetupSpacing ();
+
+    std::cout << "\nmin: (" << m_Vec[PVOLMIN].x << ", " << m_Vec[PVOLMIN].y << ", " << m_Vec[PVOLMIN].z << ")" << std::endl;
+    std::cout << "max: (" << m_Vec[PVOLMAX].x << ", " << m_Vec[PVOLMAX].y << ", " << m_Vec[PVOLMAX].z << ")" << std::endl;
+    std::cout << "sim_scale: " << m_Param[PSIMSCALE] << std::endl;
+    std::cout << "cell_size: " << m_Param[PGRIDSIZE] << std::endl;
+
     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
 
     std::cout<<"\nSetupSimulation chk3, m_FParams.debug="<<m_FParams.debug<<std::flush;

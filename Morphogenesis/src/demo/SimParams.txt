@@ -4,11 +4,11 @@
  m_Param [ PGRID_DENSITY ] = 2.000000
  m_Param [ PVISC ] = 0.000000
  m_Param [ PSURFACE_TENSION ] = 0.000000
- m_Param [ PRESTDENSITY ] = nan
+ m_Param [ PRESTDENSITY ] = 400.000000
  m_Param [ PSPACING ] = -nan
  m_Param [ PMASS ] = 0.000000
  m_Param [ PRADIUS ] = 0.000000
- m_Param [ PDIST ] = -nan
+ m_Param [ PDIST ] = 0.000000
  m_Param [ PSMOOTHRADIUS ] = 0.000000
  m_Param [ PINTSTIFF ] = 0.000000
  m_Param [ PEXTSTIFF ] = 0.000000

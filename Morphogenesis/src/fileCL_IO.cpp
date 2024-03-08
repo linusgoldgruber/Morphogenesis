@@ -323,8 +323,8 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
     while (EOF != (ch=getc(points_file)))   if ('\n' == ch)  ++number_of_lines;
 
     // Allocate buffers for points
-    m_Param [PNUM] = number_of_lines -1;                                    // NB there is a line of text above the particles, hence -1.
-    mMaxPoints = m_Param [PNUM];
+    m_Param[PNUM] = number_of_lines -1;                                    // NB there is a line of text above the particles, hence -1.
+    mMaxPoints = m_Param[PNUM];
     m_Param [PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
 
     SetupSPH_Kernels ();
@@ -615,16 +615,19 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
 
     cout << "\nm_FParams.debug= " << m_FParams.debug << "\n" << flush;
 
+
     if (m_FParams.debug>1)std::cout<<"\nWriteDemoSimParams chk1, num_particles="<<num_particles<<", m_FParams.debug="<<m_FParams.debug <<", launchParams.genomePath="<< launchParams.genomePath  <<std::flush;
 
     m_Param[PEXAMPLE] = simSpace;          // simSpace==2 : wave pool example.
     m_Param[PGRID_DENSITY] = 2.0;   // gives gridsize = 2*smoothradius/griddensity = smoothradius.
     m_Param[PNUM] = num_particles;  // 1000000;    //1000 = minimal simulation, 1000000 = large simulation
+    //cout << "\n++++++++++++++++m_Param[PNUM]= " << m_Param[PNUM] << "\n" << flush; TODO remove this debug line
     AllocateBuffer ( FPARAMS, sizeof(FParams), 1,1, GPU_OFF, CPU_YES );
     m_Time = 0;
     mNumPoints = 0;			        // reset count TODO still hardcoded to 125, can it be set to 0?
 
     if (m_FParams.debug>1)std::cout<<"\nWriteDemoSimParams chk2, launchParams.genomePath="<< launchParams.genomePath  <<std::flush;
+
 
     SetupDefaultParams();           // set up the standard demo
 
@@ -641,9 +644,8 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
 
     SetupSimulation(gpu_mode, cpu_mode);
 
-    //TODO
-    mMaxPoints = m_Param[PNUM];
-        /*
+    /*mMaxPoints = m_Param[PNUM];
+
     m_Param[PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
     SetupSPH_Kernels();
     SetupSpacing();
@@ -743,7 +745,7 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     ret += std::fscanf ( SpecFile, "\n");
 
     ret += std::fscanf ( SpecFile, "gridsize = %f\n ", &launchParams.gridsize);
-    //std::cout << "\nX X X X X X X X X X X X X X X X X X X X X X X  " << launchParams.gridsize << std::flush; //TODO Remove this debug line
+    std::cout << "\nX X X X X X X X X X X X X X X X X X X X X X X  launchParams.gridsize = " << launchParams.gridsize << std::flush; //TODO Remove this debug line
     ret += std::fscanf ( SpecFile, "spacing = %f\n ", &launchParams.spacing);
     ret += std::fscanf ( SpecFile, "\n");
 
@@ -859,90 +861,6 @@ void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ /
         }
 
     int ret =0;
-    /* TODO this code is probably unnecessary, as it is not part of the original function, cnat remember its purpose, prob tried to to some print statments to debug
-    printParam("num_particles", launchParams.num_particles);
-    printParam("demoType", launchParams.demoType);
-    printParam("simSpace", launchParams.simSpace);
-
-
-    // Add similar checks for other parameters
-    printParam("m_Time", m_Time);
-    printParam("m_DT", m_DT);
-
-    printParam("gridsize", m_Param[PGRIDSIZE]);
-    printParam("spacing", m_Param[PSPACING]);
-
-    printParam("simscale", m_Param[PSIMSCALE]);
-    printParam("smooth_radius", m_Param[PSMOOTHRADIUS]);
-
-    printParam("visc", m_Param[PVISC]);
-    printParam("surface_t", m_Param[PSURFACE_TENSION]);
-
-    printParam("mass", m_Param[PMASS]);
-    printParam("radius", m_Param[PRADIUS]);
-
-    printParam("int_stiff", m_Param[PINTSTIFF]);
-    printParam("ext_stiff", m_Param [ PEXTSTIFF ]);
-    printParam("ext_damp", m_Param [ PEXTDAMP ]);
-
-    printParam("accel_limit", m_Param [ PACCEL_LIMIT ]);
-    printParam("vel_limit", m_Param [ PVEL_LIMIT ]);
-
-    printParam("grav", m_Param [ PGRAV ]);
-    printParam("slope", m_Param [ PRADIUS ]);
-
-    printParam("force_min", m_Param [ PFORCE_MIN ]);
-    printParam("force_max", m_Param [ PFORCE_MAX ]);
-    printParam("force_freq", m_Param [ PFORCE_FREQ ]);
-
-    printParam("x_dim", launchParams.x_dim);
-    printParam("y_dim", launchParams.y_dim);
-    printParam("z_dim", launchParams.z_dim);
-
-    printParam("pos_x", launchParams.pos_x);
-    printParam("pos_y", launchParams.pos_y);
-    printParam("pos_z", launchParams.pos_z);
-
-    printParam("volmin_x", m_Vec [ PVOLMIN ].x);
-    printParam("volmin_y", m_Vec [ PVOLMIN ].y);
-    printParam("volmin_z", m_Vec [ PVOLMIN ].z);
-
-    printParam("volmax_x", m_Vec [ PVOLMAX ].x);
-    printParam("volmax_y", m_Vec [ PVOLMAX ].y);
-    printParam("volmax_z", m_Vec [ PVOLMAX ].z);
-
-    printParam("initmin_x", m_Vec [ PINITMIN ].x);
-    printParam("initmin_y", m_Vec [ PINITMIN ].y);
-    printParam("initmin_z", m_Vec [ PINITMIN ].z);
-
-
-    printParam("initmax_x", m_Vec [ PINITMAX ].x);
-    printParam("initmax_y", m_Vec [ PINITMAX ].y);
-    printParam("initmax_z", m_Vec [ PINITMAX ].z);
-
-    printParam("paramsPath", launchParams.paramsPath);
-    printParam("pointsPath", launchParams.pointsPath);
-    printParam("genomePath", launchParams.genomePath);
-    printParam("outPath", launchParams.outPath);
-
-    printParam("num_files",  launchParams.num_files);
-    printParam("steps_per_InnerPhysicalLoop", launchParams.steps_per_InnerPhysicalLoop);
-    printParam("steps_per_file", launchParams.steps_per_file);
-    printParam("freeze_steps", launchParams.freeze_steps);
-
-    printParam("debug", launchParams.debug);
-    printParam("file_num", launchParams.file_num);
-
-    //printParam("save_ply", launchParams.save_ply]);
-    printParam("save_csv", launchParams.save_csv);
-    printParam("save_vtp", launchParams.save_vtp);
-
-    printParam("gene_activity", launchParams.gene_activity);
-    printParam("remodelling", launchParams.remodelling);
-    printParam("read_genome", launchParams.read_genome);
-
-    printParam("actuation_factor", m_Param[PACTUATION_FACTOR]);
-    printParam("actuation_period", m_Param[PACTUATION_PERIOD]);*/
 
 
     ret += std::fprintf ( SpecFile, "num_particles = %u\n ", launchParams.num_particles );

@@ -733,8 +733,8 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
     while (EOF != (ch=getc(points_file)))   if ('\n' == ch)  ++number_of_lines;
 
     // Allocate buffers for points
-    m_Param [PNUM] = number_of_lines -1;                                    // NB there is a line of text above the particles, hence -1.
-    mMaxPoints = m_Param [PNUM];
+    m_Param[PNUM] = number_of_lines -1;                                    // NB there is a line of text above the particles, hence -1.
+    mMaxPoints = m_Param[PNUM];
     m_Param [PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
 
     SetupSPH_Kernels ();

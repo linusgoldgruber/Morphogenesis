@@ -113,6 +113,9 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) {
 
     if (m_FParams.debug>1) printf("\n-----InsertParticles() started-----");
 
+        printf("\nm_GridTotal = %d\n", m_GridTotal);
+
+
     m_Fluid.mgpu[FGRIDCNT] = clCreateBuffer(m_context, CL_MEM_READ_WRITE, m_GridTotal * sizeof(int),NULL, &err);
 
     if(err!=CL_SUCCESS)	{cout<<"\nclCreateBuffer status="<<checkerror(err)<<"\n"<<flush;exit_(err);}

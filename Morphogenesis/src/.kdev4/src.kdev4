@@ -132,14 +132,14 @@ Name=check_demo
 Type=Native Application
 
 [Launch][Launch Configuration 3][Data]
-Arguments=125 1 6 6 6 0 8 /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
+Arguments=125 1 6 6 6 0 7 /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
 Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
 Dependency Action=Nothing
 EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/create_demo
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo
 External Terminal=konsole --noclose --workdir %workdir -e %exe
 Kill Before Executing Again=4194304
-Project Target=src,check_demo
+Project Target=
 Use External Terminal=false
 Working Directory=
 isExecutable=true
@@ -189,14 +189,14 @@ Name=create_demo2
 Type=Native Application
 
 [Launch][Launch Configuration 6][Data]
-Arguments=/home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
+Arguments=125 1 6 6 6 0 7 /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
 Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
 Dependency Action=Nothing
 EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo2
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo
 External Terminal=konsole --noclose --workdir %workdir -e %exe
 Kill Before Executing Again=4194304
-Project Target=src,createDemo
+Project Target=src,createDemo2
 Use External Terminal=false
 Working Directory=
 isExecutable=true

@@ -33,6 +33,8 @@ int main ( int argc, const char** argv )
      */
 
     uint num_particles, demoType, simSpace;
+    char input_folder[256];
+    char output_folder[256];
     float spacing, x_dim, y_dim, z_dim;
 
     if ( argc != 11 && argc != 1 ) {
@@ -63,6 +65,12 @@ int main ( int argc, const char** argv )
         simSpace = atof(argv[7]);
         printf ( "simSpace = %u, (0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
             6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n\n", simSpace);
+
+        sprintf ( input_folder, "%s", argv[8] );
+
+        sprintf ( output_folder, "%s", argv[9] );
+
+        printf ( "input_folder = %s ,\noutput_folder = %s\n", input_folder, output_folder );
 
     }  else {
         num_particles = 4000;
@@ -99,7 +107,7 @@ int main ( int argc, const char** argv )
     bool b = reader.parse(ifs, obj);
     if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
     cout << "\n\n\n" << endl;
-    //obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
+
     FluidSystem fluid(obj);
 
     // Clear all buffers
