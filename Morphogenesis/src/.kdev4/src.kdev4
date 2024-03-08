@@ -66,45 +66,7 @@ parserArgumentsOpenCL=-ferror-limit=100 -fspell-checking -Wdocumentation -Wunuse
 Name=GCC
 
 [Launch]
-Launch Configurations=Launch Configuration 0,Launch Configuration 1,Launch Configuration 2,Launch Configuration 3,Launch Configuration 4,Launch Configuration 5,Launch Configuration 6
-
-[Launch][Launch Configuration 0]
-Configured Launch Modes=execute
-Configured Launchers=nativeAppLauncher
-Name=MinimalSim
-Type=Native Application
-
-[Launch][Launch Configuration 0][Data]
-Arguments=
-Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
-Dependency Action=Nothing
-EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/MinimalSim
-External Terminal=konsole --noclose --workdir %workdir -e %exe
-Kill Before Executing Again=4194304
-Project Target=
-Use External Terminal=false
-Working Directory=
-isExecutable=true
-
-[Launch][Launch Configuration 1]
-Configured Launch Modes=execute
-Configured Launchers=nativeAppLauncher
-Name=minimal_sim
-Type=Native Application
-
-[Launch][Launch Configuration 1][Data]
-Arguments=
-Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
-Dependency Action=Nothing
-EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/minimal_sim.cpp
-External Terminal=konsole --noclose --workdir %workdir -e %exe
-Kill Before Executing Again=4194304
-Project Target=src,DeviceInfo
-Use External Terminal=false
-Working Directory=
-isExecutable=true
+Launch Configurations=Launch Configuration 2,Launch Configuration 3,Launch Configuration 6
 
 [Launch][Launch Configuration 2]
 Configured Launch Modes=execute
@@ -113,11 +75,11 @@ Name=create_demo
 Type=Native Application
 
 [Launch][Launch Configuration 2][Data]
-Arguments=/home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
+Arguments=125 1 6 6 6 0 6 /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
 Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
 Dependency Action=Nothing
 EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo2
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo
 External Terminal=konsole --noclose --workdir %workdir -e %exe
 Kill Before Executing Again=4194304
 Project Target=src,createDemo
@@ -132,55 +94,17 @@ Name=check_demo
 Type=Native Application
 
 [Launch][Launch Configuration 3][Data]
-Arguments=125 1 6 6 6 0 7 /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
+Arguments=/home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
 Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
 Dependency Action=Nothing
 EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/checkDemo
 External Terminal=konsole --noclose --workdir %workdir -e %exe
 Kill Before Executing Again=4194304
-Project Target=
+Project Target=src,checkDemo
 Use External Terminal=false
 Working Directory=
 isExecutable=true
-
-[Launch][Launch Configuration 4]
-Configured Launch Modes=execute
-Configured Launchers=nativeAppLauncher
-Name=make_demo
-Type=Native Application
-
-[Launch][Launch Configuration 4][Data]
-Arguments=125 1  6 6 6  0 5  /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out
-Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
-Dependency Action=Nothing
-EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/make_demo
-External Terminal=konsole --noclose --workdir %workdir -e %exe
-Kill Before Executing Again=4194304
-Project Target=src,make_demo
-Use External Terminal=false
-Working Directory=
-isExecutable=true
-
-[Launch][Launch Configuration 5]
-Configured Launch Modes=execute
-Configured Launchers=nativeAppLauncher
-Name=sycl
-Type=Native Application
-
-[Launch][Launch Configuration 5][Data]
-Arguments=
-Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
-Dependency Action=Nothing
-EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src
-External Terminal=konsole --noclose --workdir %workdir -e %exe
-Kill Before Executing Again=4194304
-Project Target=src,sycl.hpp
-Use External Terminal=false
-Working Directory=
-isExecutable=false
 
 [Launch][Launch Configuration 6]
 Configured Launch Modes=execute
@@ -189,14 +113,14 @@ Name=create_demo2
 Type=Native Application
 
 [Launch][Launch Configuration 6][Data]
-Arguments=125 1 6 6 6 0 7 /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
+Arguments=/home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
 Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
 Dependency Action=Nothing
 EnvironmentGroup=
-Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo2
 External Terminal=konsole --noclose --workdir %workdir -e %exe
 Kill Before Executing Again=4194304
-Project Target=src,createDemo2
+Project Target=
 Use External Terminal=false
 Working Directory=
 isExecutable=true

@@ -237,7 +237,7 @@ void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
         assert(0);
     }
     int numpnt = mMaxPoints;//NumPoints();
-    std::cout << "\nXXXXXXXXXXXXX numpnt (=mMaxPoints): "<< numpnt <<"\n"<< std::flush;
+    //std::cout << "\nXXXXXXXXXXXXX numpnt (=mMaxPoints): "<< numpnt <<"\n"<< std::flush; //TODO remove
     cl_float3* Pos;
     cl_float3* Vel;
     float *Conc;

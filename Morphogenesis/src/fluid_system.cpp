@@ -807,7 +807,7 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
 }
 
 int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint Age, uint Clr, uint *_ElastIdxU, float *_ElastIdxF, uint *_Particle_Idx, uint Particle_ID, uint Mass_Radius, uint NerveIdx, float* _Conc, uint* _EpiGen ){  // called by :ReadPointsCSV2 (...) where :    uint Particle_Idx[BONDS_PER_PARTICLE * 2];  AND SetupAddVolumeMorphogenesis2(....)
-    cout <<"\n-----AddParticleMorphogenesis2() started-----"<<flush;
+    //cout <<"\n-----AddParticleMorphogenesis2() started-----"<<flush;
 
     if ( mNumPoints >= mMaxPoints ) return -1;
 
@@ -820,13 +820,13 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
     *(bufF(&m_Fluid, FDENSITY) + n) = 0;
     *(bufI(&m_Fluid, FGNEXT) + n) = -1;
     *(bufI(&m_Fluid, FCLUSTER)  + n) = -1;
-        std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 2 XXXXXXXXXXXXXXXXX \t" << flush;
+        //std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 1 XXXXXXXXXXXXXXXXX \t" << flush; //TODO remove
     *(bufF(&m_Fluid, FSTATE) + n ) = (float) rand();
     *(bufI(&m_Fluid, FAGE) + n) = Age;
     *(bufI(&m_Fluid, FCLR) + n) = Clr;
   if (m_FParams.debug>1)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
 
-        std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 3 XXXXXXXXXXXXXXXXX \t" << flush;
+        //std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 2 XXXXXXXXXXXXXXXXX \t" << flush; //TODO remove
     uint* ElastIdx = (bufI(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     float* ElastIdxFlt = (bufF(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     for (int i = 0; i<BONDS_PER_PARTICLE;i++){
@@ -857,10 +857,9 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
         uint* EpiGen = getEpiGen(j);
         EpiGen[n]    = _EpiGen[j];                                                      // NB 'n' is particle index, from start of this gene. Data order:  FEPIGEN[gene][particle]
     }
-        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX 8 XXXXXXXXXXXXXXXXX \t" << std::flush;
     mNumPoints++;
     return n;
-    cout <<"-----AddParticleMorphogenesis2() finished-----";
+    //cout <<"-----AddParticleMorphogenesis2() finished-----";
 
 }
 
@@ -1039,6 +1038,7 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
                     return;
                 }
      }
+    cout <<"-----AddParticleMorphogenesis2() finished-----";
     mActivePoints=mNumPoints; // Initial active points, used in make_demo2.cpp, by WriteResultsCSV()
     AddNullPoints ();            // If spare particles remain, fill with null points. NB these can be used to "create" particles.
     if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 finished \n" << std::flush ;
@@ -1640,7 +1640,7 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
     std::cout<<"\nSetupSimulation chk1 // m_FParams.debug="<<m_FParams.debug<< " // launchParams.num_particles= " << launchParams.num_particles << std::flush;
     cout << " BEFORE SETUP SIMULATION: launchParams.num_particles = " << launchParams.num_particles << "<----------------------------------------------------------------------------" << flush;
 
-    m_Param[PNUM] = launchParams.num_particles;                             // NB there is a line of text above the particles, hence -1.
+    if (launchParams.num_particles > 0) {m_Param[PNUM] = launchParams.num_particles;}                             // TODO changed this to an if-statement, is this correct?
 
     mMaxPoints = m_Param[PNUM];
 
