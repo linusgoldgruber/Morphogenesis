@@ -27,14 +27,14 @@
 //----------------------------------------------------------------------------------
 
 #ifndef DEF_KERN_CUDA
-	//#define DEF_KERN_CUDA
+	#define DEF_KERN_CUDA
     //#include <cuda_runtime.h>
 	//#include <curand.h>
 	//#include <curand_kernel.h>
 	//#include <math.h>
     //#include <CL/cl.h>
 
-	//#define CUDA_KERNEL
+	#define CL_KERNEL
 	#include "fluid.h"
 
 	#define EPSILON				0.00001f
@@ -50,12 +50,11 @@
 
 
     //////////////////////////////!!!!!!!!!!!!! typedef !!!!!!!!!!!!!!//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//typedef unsigned int		uint;                                                                                                                                       ////////////////////////////////
-	//typedef unsigned short int	ushort;                                                                                                                                     ////////////////////////////////
+	//typedef unsigned int		uint;                                                                                                                                       //////////////////////////////// REDEFINITION
+	//typedef unsigned short int	ushort;                                                                                                                                 //////////////////////////////// REDEFINITION
 	typedef unsigned char		uchar;                                                                                                                                      ////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//void atomic_add_float(volatile __private float *val, float delta);
 
 // 	extern "C" {
 //         __global void initialize_FCURAND_STATE (int pnum);

@@ -36,6 +36,14 @@
 #define Q (M / A)
 #define R (M % A)
 
+#pragma OPENCL EXTENSION cl_khr_fp64: enable
+#pragma OPENCL EXTENSION cl_khr_int64_base_atomics: enable
+#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics: enable
+#pragma OPENCL EXTENSIONcl_khr_global_int32_extended_atomics: enable
+#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics: enable
+#pragma OPENCL EXTENSION cl_khr_local_int32_extended_atomics: enable
+
+
 #include "fluid_system_opencl.h"
 #include "fluid.h"
 #include "randCL_well512.cl"
@@ -86,11 +94,13 @@ __constant struct FPrefix       fprefix = {};
 //__constant_FBondParams    fbondparams;    // GPU copy of remodelling parameters.
 //__constant uint			gridActive;
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////// Kernels /////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 __kernel void memset32d_kernel(
 
@@ -102,41 +112,46 @@ __kernel void memset32d_kernel(
     buffer[gid] = value;
 }
 
-// __kernel void insertParticlesCL (
-//
-//     int pnum
-//     )
-// {
-//     uint i = get_global_id(0);
-//     if ( i >= pnum ) return;
-//
-//     float3  gridMin     =  fparam.gridMin;
-//     float3  gridDelta   =  fparam.gridDelta;
-//     int3    gridRes     =  fparam.gridRes;
-//     int3    gridScan    =  fparam.gridScanMax;
-//     int     gridTot     =  fparam.gridTotal;
-//
-//     int     gs;
-//     float3  gcf;
-//     int3    gc;
-//
-//     gcf = (bufF3(&fbuf, FPOS)[i] - gridMin) * gridDelta;
-//     gc  = (int3)(gcf.x, gcf.y, gcf.z);
-//     gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
-//
-//     if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
-//         bufI(&fbuf, FGCELL)[i] = gs;
-//         bufI(&fbuf, FGNDX)[i] = atomic_add(&bufI(&fbuf, FGRIDCNT)[gs], 1);
-//
-//         for(int gene=0; gene<NUM_GENES; gene++){
-//             if (bufI(&fbuf, FEPIGEN)[i + gene*fparam.maxPoints] > 0){
-//                 atomic_add(&bufI(&fbuf, FGRIDCNT_ACTIVE_GENES)[gene*gridTot + gs], 1);
-//             }
-//         }
-//     } else {
-//         bufI(&fbuf, FGCELL)[i] = GRID_UNDEF;
-//     }
-// }
+__kernel void insertParticlesCL (
+
+    int pnum
+    )
+{
+    uint i = get_global_id(0);
+    if ( i >= pnum ) return;
+
+
+
+    float3  gridMin     =  fparam.gridMin;
+    float3  gridDelta   =  fparam.gridDelta;
+    int3    gridRes     =  fparam.gridRes;
+    int3    gridScan    =  fparam.gridScanMax;
+    int     gridTot     =  fparam.gridTotal;
+
+    int     gs;
+    float3  gcf;
+    int3    gc;
+
+    gcf = (bufF3(&fbuf, FPOS)[i] - gridMin) * gridDelta;
+    gc  = (int3)(gcf.x, gcf.y, gcf.z);
+    gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
+
+    if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
+
+		bufI(&fbuf, FGCELL)[i] = gs;											     // Grid cell insert.
+		bufI(&fbuf, FGNDX)[i] = atomic_add( &bufI(&fbuf, FGRIDCNT)[ gs ], 1 );       // Grid counts.         //  ## counts particles in this bin.
+                                                                                                         //  ## add counters for dense lists. ##############
+        // for each gene, if active, then atomicAdd bin count for gene
+        for(int gene=0; gene<NUM_GENES; gene++){ // NB data ordered FEPIGEN[gene][particle] AND +ve int values -> active genes.
+            //if(fparam.debug>2 && i==0)printf("\n");
+            if (bufI(&fbuf, FEPIGEN) [i + gene*fparam.maxPoints] >0 ){  // "if((int)bufI(&fbuf, FEPIGEN)" may clash with INT_MAX
+                atomic_add( &bufI(&fbuf, FGRIDCNT_ACTIVE_GENES)[gene*gridTot  + gs ], 1 );
+            }
+        }
+    } else {
+        bufI(&fbuf, FGCELL)[i] = GRID_UNDEF;
+    }
+}
 
 __kernel void prefixFixup(
 

@@ -71,7 +71,7 @@ Launch Configurations=Launch Configuration 2,Launch Configuration 3,Launch Confi
 [Launch][Launch Configuration 2]
 Configured Launch Modes=execute
 Configured Launchers=nativeAppLauncher
-Name=create_demo
+Name=create_demo minimal demo
 Type=Native Application
 
 [Launch][Launch Configuration 2][Data]
@@ -120,7 +120,7 @@ EnvironmentGroup=
 Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo2
 External Terminal=konsole --noclose --workdir %workdir -e %exe
 Kill Before Executing Again=4194304
-Project Target=
+Project Target=src,checkDemo
 Use External Terminal=false
 Working Directory=
 isExecutable=true

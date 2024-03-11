@@ -48,6 +48,9 @@
 	typedef	unsigned int		uint;
 	typedef	unsigned short int	ushort;
 
+    #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+
+
     // Buffers:
     // NB one buffer created per particle parameter (marked '#'),
     // & explicitly allocated in FluidSystem::AllocateParticles ( int cnt ).
@@ -201,10 +204,11 @@
     #define FCURAND_SEED                43
 	
 	#define MAX_BUF		                44
-    
+
 
 	#ifdef CL_KERNEL
 		#define	CALLFUNC	__device__
+
 	#else
 		#define CALLFUNC
 	#endif		
@@ -225,6 +229,7 @@
             uint**  bufII (__constant FBufs* fb, int n) { return (uint**)  fb->mgpu[n]; }
             well512_state*  bufWell512State(__constant FBufs* fb, int n) { return (well512_state*) fb->mgpu[n]; }
             unsigned long long*  bufULL(__constant FBufs* fb, int n) { return (unsigned long long*) fb->mgpu[n]; }
+
 
     #else
     //TODO Check use of "__constant" in kernel code

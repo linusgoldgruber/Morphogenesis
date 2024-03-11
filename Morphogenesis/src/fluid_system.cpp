@@ -1044,11 +1044,12 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
     if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 finished \n" << std::flush ;
 }
 
-void FluidSystem::Run2PhysicalSort(){
+void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting the particles
 
     if(m_FParams.debug>1)std::cout<<"-----starting Run2PhysicalSort-----\n\n";
     InsertParticlesCL ( 0x0, 0x0, 0x0 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After InsertParticlesCL", mbDebug);
+
     if(launchParams.debug>0){
         std::cout<<"\nchk a"<<std::flush;
         TransferFromCL ();
@@ -1060,6 +1061,7 @@ void FluidSystem::Run2PhysicalSort(){
     }
     PrefixSumCellsCL ( 1 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After PrefixSumCellsCL", mbDebug);
+
     if(launchParams.debug>0){
         TransferFromCL ();
         m_Debug_file++;
@@ -1069,10 +1071,11 @@ void FluidSystem::Run2PhysicalSort(){
     }
     CountingSortFullCL ( 0x0 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
+
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2PhysicalSort()end";
 }
 
-void FluidSystem::Run2InnerPhysicalLoop(){
+void FluidSystem::Run2InnerPhysicalLoop(){ //
     if(m_FParams.debug>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()start";
     if(m_FParams.freeze==true){
         InitializeBondsCL ();

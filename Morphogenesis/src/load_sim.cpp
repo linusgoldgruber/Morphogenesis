@@ -59,17 +59,9 @@ int main ( int argc, const char** argv )
         remodelling = *argv[11];
         printf ("remodelling = %c\n", remodelling );
     }
+
 std::cout <<"\nchk load_sim_0.1\n"<<std::flush;  
 
-
-    //cuInit ( 0 );                                       // Initialize
-    //int deviceCount = 0;
-    size_t deviceCount;
-    //CUDA: cuDeviceGetCount ( &deviceCount ); OpenCL:
-    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &deviceCount);
-    if ( deviceCount == 0 ) {
-        printf ( "There is no device supporting CUDA.\n" );
-        exit ( 0 );
     }
 std::cout <<"\nchk load_sim_0.2\n"<<std::flush;  
 
