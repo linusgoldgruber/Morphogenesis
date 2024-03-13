@@ -35,7 +35,7 @@ int iDivUp (int a, int b) {
 
 void computeNumBlocks (int numPnts, int minThreads, int &numGroups, int &numItems){
 
-    cout << "-------Running computeNumBlocks() with " << numPnts <<" Points and " << minThreads << " minThreads.";
+    cout << "\nRunning computeNumBlocks() with " << numPnts <<" Points and " << minThreads << " minThreads";
     if (numPnts==0 & minThreads==0) {printf("\nError: numPnts and minThreads = 0 \n");exit(1);}
     numItems = min( minThreads, numPnts );
     numGroups = (numItems==0) ? 1 : iDivUp ( numPnts, numItems );
@@ -46,16 +46,16 @@ void FluidSystem::ReadGenome( const char * relativePath){
     // NB currently GPU allocation is by Allocate particles, called by ReadPointsCSV.
     //const char * genes_file_path = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/genome.csv"; TODO delete
     const char * genes_file_path =  obj["genome_filepath"].asCString();
-    /*if (m_FParams.debug>1)*/printf("\nReadGenome: opening file %s \n", genes_file_path);
+    /*if (verbosity>1)*/printf("\nReadGenome: opening file %s \n", genes_file_path);
     FILE * genes_file = fopen(genes_file_path, "rb");
     if (genes_file == NULL) {
-        if (m_FParams.debug>1)std::cout << "\nvoid FluidSystem::ReadGenome( const char * relativePath, int gpu_mode, int cpu_mode)  Could not read file. Path: "<< genes_file_path <<"\n"<< std::flush;
+        if (verbosity>1)std::cout << "\nvoid FluidSystem::ReadGenome( const char * relativePath, int gpu_mode, int cpu_mode)  Could not read file. Path: "<< genes_file_path <<"\n"<< std::flush;
         assert(0);
     }
     int num_genes1, num_tf, ret=0;
     ret += std::fscanf(genes_file, "num genes = %i,\tnum transcription factors = %i \n", &num_genes1, &num_tf);
 
-    if (m_FParams.debug>1 && ((num_genes1 != NUM_GENES) || (num_tf != NUM_TF ))){
+    if (verbosity>1 && ((num_genes1 != NUM_GENES) || (num_tf != NUM_TF ))){
         std::cout << "\n! Miss-match of parameters ! ((num_genes1 != num_genes2) || (num_genes1 != NUM_GENES) || (num_tf != NUM_TF ) )\n";
         std::cout << "num_genes = " << num_genes1 <<"\t NUM_GENES = "<<NUM_GENES<<"\tnum_tf = "<<num_tf<<"\n";
     }
@@ -82,24 +82,24 @@ void FluidSystem::ReadGenome( const char * relativePath){
         for(int j=0; j<NUM_GENES; j++) ret += std::fscanf(genes_file, "%i,%i,\t", &m_FGenome.activate[i][j*2], &m_FGenome.activate[i][j*2 + 1] );//(elemID, other_geneID)
         ret += std::fscanf(genes_file, "%i,\t\t \n", &m_FGenome.activate[i][2*NUM_GENES] );        //num active elements,
         if (ret != (2 + NUM_GENES + NUM_TF*2 + 1 + NUM_GENES*2 + 1) ) {
-            if (m_FParams.debug>1)std::cout << "\nvoid FluidSystem::ReadGenome, read failure !  gene number = " << i << ", ret = "<< ret <<"\n " << std::flush;
+            if (verbosity>1)std::cout << "\nvoid FluidSystem::ReadGenome, read failure !  gene number = " << i << ", ret = "<< ret <<"\n " << std::flush;
             fclose(genes_file);
             return;
         }
-        if (m_FParams.debug>1) for(int j=0; j<NUM_GENES; j++)  std::cout << m_FGenome.sensitivity[i][j] <<",";
-        if (m_FParams.debug>1)std::cout <<"\n";
+        if (verbosity>1) for(int j=0; j<NUM_GENES; j++)  std::cout << m_FGenome.sensitivity[i][j] <<",";
+        if (verbosity>1)std::cout <<"\n";
     }
-    if (m_FParams.debug>1)std::cout << "\n" << i << " genes read.\n" << std::flush;
+    if (verbosity>1)std::cout << "\n" << i << " genes read.\n" << std::flush;
 
     ret=0;
     ret += std::fscanf(genes_file,"\nTranscription Factors (tf_difusibility,tf_breakdown_rate) \n" );
     for(i=0; i<num_tf; i++) {
         ret += std::fscanf(genes_file,"\t%u,\t",&m_FGenome.tf_diffusability[i] );
         ret += std::fscanf(genes_file,"%u,\t",&m_FGenome.tf_breakdown_rate[i] );
-        if (m_FParams.debug>1)std::cout <<"\t("<< m_FGenome.tf_diffusability[i] <<"," << m_FGenome.tf_breakdown_rate[i] <<"),"<< std::flush;
+        if (verbosity>1)std::cout <<"\t("<< m_FGenome.tf_diffusability[i] <<"," << m_FGenome.tf_breakdown_rate[i] <<"),"<< std::flush;
     }
-    if (ret != NUM_TF*2)if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::ReadGenome, Transcription Factor read failure !  gene number = " << i << ", ret = "<< ret <<"\n " << std::flush;
-    if (m_FParams.debug>1)std::cout << "\n" << i << " transcription factors read.\n" << std::flush;
+    if (ret != NUM_TF*2)if (verbosity>1) std::cout << "\nvoid FluidSystem::ReadGenome, Transcription Factor read failure !  gene number = " << i << ", ret = "<< ret <<"\n " << std::flush;
+    if (verbosity>1)std::cout << "\n" << i << " transcription factors read.\n" << std::flush;
 
     ret=0;
     ret += std::fscanf(genes_file, "\nRemodelling parameters, rows : elastin,collagen,apatite\n" );
@@ -112,7 +112,7 @@ void FluidSystem::ReadGenome( const char * relativePath){
         for(j=0; j<12;j++) ret += std::fscanf(genes_file, "\t%f,\t", &m_FGenome.param[i][j] );
         ret += std::fscanf(genes_file, "\n");
     }
-    if (m_FParams.debug>1)std::cout << "\n" << i <<"*"<< j << " remodelling parameters read. ret = "<< ret <<"\n" << std::flush;
+    if (verbosity>1)std::cout << "\n" << i <<"*"<< j << " remodelling parameters read. ret = "<< ret <<"\n" << std::flush;
 
     ret=0;
     ret += std::fscanf(genes_file, "\n\nBond remodelling m_FGenome.tanh_param[3][8] parameters, rows : elastin,collagen,apatite" );
@@ -123,20 +123,20 @@ void FluidSystem::ReadGenome( const char * relativePath){
         for(int j=0; j<8; j++)  ret += std::fscanf(genes_file, "\t%f,\t", &m_FGenome.tanh_param[i][j]);
         ret += std::fscanf(genes_file, "\n");
     }
-    if (m_FParams.debug>1)std::cout << "\n" << i <<"*"<< j << " remodelling parameters read. ret = "<< ret <<"\n" << std::flush;
+    if (verbosity>1)std::cout << "\n" << i <<"*"<< j << " remodelling parameters read. ret = "<< ret <<"\n" << std::flush;
 
     fclose(genes_file);
 }
 //
 void FluidSystem::WriteGenome( const char * relativePath){
-    if (m_FParams.debug>1)std::cout << "\n  FluidSystem::WriteGenome( const char * "<<relativePath<<")  started \n" << std::flush;
+    if (verbosity>1)std::cout << "\n  FluidSystem::WriteGenome( const char * "<<relativePath<<")  started \n" << std::flush;
     //char buf[256];
     //sprintf ( buf, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/genome.csv");
     const char * buf =  obj["genome_filepath"].asCString();
     FILE* fp = fopen ( buf , "w" );
 
     if (fp == NULL) {
-        if (m_FParams.debug>1)std::cout << "\nvoid FluidSystem::WriteGenome( const char * relativePath)  Could not open file "<< fp <<"\n"<< std::flush;
+        if (verbosity>1)std::cout << "\nvoid FluidSystem::WriteGenome( const char * relativePath)  Could not open file "<< fp <<"\n"<< std::flush;
         assert(0);
     }
     fprintf(fp, "num genes = %i,\tnum transcription factors = %i \n", NUM_GENES, NUM_TF );
@@ -221,7 +221,7 @@ void FluidSystem::WriteGenome( const char * relativePath){
 }
 
 void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
-    if (m_FParams.debug>1) std::cout << "\n  SavePointsCSV2 ( const char * relativePath = "<< relativePath << ", int frame = "<< frame << " );  started \n" << std::flush;
+    if (verbosity>1) std::cout << "\n  SavePointsCSV2 ( const char * relativePath = "<< relativePath << ", int frame = "<< frame << " );  started \n" << std::flush;
     char buf[256];
     frame += 100000;    // ensures numerical and alphabetic order match
     sprintf ( buf, "%s/particles_pos_vel_color%04d.csv", relativePath, frame );
@@ -233,7 +233,7 @@ void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
     FILE* fp = fopen ( buf, "w" );*/
 
     if (fp == NULL) {
-        if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::SavePointsCSV ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
+        if (verbosity>1) std::cout << "\nvoid FluidSystem::SavePointsCSV ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
         assert(0);
     }
     int numpnt = mMaxPoints;//NumPoints();
@@ -262,12 +262,12 @@ void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
         Age = getAge(i);
         Clr = getClr(i);
         ElastIdx = getElastIdx(i);      // NB [BONDS_PER_PARTICLE]
-      //if (m_FParams.debug>1)printf("\t%u,",ElastIdx[0]);
+      //if (verbosity>1)printf("\t%u,",ElastIdx[0]);
         ElastIdxPtr = (float*)ElastIdx; // #############packing floats and uints into the same array - should replace with a struct.#################
         Particle_Idx = getParticle_Idx(i);
         Particle_ID = getParticle_ID(i);//# uint  original pnum, used for bonds between particles. 32bit, track upto 4Bn particles.
         if(*Particle_ID==0){
-         if (m_FParams.debug>1) std::cout << "SavePointsCSV2: Particle_ID = pointer not assigned. i="<<i<<". \t" << std::flush;
+         if (verbosity>1) std::cout << "SavePointsCSV2: Particle_ID = pointer not assigned. i="<<i<<". \t" << std::flush;
          return;
         }
         // ? should I be splitting mass_radius with bitshift etc  OR just use two uit arrays .... where are/will these used anyway ?
@@ -281,7 +281,7 @@ void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
         //EpiGen = getEpiGen(i);          //# uint[NUM_GENES]  see below.
 
         fprintf(fp, "%u,,%f,%f,%f,\t%f,%f,%f,\t %u, %u,, \t", i, Pos->x, Pos->y,Pos->z, Vel->x,Vel->y,Vel->z, *Age, *Clr );
-        //if (m_FParams.debug>1) std::cout<<"\t"<<Pos->z<<std::flush;
+        //if (verbosity>1) std::cout<<"\t"<<Pos->z<<std::flush;
         for(int j=0; j<(BOND_DATA); j+=DATA_PER_BOND) {
             fprintf(fp, "%u, %f, %f, %f, %f, %u, %f, %f, %u, ", ElastIdx[j], ElastIdxPtr[j+1], ElastIdxPtr[j+2], ElastIdxPtr[j+3], ElastIdxPtr[j+4], ElastIdx[j+5], ElastIdxPtr[j+6], ElastIdxPtr[j+7], ElastIdx[j+8] );
 
@@ -311,9 +311,9 @@ void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
 
 void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int cpu_mode){ // NB allocates buffers as well.
 
-    if (m_FParams.debug>1) std::cout << "\n  -----ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int cpu_mode);  started----- \n" << std::flush;
+    if (verbosity>0) std::cout << "\n  -----ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int cpu_mode);  started----- \n" << std::flush;
     const char * points_file_path = relativePath;
-    if (m_FParams.debug>1)printf("\n## opening file %s ", points_file_path);
+    if (verbosity>1)printf("\n## opening file %s ", points_file_path);
     FILE * points_file = fopen(points_file_path, "rb");
     if (points_file == NULL) {
         assert(0);
@@ -339,9 +339,8 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
     }
 
-    cout<<"ReadPointsCSV2: AllocateParticles ( "<<mMaxPoints<<", "<<gpu_mode<<", "<<cpu_mode<<" )"<<std::flush;
+
     AllocateParticles ( mMaxPoints, gpu_mode, cpu_mode );  // allocates only cpu buffer for particles
-    cout<<"ReadPointsCSV2: AllocateGrid ( gpu_mode: "<<gpu_mode<<", cpu_mode: "<<cpu_mode<<" )"<<std::flush;
     AllocateGrid(gpu_mode, cpu_mode);
     ////////////////////////////////////////
     uint Clr, Age;
@@ -357,7 +356,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
     PosMin = GetVec ( PBOUNDMIN );  //PBOUNDMIN  // PVOLMIN
     PosMax = GetVec ( PBOUNDMAX );  //PBOUNDMAX  // PVOLMAX
 
-    if (m_FParams.debug>1) cout<<"\n\nPosMin = PBOUNDMIN=("<<m_Vec[PBOUNDMIN].x <<","<<m_Vec[PBOUNDMIN].y <<","<<m_Vec[PBOUNDMIN].z
+    if (verbosity>1) cout<<"\n\nPosMin = PBOUNDMIN=("<<m_Vec[PBOUNDMIN].x <<","<<m_Vec[PBOUNDMIN].y <<","<<m_Vec[PBOUNDMIN].z
         <<"),  PosMax = PBOUNDMAX=("<<m_Vec[PBOUNDMAX].x <<","<<m_Vec[PBOUNDMAX].y <<","<< m_Vec[PBOUNDMAX].z
         <<"),  PVOLMIN=("<<m_Vec[PVOLMIN].x <<","<<m_Vec[PVOLMIN].y <<","<<m_Vec[PVOLMIN].z
         <<"),  PVOLMAX=("<<m_Vec[PVOLMAX].x <<","<<m_Vec[PVOLMAX].y <<","<<m_Vec[PVOLMAX].z
@@ -367,49 +366,49 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
     uint bond_data=999, data_per_bond=999, bonds_per_particle=999, num_TF=999, num_genes=999;
     int result=-2;
     result = std::fscanf(points_file, "i,, x coord, y coord, z coord\t\t x vel, y vel, z vel\t\t age,  color\t\t FELASTIDX[%u*%u]", &bond_data, &data_per_bond);
-    //if (m_FParams.debug>1) std::cout<<"\n\n ReadPointsCSV2() line 1241: scanf result="<<result<<"\n"<<std::flush;
+    //if (verbosity>1) std::cout<<"\n\n ReadPointsCSV2() line 1241: scanf result="<<result<<"\n"<<std::flush;
     for (int i=0; i<data_per_bond; i++) result+=std::fscanf(points_file, ",(%u)[0]curIdx, [1]elastLim, [2]restLn, [3]modulus, [4]damping, [5]partID, [6]stress_sq integrator, [7]stress integrator, [8]change-type,,  ",&discard_uint);
     bond_data = bond_data * data_per_bond;
     result += fscanf(points_file, "\t");
-    //if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() line 1246: scanf result="<<result<<"\n"<<std::flush;
+    //if (verbosity>1) std::cout<<"\n ReadPointsCSV2() line 1246: scanf result="<<result<<"\n"<<std::flush;
     result = std::fscanf(points_file, "\tParticle_ID, mass, radius, FNERVEIDX,\t\t Particle_Idx[%u*2]", &bonds_per_particle);
     for (int i=0; i<BONDS_PER_PARTICLE; i++) result+=fscanf(points_file, "%u,,, ",&discard_uint);
-    //if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() line 1249: scanf result="<<result<<"\n"<<std::flush;
+    //if (verbosity>1) std::cout<<"\n ReadPointsCSV2() line 1249: scanf result="<<result<<"\n"<<std::flush;
     result = std::fscanf(points_file, "\t\tFCONC[%u]",&num_TF);
     for (int i=0; i<NUM_TF; i++)result += fscanf(points_file, "%u, ",&discard_uint);
-    //if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() line 1252: scanf result="<<result<<"\n"<<std::flush;
+    //if (verbosity>1) std::cout<<"\n ReadPointsCSV2() line 1252: scanf result="<<result<<"\n"<<std::flush;
     result = std::fscanf(points_file, "\t\tFEPIGEN[%u] ", &num_genes );
     for (int i=0; i<NUM_GENES; i++)result += fscanf(points_file, "%u, ",&discard_uint);
     result += fscanf(points_file, "\n");
-    //if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() line 1254: scanf result="<<result<<"\n"<<std::flush;
+    //if (verbosity>1) std::cout<<"\n ReadPointsCSV2() line 1254: scanf result="<<result<<"\n"<<std::flush;
 
-    if (m_FParams.debug>1) std::cout<<"\n\n ReadPointsCSV2() starting loop: number_of_lines="<<number_of_lines<<"\n"<<std::flush;
+    if (verbosity>1) std::cout<<"\n\n ReadPointsCSV2() starting loop: number_of_lines="<<number_of_lines<<"\n"<<std::flush;
     ////////////////////
     int i, index, ret;
     for (i=1; i<number_of_lines; i++ ) {
         // transcribe particle data from file to Pos, Vel and Clr
         ret=0;
         ret += std::fscanf(points_file, "%u,,%f,%f,%f,\t%f,%f,%f,\t %u, %u,, \t",&index, &Pos.x, &Pos.y, &Pos.z, &Vel.x, &Vel.y, &Vel.z, &Age, &Clr );
-//if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() row="<< i <<", (line 1259, ret="<<ret<<"),\t"<<std::flush;
+//if (verbosity>1) std::cout<<"\n ReadPointsCSV2() row="<< i <<", (line 1259, ret="<<ret<<"),\t"<<std::flush;
         for(int j=0; j<BOND_DATA; j+=DATA_PER_BOND) {// BONDS_PER_PARTICLE * DATA_PER_BOND
             ret += std::fscanf(points_file, "%u, %f, %f, %f, %f, %u, %f, %f, %u, ", &ElastIdxU[j+0], &ElastIdxF[j+1], &ElastIdxF[j+2], &ElastIdxF[j+3], &ElastIdxF[j+4], &ElastIdxU[j+5], &ElastIdxF[j+6], &ElastIdxF[j+7], &ElastIdxU[j+8] );
         }
-      //if (m_FParams.debug>1)printf("\t%u\t",ElastIdxU[0]);
-//if (m_FParams.debug>1) std::cout<<"(line 1263, ret="<<ret<<")\t"<<std::flush;
+      //if (verbosity>1)printf("\t%u\t",ElastIdxU[0]);
+//if (verbosity>1) std::cout<<"(line 1263, ret="<<ret<<")\t"<<std::flush;
         ret += std::fscanf(points_file, " \t%u, %u, %u, %u, \t\t", &Particle_ID, &mass, &radius, &NerveIdx);
         Mass_Radius = mass + (radius << 16);                                    // pack two 16bit uint  into one 32bit uint.
-//if (m_FParams.debug>1) std::cout<<"(ReadPointsCSV2() line 1266, ret="<<ret<<"),\t"<<std::flush;
+//if (verbosity>1) std::cout<<"(ReadPointsCSV2() line 1266, ret="<<ret<<"),\t"<<std::flush;
         for(int j=0; j<(BONDS_PER_PARTICLE*2); j+=2) {
             ret += std::fscanf(points_file, "%u, %u,, ",  &Particle_Idx[j], &Particle_Idx[j+1] );
         }
-//if (m_FParams.debug>1) std::cout<<"(ReadPointsCSV2() line 1270, ret="<<ret<<"),\t"<<std::flush;
+//if (verbosity>1) std::cout<<"(ReadPointsCSV2() line 1270, ret="<<ret<<"),\t"<<std::flush;
         for(int j=0; j<(NUM_TF); j++)       {    ret += std::fscanf(points_file, "%f, ",  &Conc[j] );   } ret += std::fscanf(points_file, "\t");
-//if (m_FParams.debug>1) std::cout<<"(ReadPointsCSV2() line 1272, ret="<<ret<<"),\t"<<std::flush;
+//if (verbosity>1) std::cout<<"(ReadPointsCSV2() line 1272, ret="<<ret<<"),\t"<<std::flush;
         for(int j=0; j<(NUM_GENES); j++)    {    ret += std::fscanf(points_file, "%u, ",  &EpiGen[j] ); } ret += std::fscanf(points_file, " \n");
-//if (m_FParams.debug>1) std::cout<<"(ReadPointsCSV2() line 1274, ret="<<ret<<"),\t"<<std::flush;
+//if (verbosity>1) std::cout<<"(ReadPointsCSV2() line 1274, ret="<<ret<<"),\t"<<std::flush;
 
         if (ret != (9 + BOND_DATA + 4 + BONDS_PER_PARTICLE*2 + NUM_TF + NUM_GENES) ) {  // 9 + 6*9 + 4 + 6*2 + 16 + 16 = 111
-            if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() fail line 1276, ret="<<ret<<"\n"<<std::flush;// ret=39
+            if (verbosity>1) std::cout<<"\n ReadPointsCSV2() fail line 1276, ret="<<ret<<"\n"<<std::flush;// ret=39
             fclose(points_file);
             return;
         } // ret=8 ret=32 ret=36 ret=48 ret=64 ret=80
@@ -419,7 +418,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
                 || Pos.x > PosMax.x   || Pos.y > PosMax.y || Pos.z > PosMax.z
                 || (Vel.x * Vel.x + Vel.y * Vel.y + Vel.z * Vel.z) > vel_lim * vel_lim )
         {
-            //if (m_FParams.debug>1) {
+            //if (verbosity>1) {
             //  std::cout << "\n void FluidSystem::ReadPointsCSV, out of bounds !  particle number = " << i;
             //  std::cout << "\n Pos.x = " << Pos.x << "  Pos.y = " << Pos.y << "  Pos.z = " << Pos.z;
             //  std::cout << "\n PosMax.x = " << PosMax.x << "  PosMax.y = " << PosMax.y << "  PosMax.z = " << PosMax.z;
@@ -427,7 +426,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
             //  std::cout << "\n velocity = " << sqrt(Vel.x * Vel.x + Vel.y * Vel.y + Vel.z * Vel.z) << "   vel_lim = " << vel_lim;
             //  std::cout << "\n " << std::flush;
             //}
-            /*if (m_FParams.debug>1)*/printf("\nParticle out of bounds, i=%u\t Pos=(%f,%f,%f), PosMin=(%f,%f,%f), PosMax=(%f,%f,%f), Closing file and exiting.",
+            /*if (verbosity>1)*/printf("\nParticle out of bounds, i=%u\t Pos=(%f,%f,%f), PosMin=(%f,%f,%f), PosMax=(%f,%f,%f), Closing file and exiting.",
                    i, Pos.x, Pos.y, Pos.z, PosMin.x, PosMin.y, PosMin.z, PosMax.x, PosMax.y, PosMax.z );
             fclose(points_file);
             exit_(ret);
@@ -435,27 +434,28 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
 
         AddParticleMorphogenesis2 (&Pos, &Vel, Age, Clr, ElastIdxU, ElastIdxF, Particle_Idx, Particle_ID, Mass_Radius,  NerveIdx, Conc, EpiGen );
     }
-    if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() finished reading points. i="<<i<<", NumPoints()="<<NumPoints()<<"\n"<<std::flush;
+    if (verbosity>1) std::cout<<"\n ReadPointsCSV2() finished reading points. i="<<i<<", NumPoints()="<<NumPoints()<<"\n"<<std::flush;
     fclose(points_file);
     AddNullPoints ();                                   // add null particles up to mMaxPoints // should be redundant here as mMaxPoints = number_of_lines-1
     if (gpu_mode != GPU_OFF) TransferToCL ();         // Initial transfer
-  //if (m_FParams.debug>1)printf("\n gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES)=%llu, \t gpuVar(&m_Fluid, FGRIDOFF_CHANGES)=%llu, \t gpuVar(&m_Fluid, FGRIDCNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES), gpuVar(&m_Fluid, FGRIDOFF_CHANGES) , gpuVar(&m_Fluid, FGRIDCNT_CHANGES)   );
-    if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() finished extra functions. NumPoints()="<<NumPoints()<<"\n"<<std::flush;
+  //if (verbosity>1)printf("\n gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES)=%llu, \t gpuVar(&m_Fluid, FGRIDOFF_CHANGES)=%llu, \t gpuVar(&m_Fluid, FGRIDCNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES), gpuVar(&m_Fluid, FGRIDOFF_CHANGES) , gpuVar(&m_Fluid, FGRIDCNT_CHANGES)   );
+    if (verbosity>1) std::cout<<"\n ReadPointsCSV2() finished extra functions. NumPoints()="<<NumPoints()<<"\n"<<std::flush;
 }
 
 void FluidSystem::ReadSimParams ( const char * relativePath ) { // transcribe SimParams from file to fluid_system object. /home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo
+        if (verbosity>1) std::cout<<"\n\n-----FluidSystem::ReadSimParams() started--------"<<std::flush;
 //     const char * SimParams_file_path = relativePath;
     const char * SimParams_file_path = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/SimParams.txt";
-    if (m_FParams.debug>1)printf ( "\n## opening file %s ", SimParams_file_path );
+    if (verbosity>1)printf ( "\n## opening file %s ", SimParams_file_path );
     FILE * SimParams_file = fopen ( SimParams_file_path, "rb" );
     if ( SimParams_file == NULL ) {
-        if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::ReadSimParams (const char * relativePath )  Could not read file "<< SimParams_file_path <<"\n"<< std::flush;
+        if (verbosity>1) std::cout << "\nvoid FluidSystem::ReadSimParams (const char * relativePath )  Could not read file "<< SimParams_file_path <<"\n"<< std::flush;
         assert ( 0 );
     }
     // find number of lines
     int ch, number_of_lines = 0;
     while ( EOF != ( ch=getc ( SimParams_file ) ) )   if ( '\n' == ch )  ++number_of_lines; // chk num lines
-    if (m_FParams.debug>1) std::cout << "\nNumber of lines in SimParams_file = " << number_of_lines << std::flush;
+    if (verbosity>1) std::cout << "\nNumber of lines in SimParams_file = " << number_of_lines << std::flush;
 
     cl_float3 pplane_grav_dir, pvolmin, pvolmax, pinitmin, pinitmax;
 
@@ -494,7 +494,7 @@ void FluidSystem::ReadSimParams ( const char * relativePath ) { // transcribe Si
     ret += std::fscanf ( SimParams_file, "m_Param [ PGROUND_SLOPE ] = %f\n ", &m_Param [ PGROUND_SLOPE ] );
 
     if ( ret != 41 ) {
-        /*if (m_FParams.debug>1)*/ std::cout << "\nvoid FluidSystem::ReadSimParams(..), read failure ! ret = " << ret << std::flush;
+        /*if (verbosity>1)*/ std::cout << "\nvoid FluidSystem::ReadSimParams(..), read failure ! ret = " << ret << std::flush;
         fclose ( SimParams_file );
         exit_(ret);
     }
@@ -505,7 +505,7 @@ void FluidSystem::ReadSimParams ( const char * relativePath ) { // transcribe Si
     Set(&m_Vec [ PINITMIN ], pinitmin.x, pinitmin.y, pinitmin.z );
     Set(&m_Vec [ PINITMAX ], pinitmax.x, pinitmax.y, pinitmax.z );
 
-    if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::ReadSimParams(..), read success !  ret = " << ret << "\n" << std::flush;
+    if (verbosity>1) std::cout << "\nvoid FluidSystem::ReadSimParams(..), read success !  ret = " << ret << "\n" << std::flush;
     fclose ( SimParams_file );
     return;
 }
@@ -532,7 +532,7 @@ void FluidSystem::WriteSimParams ( const char * relativePath ){
     pdrain_barrier = m_Toggle [ PDRAIN_BARRIER ];
     prun = m_Toggle [ PRUN ];
 */
-    if (m_FParams.debug>1)std::cout<<"\nWriteSimParams chk1 "<<std::flush;
+    if (verbosity>1)std::cout<<"\nWriteSimParams chk1 "<<std::flush;
 
     // open file to write SimParams to
     //char SimParams_file_path[256];
@@ -542,10 +542,10 @@ void FluidSystem::WriteSimParams ( const char * relativePath ){
     if (verbosity>0)printf("\n## opening file %s ", SimParams_file_path);
     FILE* SimParams_file = fopen ( SimParams_file_path, "w" );
     if (SimParams_file == NULL) {
-        if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::WriteSimParams (const char * relativePath )  Could not open file "<< SimParams_file_path <<"\n"<< std::flush;
+        if (verbosity>1) std::cout << "\nvoid FluidSystem::WriteSimParams (const char * relativePath )  Could not open file "<< SimParams_file_path <<"\n"<< std::flush;
         assert(0);
     }
-    if (m_FParams.debug>1)std::cout<<"\nWriteSimParams chk2,  SimParams_file_path="<<SimParams_file_path<<"\n"<<std::flush;
+    if (verbosity>1)std::cout<<"\nWriteSimParams chk2,  SimParams_file_path="<<SimParams_file_path<<"\n"<<std::flush;
     /*m_Toggle [ PWRAP_X ] = %i\n m_Toggle [ PWALL_BARRIER ] = %i\n m_Toggle [ PLEVY_BARRIER ] = %i\n m_Toggle [ PDRAIN_BARRIER ] = %i\n */
     /*
                            pwrapx, pwall_barrier, plevy_barrier, pdrain_barrier,*/
@@ -602,21 +602,21 @@ void FluidSystem::WriteSimParams ( const char * relativePath ){
                            m_Param [ PGROUND_SLOPE ]
                           );
 
-    if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::WriteSimParams (const char * relativePath ) wrote file "<< SimParams_file_path <<"\t"<<
+    if (verbosity>1) std::cout << "\nvoid FluidSystem::WriteSimParams (const char * relativePath ) wrote file "<< SimParams_file_path <<"\t"<<
               "ret = " << ret << "\n" << std::flush;
     fclose(SimParams_file);
     return;
 }
 
 void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, int cpu_mode, uint num_particles, float spacing, float x_dim, float y_dim, float z_dim, uint demoType, uint simSpace, uint debug){
-    m_FParams.debug=debug;
+    verbosity=debug;
 
     std::cout<<"\n\n-----FluidSystem: WriteDemoSimParams started--------"<<std::flush;
 
-    cout << "\nm_FParams.debug= " << m_FParams.debug << "\n" << flush;
+    cout << "\nverbosity= " << verbosity << "\n" << flush;
 
 
-    if (m_FParams.debug>1)std::cout<<"\nWriteDemoSimParams chk1, num_particles="<<num_particles<<", m_FParams.debug="<<m_FParams.debug <<", launchParams.genomePath="<< launchParams.genomePath  <<std::flush;
+    if (verbosity>1)std::cout<<"\nWriteDemoSimParams chk1, num_particles="<<num_particles<<", verbosity="<<verbosity <<", launchParams.genomePath="<< launchParams.genomePath  <<std::flush;
 
     m_Param[PEXAMPLE] = simSpace;          // simSpace==2 : wave pool example.
     m_Param[PGRID_DENSITY] = 2.0;   // gives gridsize = 2*smoothradius/griddensity = smoothradius.
@@ -626,7 +626,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     m_Time = 0;
     mNumPoints = 0;			        // reset count TODO still hardcoded to 125, can it be set to 0?
 
-    if (m_FParams.debug>1)std::cout<<"\nWriteDemoSimParams chk2, launchParams.genomePath="<< launchParams.genomePath  <<std::flush;
+    if (verbosity>1)std::cout<<"\nWriteDemoSimParams chk2, launchParams.genomePath="<< launchParams.genomePath  <<std::flush;
 
 
     SetupDefaultParams();           // set up the standard demo
@@ -648,9 +648,9 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     m_Param[PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
     SetupSPH_Kernels();
     SetupSpacing();
-    SetupGrid ( m_Vec[PVOLMIN], m_Vec[PVOLMAX], m_Param[PSIMSCALE], m_Param[PGRIDSIZE], 1.0f );  if (m_FParams.debug>1) std::cout << " chk1.0 " << std::flush ;
-    AllocateParticles ( mMaxPoints, GPU_OFF, CPU_YES );                                          if (m_FParams.debug>1) std::cout << " chk1.1 " << std::flush ;
-    AllocateGrid(GPU_OFF, CPU_YES);                                                              if (m_FParams.debug>1) std::cout << " chk1.2 " << std::flush ;
+    SetupGrid ( m_Vec[PVOLMIN], m_Vec[PVOLMAX], m_Param[PSIMSCALE], m_Param[PGRIDSIZE], 1.0f );  if (verbosity>1) std::cout << " chk1.0 " << std::flush ;
+    AllocateParticles ( mMaxPoints, GPU_OFF, CPU_YES );                                          if (verbosity>1) std::cout << " chk1.1 " << std::flush ;
+    AllocateGrid(GPU_OFF, CPU_YES);                                                              if (verbosity>1) std::cout << " chk1.2 " << std::flush ;
     std::cout<<"\nWriteDemoSimParams chk2 "<<std::flush;
     */
     //cout << "\nXX m_Param[PGRIDSIZE]: " << m_Param[PGRIDSIZE] << endl; //TODO remove debug line
@@ -678,7 +678,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     pinit_max.y = std::min(pinit_max.y , m_Vec[PBOUNDMAX].y-1 );
     pinit_max.z = std::min(pinit_max.z , m_Vec[PBOUNDMAX].z-1 );
 
-    if (m_FParams.debug>1) {
+    if (verbosity>1) {
     cout<<"\n\nPGRIDSIZE=("<<m_Vec[PGRIDSIZE].x<<","<<m_Vec[PGRIDSIZE].y<<","<<m_Vec[PGRIDSIZE].z
         <<"),  PSIMSCALE=("<<m_Vec[PSIMSCALE].x<<","<<m_Vec[PSIMSCALE].y<<","<<m_Vec[PSIMSCALE].z
         <<"),  m_Param[PGRIDSIZE]="<<m_Param[PGRIDSIZE]<<",  m_Param[PSIMSCALE]="<<m_Param[PSIMSCALE]
@@ -700,15 +700,15 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
 
     SetupAddVolumeMorphogenesis2(m_Vec[PINITMIN], pinit_max, spacing, 0.1f, demoType);
 
-    if (m_FParams.debug>0)std::cout<<"\nWriteDemoSimParams chk4, relativePath="<<relativePath<<"\n "<<std::flush;
+    if (verbosity>0)std::cout<<"\nWriteDemoSimParams chk4, relativePath="<<relativePath<<"\n "<<std::flush;
 
-    WriteSimParams ( relativePath );    if (m_FParams.debug>0) std::cout << "\n WriteSimParams ( relativePath );  completed \n" << std::flush ;  // write data to file
+    WriteSimParams ( relativePath );    if (verbosity>0) std::cout << "\n WriteSimParams ( relativePath );  completed \n" << std::flush ;  // write data to file
 
-    WriteGenome ( relativePath);        if (m_FParams.debug>0) std::cout << "\n WriteGenome ( relativePath );  completed \n" << std::flush ;
+    WriteGenome ( relativePath);        if (verbosity>0) std::cout << "\n WriteGenome ( relativePath );  completed \n" << std::flush ;
 
-    SavePointsCSV2 ( relativePath, 1 ); if (m_FParams.debug>1) std::cout << "\n SavePointsCSV ( relativePath, 1 );  completed \n" << std::flush ;
+    SavePointsCSV2 ( relativePath, 1 ); if (verbosity>1) std::cout << "\n SavePointsCSV ( relativePath, 1 );  completed \n" << std::flush ;
 
-         if (m_FParams.debug>1)std::cout<<"\n-----WriteDemoSimParams finished----\n" <<std::flush;
+         if (verbosity>1)std::cout<<"\n-----WriteDemoSimParams finished----\n" <<std::flush;
 
 
 }
@@ -727,8 +727,8 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     // find number of lines
     int ch, number_of_lines = 0;
     while ( EOF != ( ch=getc ( SpecFile ) ) )   if ( '\n' == ch )  ++number_of_lines;
-    if (m_FParams.debug>1)std::cout << "\nSpecFile = " << SimParams_file_path << std::flush;
-    if (m_FParams.debug>1)std::cout << "\nNumber of lines in SpecFile = " << number_of_lines << std::flush;
+    if (verbosity>1)std::cout << "\nSpecFile = " << SimParams_file_path << std::flush;
+    if (verbosity>1)std::cout << "\nNumber of lines in SpecFile = " << number_of_lines << std::flush;
 
     // read file
     std::fseek(SpecFile, 0, SEEK_SET);
@@ -840,9 +840,9 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
 
     ret += std::fscanf ( SpecFile, "\n");
 
-    m_FParams.debug = launchParams.debug ;
-    if (m_FParams.debug>1)std::cout<<"\n\n   launchParams.debug="<<launchParams.debug<<",  m_FParams.debug="<<m_FParams.debug <<" .\t"<<std::flush;
-    if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::ReadSpecificationFile(..),  ret = " << ret << std::flush;
+    verbosity = launchParams.debug ;
+    if (verbosity>1)std::cout<<"\n\n   launchParams.debug="<<launchParams.debug<<",  verbosity="<<verbosity <<" .\t"<<std::flush;
+    if (verbosity>1) std::cout << "\nvoid FluidSystem::ReadSpecificationFile(..),  ret = " << ret << std::flush;
     fclose ( SpecFile );
     return;
 }
@@ -1126,7 +1126,7 @@ void FluidSystem::WriteResultsCSV ( const char * input_folder, const char * outp
 void FluidSystem::SaveUintArray( uint* array, int numElem1, const char * relativePath ){ /// Used to save an array to .csv for debugging.
    FILE* fp = fopen ( relativePath, "w" );
     if (fp == NULL) {
-        if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::SaveUintArray ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
+        if (verbosity>1) std::cout << "\nvoid FluidSystem::SaveUintArray ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
         assert(0);
     }
     for(uint i=0; i<numElem1; i+=100){
@@ -1139,13 +1139,13 @@ void FluidSystem::SaveUintArray( uint* array, int numElem1, const char * relativ
     std::stringstream ss;
     ss << relativePath;
     ss >> s;
-    if (m_FParams.debug>1) cout<<"\nSaved UintArray file: "<< s <<"\n"<<std::flush;
+    if (verbosity>1) cout<<"\nSaved UintArray file: "<< s <<"\n"<<std::flush;
 }
 
 void FluidSystem::SaveUintArray_2Columns( uint* array, int numElem1, int buff_len, const char * relativePath ){ /// Used to save DESNSE_LIST_CHANGES (particle,bondIdx) arrays to .csv for debugging.
    FILE* fp = fopen ( relativePath, "w" );
     if (fp == NULL) {
-        if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::SaveUintArray_2Collumns ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
+        if (verbosity>1) std::cout << "\nvoid FluidSystem::SaveUintArray_2Collumns ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
         assert(0);
     }
     for(uint i=0; i<numElem1; i+=100){
@@ -1158,13 +1158,13 @@ void FluidSystem::SaveUintArray_2Columns( uint* array, int numElem1, int buff_le
     std::stringstream ss;
     ss << relativePath;
     ss >> s;
-    if (m_FParams.debug>1) cout<<"\nSaved UintArray_2Columns file: "<< s <<"\n"<<std::flush;
+    if (verbosity>1) cout<<"\nSaved UintArray_2Columns file: "<< s <<"\n"<<std::flush;
 }
 
 void FluidSystem::SaveUintArray_2D( uint* array, int numElem1, int numElem2, const char * relativePath ){ /// Used to save DESNSE_LIST_CHANGES (particle,bondIdx) arrays to .csv for debugging.
    FILE* fp = fopen ( relativePath, "w" );
     if (fp == NULL) {
-        if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::SaveUintArray_2D ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
+        if (verbosity>1) std::cout << "\nvoid FluidSystem::SaveUintArray_2D ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
         assert(0);
     } 
     for(uint i=0; i<numElem1; i++){ 
@@ -1177,7 +1177,7 @@ void FluidSystem::SaveUintArray_2D( uint* array, int numElem1, int numElem2, con
     std::stringstream ss;
     ss << relativePath;
     ss >> s;  
-    if (m_FParams.debug>1) cout<<"\nSaved UintArray_2D file: "<< s <<"\n"<<std::flush;
+    if (verbosity>1) cout<<"\nSaved UintArray_2D file: "<< s <<"\n"<<std::flush;
 }
 
 void FluidSystem::SavePointsVTP2 ( const char * relativePath, int frame ){// uses vtk library to write binary vtp files
@@ -1190,7 +1190,7 @@ void FluidSystem::SavePointsVTP2 ( const char * relativePath, int frame ){// use
 
     // points, vertices & lines
     // points & vertices = FPOS 3df
-if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
+if (verbosity>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
     vtkSmartPointer<vtkPoints> points3D = vtkSmartPointer<vtkPoints>::New();                           // Points3D
 	vtkSmartPointer<vtkCellArray> Vertices = vtkSmartPointer<vtkCellArray>::New();                     // Vertices
     uint num_active_points = 0;
@@ -1212,7 +1212,7 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
             */
         }else break;  // Must sort particles before SavePointsVTP2. NB between adding particles and countingSortFull(), there may be a mixture of valid and invalid prticles at the end of the list.
 	}
-	if (m_FParams.debug>1) std::cout<<"\n\nSavePointsVTP2: chk1 num_active_points="<<num_active_points<<std::flush;
+	if (verbosity>1) std::cout<<"\n\nSavePointsVTP2: chk1 num_active_points="<<num_active_points<<std::flush;
 	// Inset vertices for sim volume
 	{
         vtkIdType pid[1];
@@ -1229,7 +1229,7 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
             Vertices->InsertNextCell(1,pid);
         }
     }
-    if (m_FParams.debug>1) std::cout<<"\n\nSavePointsVTP2: chk2 num_active_points="<<num_active_points<<std::flush;
+    if (verbosity>1) std::cout<<"\n\nSavePointsVTP2: chk2 num_active_points="<<num_active_points<<std::flush;
 
     // edges = FELASTIDX [0]current index uint                                                         // Lines
     vtkSmartPointer<vtkCellArray> Lines = vtkSmartPointer<vtkCellArray>::New();
@@ -1592,7 +1592,7 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
 
     //polydata->GetCellData()->AddArray(bondLength);
 
-    //if (m_FParams.debug>1)cout << "\nStarting writing bond data to polydata\n" << std::flush;
+    //if (verbosity>1)cout << "\nStarting writing bond data to polydata\n" << std::flush;
     polydata->GetCellData()->AddArray(BondsUIntData);
     //polydata->GetCellData()->AddArray(BondsFloatData);
     polydata->GetCellData()->AddArray(elastic_limit);
@@ -1621,7 +1621,7 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
 
     polydata->GetPointData()->AddArray(ftissue);
 
-    //if (m_FParams.debug>1)cout << "\nFinished writing bond data to polydata\n" << std::flush;
+    //if (verbosity>1)cout << "\nFinished writing bond data to polydata\n" << std::flush;
 
     // WRITER
 	vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();       // writer
@@ -1635,8 +1635,8 @@ if (m_FParams.debug>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
     //writer->SetDataModeToBinary();
 
 	writer->Write();
-if (m_FParams.debug>1)cout << "\nFinished writing vtp file " << buf << "." << endl;
-if (m_FParams.debug>1)cout << "\tnum_active_points: " << num_active_points << endl;
-	//if (m_FParams.debug>1)cout << "\nFinished writing vtp file " << buf << "." << endl;
-	//if (m_FParams.debug>1)cout << "\tnum_active_points: " << num_active_points << endl;
+if (verbosity>1)cout << "\nFinished writing vtp file " << buf << "." << endl;
+if (verbosity>1)cout << "\tnum_active_points: " << num_active_points << endl;
+	//if (verbosity>1)cout << "\nFinished writing vtp file " << buf << "." << endl;
+	//if (verbosity>1)cout << "\tnum_active_points: " << num_active_points << endl;
 }

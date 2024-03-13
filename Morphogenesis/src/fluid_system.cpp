@@ -105,7 +105,7 @@ bool clCheck(cl_int status, const char* method, const char* apicall, const char*
 }
 /*
 FluidSystem::FluidSystem (RunCL& runcl){
-    if (m_FParams.debug>1)cout<<"\n\nFluidSystem ()"<<std::flush;
+    if (verbosity>1)cout<<"\n\nFluidSystem ()"<<std::flush;
     memset ( &m_Fluid, 0,		sizeof(FBufs) );
     memset ( &m_FluidTemp, 0,	sizeof(FBufs) );
     memset ( &m_FParams, 0,		sizeof(FParams) );
@@ -263,7 +263,7 @@ FluidSystem::~FluidSystem()
 
 void FluidSystem::InitializeOpenCL()
 {
-																				if(verbosity>0) cout << "FluidSystem::InitializeOpenCL_chk0\n" << flush;
+																				if(verbosity>0) cout << "-----FluidSystem::InitializeOpenCL() started -----\n" << flush;
 	stringstream 		ss;
 	ss << "allocatemem";
 	cl_int status;
@@ -373,7 +373,7 @@ void FluidSystem::InitializeOpenCL()
 	//clFlush(uload_queue);
     //clFinish(uload_queue);
 //     status = clFinish(uload_queue); 					if (status != CL_SUCCESS)	{ cout << "\nclFinish(uload_queue)="				<< status << checkerror(status)<<"\n"<<flush; exit_(status);}
-                                                                            if(verbosity>0) cout << "-----InitializeOpenCL() finished-----\n\n" << flush;
+                                                                            if(verbosity>0) cout << "-----FluidSystem::InitializeOpenCL() finished-----\n\n" << flush;
 }
 
 
@@ -400,7 +400,7 @@ bool isBufferAllZeros(const char* buffer, int stride, int cpucnt) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void FluidSystem::Initialize(){             //Left aside for now, implement by copying from InitializeOpenCLused for CPU only for "check_demo".
-                                                                            if(verbosity>0) cout << "-------FluidSystem::Initialize()-------\n" << flush;
+                                                                            if(verbosity>0) cout << "\n-------FluidSystem::Initialize()-------" << flush;
     // An FBufs struct holds an array of pointers.
     // Clear all buffers
     memset ( &m_Fluid,      0,      sizeof(FBufs) );
@@ -415,18 +415,24 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
 	m_Frame = 0;
     m_Time = 0; //TODO remove
 
-    if (m_FParams.debug>1)std::cout << "Chk1.4 \n";
+    if (verbosity>1)std::cout << "\nChk1.4 ";
 
     AllocateBuffer ( FPARAMS,		sizeof(FParams),	1,	0,	 GPU_OFF,     CPU_YES ); //AllocateBuffer ( int buf_id, int stride,     int cpucnt, int gpucnt,    int gpumode,    int cpumode )
 
-    if (m_FParams.debug>1)std::cout << "Chk1.6 \n";
+    if (verbosity>1)std::cout << "\nChk1.6 ";
 
-                                                                            if(verbosity>0) cout << "\n-----Initialize() successful-----\n" << endl;
+                                                                            if(verbosity>0) cout << "\n-----FluidSystem::Initialize() successful-----\n" << endl;
 
 }
 
 void FluidSystem::UpdateGenome (){              // Update Genome on GPU
+
+    if (verbosity>0) std::cout << "\n-----UpdateGenome() started... -----" << std::flush;
+
     clCheck ( clEnqueueWriteBuffer(m_queue, m_FGenomeDevice, CL_TRUE, 0, sizeof(FGenome), &m_FGenome, 0, NULL, NULL), "FluidUpdateGenome", "clEnqueueWriteBuffer", "m_FGenomeDevice", mbDebug);
+
+    if (verbosity>0) std::cout << "\n-----UpdateGenome() finished-----\n" << std::flush;
+
 }
 
 FGenome	FluidSystem::GetGenome(){
@@ -522,6 +528,9 @@ void FluidSystem::FluidParamCL (float ss, float sr, float pr, float mass, float 
 }
 
 void FluidSystem::UpdateParams (){
+
+    if (verbosity>0) std::cout << "\n-----UpdateParams() started... -----" << std::flush;
+
     // Update Params on GPU
     cl_float3 grav = cl_float3_multiplyFloat(&m_Vec[PPLANE_GRAV_DIR], m_Param[PGRAV]);
     FluidParamCL (m_Param[PSIMSCALE], m_Param[PSMOOTHRADIUS], m_Param[PRADIUS], m_Param[PMASS], m_Param[PRESTDENSITY],
@@ -529,6 +538,11 @@ void FluidSystem::UpdateParams (){
                       m_Param[PVISC], m_Param[PSURFACE_TENSION], m_Param[PEXTDAMP], m_Param[PFORCE_MIN], m_Param[PFORCE_MAX], m_Param[PFORCE_FREQ],
                       m_Param[PGROUND_SLOPE], grav.x, grav.y, grav.z, m_Param[PACCEL_LIMIT], m_Param[PVEL_LIMIT],
                       m_Param[PACTUATION_FACTOR], m_Param[PACTUATION_PERIOD]);
+
+    if (verbosity>0) std::cout << "\n-----UpdateParams finished()-----\n" << std::flush;
+
+
+
 }
 
 void FluidSystem::SetParam (int p, float v ){
@@ -546,7 +560,7 @@ void FluidSystem::Exit (){
     // Free fluid buffers
     clCheck(clFinish(m_queue), "Exit ", "clFinish", "before cudaDeviceReset()", mbDebug);
     for (int n=0; n < MAX_BUF; n++ ) {
-        if (m_FParams.debug>0)std::cout << "\n n = " << n << std::flush;
+        if (verbosity>0)std::cout << "\n n = " << n << std::flush;
         if ( bufC(&m_Fluid, n) != 0x0 )
             free ( bufC(&m_Fluid, n) );
     exit(0);
@@ -556,7 +570,7 @@ void FluidSystem::Exit (){
 void FluidSystem::Exit_no_CL (){
     // Free fluid buffers
     for (int n=0; n < MAX_BUF; n++ ) {
-        if (m_FParams.debug>0)std::cout << "\n n = " << n << std::flush;
+        if (verbosity>0)std::cout << "\n n = " << n << std::flush;
         if (bufC(&m_Fluid, n) != 0x0 )
             free ( bufC(&m_Fluid, n) );
     }
@@ -566,7 +580,7 @@ void FluidSystem::Exit_no_CL (){
 void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode) {
     bool rtn = true;
     cl_int err;
-    if (m_FParams.debug > 0) {
+    if (verbosity > 0) {
         std::cout << "\nAllocateBuffer ( int buf_id=" << buf_id << ", int stride=" << stride << ", int cpucnt=" << cpucnt
                   << ", int gpucnt=" << gpucnt << ", int " << gpumode << ", int " << cpumode << " )\t" << std::flush;
     }
@@ -594,15 +608,15 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
         char* src_buf = bufC(&m_Fluid, buf_id);
         char* dest_buf = (char*)malloc(cpucnt * stride);
-
+        /*
         if (src_buf != nullptr) {
             //cout << "\n-----memcpy() src_buf to dest_buf-----" << flush;
             memcpy(dest_buf, src_buf, cpucnt * stride);
             //isBufferAllZeros(dest_buf, cpucnt, stride);
-            cout << "\n-> src_buf NOT a nullpointer!---------------------------------------" << flush;
+            cout << "\n-> src_buf NOT a nullpointer!" << flush;
 
             free(src_buf);
-        }
+        }*/
         if (src_buf == nullptr) {cout << "\n-----src_buf is a nullpointer!-----" << flush;}
 
         m_Fluid.mcpu[buf_id] = dest_buf;
@@ -620,23 +634,20 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
             if (gpuptr(&m_Fluid, buf_id) != 0x0) {
 
-                clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject", "gpuVar", mbDebug);
+                clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject SINGLE/DUAL", "gpuVar", mbDebug);
             }
 
             setGpuBuf(&m_Fluid, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err));
                                                                                             if(verbosity>0) cout << checkerror(err)  << "\nstride*gpucnt: " << stride*gpucnt << "\n" << flush;
 
-            if (m_FParams.debug > 1) {
-                std::cout << "\t\t gpuptr(&m_Fluid, " << buf_id << ")'" << gpuptr(&m_Fluid, buf_id) << ",   gpu(&m_Fluid, " << buf_id << ")="
-                          << gpuVar(&m_Fluid, buf_id) << "\t" << std::flush;
-            }
+                                                                                            if (verbosity > 1) { std::cout << "\t\t gpuptr(&m_Fluid, " << buf_id << ")'" << gpuptr(&m_Fluid, buf_id) << ",   gpu(&m_Fluid, " << buf_id << ")=" << gpuVar(&m_Fluid, buf_id) << "\t" << std::flush;}
 
             if (err != CL_SUCCESS) {_exit(err);}
         }
 
         if (gpumode == GPU_TEMP || gpumode == GPU_DUAL) {
             if (gpuptr(&m_FluidTemp, buf_id) != 0x0) {
-                clCheck(clReleaseMemObject(gpuVar(&m_FluidTemp, buf_id)), "AllocateBuffer", "clReleaseMemObject", "gpuVar", mbDebug);
+                clCheck(clReleaseMemObject(gpuVar(&m_FluidTemp, buf_id)), "AllocateBuffer", "clReleaseMemObject TEMP/DUAL", "gpuVar", mbDebug);
             }
 
             setGpuBuf(&m_FluidTemp, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err));
@@ -658,8 +669,8 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
 
 
 
-    if (verbosity>0)std::cout<<"\n\nAllocateParticles ( cnt= "<<cnt<<", gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<m_FParams.debug<<", launchParams.debug="<<launchParams.debug<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\t";//<<std::flush;
-    if (m_FParams.debug>1)std::cout<<"\n\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUAL=3, CPU_OFF=4, CPU_YES=5"<<std::flush;
+    if (verbosity>0)std::cout<<"\n\nAllocateParticles ( cnt= "<<cnt<<", gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<verbosity<<", launchParams.debug="<<launchParams.debug<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\n";//<<std::flush;
+    if (verbosity>1)std::cout<<"\n\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUAL=3, CPU_OFF=4, CPU_YES=5"<<std::flush;
     AllocateBuffer ( FPOS,		sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FCLR,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FVEL,		sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
@@ -731,13 +742,13 @@ void FluidSystem::AllocateBufferDenseLists(int buf_id, int stride, int gpucnt, i
     clCheck(clFinish(m_queue), "AllocateBufferDenseLists ", "clFinish", "before 1st clGetDeviceInfo", mbDebug);
     cl_ulong total;
     clGetDeviceInfo(m_device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(cl_ulong), &total, NULL);
-    if (m_FParams.debug > 1) printf("\nOpenCL Memory: total=%lu.\t", total);
+    if (verbosity > 1) printf("\nOpenCL Memory: total=%lu.\t", total);
 
     cl_mem* listpointer = (cl_mem*)&bufC(&m_Fluid, lists)[buf_id * sizeof(cl_mem)];
 
-    if (m_FParams.debug > 1) printf("\n*listpointer=%p, listpointer=%p,  lists=%i, buf_id=%i, \t", (cl_mem*)*listpointer, listpointer, lists, buf_id);
+    if (verbosity > 1) printf("\n*listpointer=%p, listpointer=%p,  lists=%i, buf_id=%i, \t", (cl_mem*)*listpointer, listpointer, lists, buf_id);
 
-    if (m_FParams.debug > 1) printf("\nAllocateBufferDenseLists: buf_id=%i, stride=%i, gpucnt=%i, lists=%i,  .\t", buf_id, stride, gpucnt, lists);
+    if (verbosity > 1) printf("\nAllocateBufferDenseLists: buf_id=%i, stride=%i, gpucnt=%i, lists=%i,  .\t", buf_id, stride, gpucnt, lists);
 
     if (*listpointer != NULL) clCheck(clReleaseMemObject(*listpointer), "AllocateBufferDenseLists1", "clReleaseMemObject", "*listpointer", mbDebug);
 
@@ -751,11 +762,11 @@ void FluidSystem::AllocateBufferDenseLists(int buf_id, int stride, int gpucnt, i
 
 void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSystem::AllocateBuffer (int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode)
     // Allocate grid
-        if (verbosity>0)std::cout<<"\n\nAllocateGrid ( gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<m_FParams.debug<<", launchParams.debug="<<launchParams.debug<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\t"<<std::flush;
+        if (verbosity>0)std::cout<<"\n\nAllocateGrid ( gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<verbosity<<", launchParams.debug="<<launchParams.debug<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\t"<<std::flush;
 
     int cnt = m_GridTotal;
     m_FParams.szGrid = (m_FParams.gridBlocks * m_FParams.gridThreads);
-    if (m_FParams.debug>1)cout<<"\nAllocateGrid: m_FParams.szGrid = ("<<m_FParams.gridBlocks<<" * "<<m_FParams.gridThreads<<")"<<std::flush;
+    if (verbosity>1)cout<<"\nAllocateGrid: m_FParams.szGrid = ("<<m_FParams.gridBlocks<<" * "<<m_FParams.gridThreads<<")"<<std::flush;
     AllocateBuffer ( FGRID,		sizeof(uint),		mMaxPoints,	m_FParams.szPnts,	gpu_mode, cpu_mode );    // # grid elements = number of points
     AllocateBuffer ( FGRIDCNT,	sizeof(uint),		cnt,	    m_FParams.szGrid,	gpu_mode, cpu_mode );
     AllocateBuffer ( FGRIDOFF,	sizeof(uint),		cnt,	    m_FParams.szGrid,	gpu_mode, cpu_mode );
@@ -825,13 +836,13 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
     *(bufF(&m_Fluid, FSTATE) + n ) = (float) rand();
     *(bufI(&m_Fluid, FAGE) + n) = Age;
     *(bufI(&m_Fluid, FCLR) + n) = Clr;
-  if (m_FParams.debug>1)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
+  if (verbosity>1)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
 
         //std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 2 XXXXXXXXXXXXXXXXX \t" << flush; //TODO remove
     uint* ElastIdx = (bufI(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     float* ElastIdxFlt = (bufF(&m_Fluid, FELASTIDX) + n * BOND_DATA );
     for (int i = 0; i<BONDS_PER_PARTICLE;i++){
-        //if (m_FParams.debug>1)printf("ADD PARTICLE: \t%u",_ElastIdxU[i*DATA_PER_BOND+0]);  //=65535
+        //if (verbosity>1)printf("ADD PARTICLE: \t%u",_ElastIdxU[i*DATA_PER_BOND+0]);  //=65535
         ElastIdx[i*DATA_PER_BOND+0] = _ElastIdxU[i*DATA_PER_BOND+0] ;
         ElastIdx[i*DATA_PER_BOND+5] = _ElastIdxU[i*DATA_PER_BOND+5] ;
         ElastIdx[i*DATA_PER_BOND+6] = _ElastIdxU[i*DATA_PER_BOND+6] ;
@@ -865,7 +876,7 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
 }
 
 void FluidSystem::AddNullPoints (){// fills unallocated particles with null data upto mMaxPoints. These can then be used to "create" new particles.
-    if (m_FParams.debug>1) std::cout<<"\n AddNullPoints ()\n"<<std::flush;
+    if (verbosity>1) std::cout<<"\n AddNullPoints ()\n"<<std::flush;
     cl_float3 Pos, Vel, binSize;
     uint Age, Clr;
     uint  ElastIdxU[BOND_DATA];
@@ -905,16 +916,16 @@ void FluidSystem::AddNullPoints (){// fills unallocated particles with null data
     for (int j=0;j<NUM_GENES;j++)   EpiGen[j]   = 0;
 
     // TODO FPARTICLE_ID   // should equal mNumPoints when created
-    //if (m_FParams.debug>1)std::cout<<"\n AddNullPoints (): mNumPoints="<<mNumPoints<<", mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
+    //if (verbosity>1)std::cout<<"\n AddNullPoints (): mNumPoints="<<mNumPoints<<", mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
     while (mNumPoints < mMaxPoints){
         AddParticleMorphogenesis2 (&Pos, &Vel, Age, Clr, ElastIdxU, ElastIdxF, Particle_Idx, Particle_ID, Mass_Radius,  NerveIdx, Conc, EpiGen );
-        //if (m_FParams.debug>1)std::cout<<"\n AddNullPoints (): mNumPoints="<<mNumPoints<<", mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
+        //if (verbosity>1)std::cout<<"\n AddNullPoints (): mNumPoints="<<mNumPoints<<", mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
     }
 }
 
 
 void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, float spacing, float offs, uint demoType ){  // NB ony used in WriteDemoSimParams() called by make_demo.cpp . Creates a cuboid with all particle values definable.
-    if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::flush;
+    if (verbosity>1)std::cout << "\n SetupAddVolumeMorphogenesis2 \t" << std::flush;
 
     cl_float3 pos;
     float dx, dy, dz;
@@ -943,7 +954,7 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
     cl_float3 volV3DF = cl_float3_subtract_cl_float3(&max, &min);
     int num_particles_to_make = 8 * int(volV3DF.x*volV3DF.y*volV3DF.z);// 27 * //int(volV3DF.x*volV3DF.y*volV3DF.z / spacing*spacing*spacing);
     srand((unsigned int)time(NULL));
-    if (m_FParams.debug>1)cout<<"\nSetupAddVolumeMorphogenesis2: num_particles_to_make= "<<num_particles_to_make<<",   min=("<<min.x<<","<<min.y<<","<<min.z<<"), max=("<<max.x<<","<<max.y<<","<<max.z<<") "<<std::flush;
+    if (verbosity>1)cout<<"\nSetupAddVolumeMorphogenesis2: num_particles_to_make= "<<num_particles_to_make<<",   min=("<<min.x<<","<<min.y<<","<<min.z<<"), max=("<<max.x<<","<<max.y<<","<<max.z<<") "<<std::flush;
     for (int i=0; i<num_particles_to_make; i++){
         cout << "\n\n\n\nParticle " << i << ",\n mMaxPoints: " << mMaxPoints << ",\n mNumPoints: " << mNumPoints << "\n\n\n" << flush;
         Pos.x =  min.x + (float(rand())/float((RAND_MAX)) * dx) ;
@@ -1035,14 +1046,14 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
                 /* uint* */ EpiGen
                 );
                 if(p==-1){
-                    if (m_FParams.debug>1){std::cout << "\n SetupAddVolumeMorphogenesis2 exited on p==-1, Pos=("<<Pos.x<<","<<Pos.y<<","<<Pos.z<<"), Particle_ID="<<Particle_ID<<",  EpiGen[0]="<<EpiGen[0]<<" \n " << std::flush ;}
+                    if (verbosity>1){std::cout << "\n SetupAddVolumeMorphogenesis2 exited on p==-1, Pos=("<<Pos.x<<","<<Pos.y<<","<<Pos.z<<"), Particle_ID="<<Particle_ID<<",  EpiGen[0]="<<EpiGen[0]<<" \n " << std::flush ;}
                     return;
                 }
      }
     cout <<"-----AddParticleMorphogenesis2() finished-----";
     mActivePoints=mNumPoints; // Initial active points, used in make_demo2.cpp, by WriteResultsCSV()
     AddNullPoints ();            // If spare particles remain, fill with null points. NB these can be used to "create" particles.
-    if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 finished \n" << std::flush ;
+    if (verbosity>1)std::cout << "\n SetupAddVolumeMorphogenesis2 finished \n" << std::flush ;
 }
 
 /*void FluidSystem::Run (){   // deprecated, rather use: Run(const char * relativePath, int frame, bool debug)
@@ -1236,7 +1247,7 @@ std::cout << "\n\n Chk13 \n"<<std::flush;
 
     m_FParams.frame = frame;                 // used by computeForceCuda( .. Args)
 
-if (m_FParams.debug>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<frame<<" #########################################################"<<std::flush;
+if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<frame<<" #########################################################"<<std::flush;
 
     cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "begin Run", mbDebug);
 
@@ -1566,7 +1577,7 @@ void FluidSystem::Run (const char * relativePath, int frame, bool debug, bool ge
 
     m_FParams.frame = frame;                 // used by computeForceCuda( .. Args)
 
-if (m_FParams.debug>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<frame<<" #########################################################"<<std::flush;
+if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<frame<<" #########################################################"<<std::flush;
 
     clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "begin Run", mbDebug);
 
@@ -1797,7 +1808,7 @@ if (m_FParams.debug>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame 
 
 void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting the particles
 
-    if(m_FParams.debug>1)std::cout<<"-----starting Run2PhysicalSort-----\n\n";
+    if(verbosity>1)std::cout<<"-----starting Run2PhysicalSort-----\n\n";
     InsertParticlesCL ( 0x0, 0x0, 0x0 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After InsertParticlesCL", mbDebug);
 
@@ -1823,11 +1834,11 @@ void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting 
     CountingSortFullCL ( 0x0 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
 
-    if(m_FParams.debug>1)std::cout<<"\n####\nRun2PhysicalSort()end";
+    if(verbosity>1)std::cout<<"\n####\nRun2PhysicalSort()end";
 }
 
 void FluidSystem::Run2InnerPhysicalLoop(){ //
-    if(m_FParams.debug>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()start";
+    if(verbosity>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()start";
     if(m_FParams.freeze==true){
         InitializeBondsCL ();
         clCheck(clFinish(m_queue), "Run", "clFinish", "After InitializeBondsCL ", mbDebug);
@@ -1866,17 +1877,17 @@ void FluidSystem::Run2InnerPhysicalLoop(){ //
     }
 
     AdvanceTime ();
-    if(m_FParams.debug>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()end";
+    if(verbosity>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()end";
 }
 
 void FluidSystem::Run2GeneAction(){//NB gene sorting occurs within Run2PhysicalSort()
-    if(m_FParams.debug>1)std::cout<<"\n####\nRun2GeneAction()start";
+    if(verbosity>1)std::cout<<"\n####\nRun2GeneAction()start";
     ComputeDiffusionCL();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After ComputeDiffusionCL", mbDebug);
 
     ComputeGenesCL(); // NB (i)Epigenetic countdown, (ii) GRN gene regulatory network sensitivity to TransciptionFactors (FCONC)
     clCheck(clFinish(m_queue), "Run", "clFinish", "After ComputeGenesCL", mbDebug);
-    if(m_FParams.debug>1)std::cout<<"\n####\nRun2GeneAction()end";
+    if(verbosity>1)std::cout<<"\n####\nRun2GeneAction()end";
 }
 
 void FluidSystem::AdvanceTime () {  // may need to prune unused details from this fn.
@@ -1886,7 +1897,7 @@ void FluidSystem::AdvanceTime () {  // may need to prune unused details from thi
 void FluidSystem::setFreeze(bool freeze){
     m_FParams.freeze = freeze;
 
-    std::cout<<"\n-------setFreeze() started...-------"<<std::flush;
+    std::cout<<"\n-------setFreeze() started... -------"<<std::flush;
 
     if (freeze == true) {
             m_FParams.freezeBoolToInt = 1;
@@ -1901,7 +1912,7 @@ void FluidSystem::setFreeze(bool freeze){
 }
 
 void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
-    if(m_FParams.debug>1){std::cout<<"\n####\nRun2Remodelling()start";}
+    if(verbosity>1){std::cout<<"\n####\nRun2Remodelling()start";}
     AssembleFibresCL ();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After AssembleFibresCL", mbDebug);
 
@@ -1933,11 +1944,12 @@ void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
         //TransferFromTempCL(int buf_id, int sz );
     }
 
-    if(m_FParams.debug>1)std::cout<<"\n####\nRun2Remodelling()end";
+    if(verbosity>1)std::cout<<"\n####\nRun2Remodelling()end";
 }
 
 void FluidSystem::SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, float cell_size){
-    std::cout<<"\n-------SetupGrid() started...-------"<<std::flush;
+    if (verbosity > 0)  std::cout<<"\n-------SetupGrid() started... -------"<<std::flush;
+
     float world_cellsize = cell_size / sim_scale;
     m_GridMin = min;
     m_GridMax = max;
@@ -1953,7 +1965,7 @@ void FluidSystem::SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, flo
     m_GridDelta = *cl_float3_operator_equal_cl_int3(&m_GridDelta, &m_GridRes);		// delta = translate from world space to cell #
     m_GridDelta = cl_float3_devide_cl_float3(&m_GridDelta, &m_GridSize);
     m_GridTotal = (int)(m_GridRes.x * m_GridRes.y * m_GridRes.z);
-    cout << "\n\n\n m_GridTotal: " << m_GridTotal << "\n\n\n" << flush;
+    cout << "\n m_GridTotal: " << m_GridTotal << flush;
 
     // Number of cells to search:
     // n = (2r / w) +1,  where n = 1D cell search count, r = search radius, w = world cell width
@@ -1962,7 +1974,7 @@ void FluidSystem::SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, flo
     m_GridAdjCnt = m_GridSrch * m_GridSrch * m_GridSrch ;			// 3D search count = n^3, e.g. 2x2x2=8, 3x3x3=27, 4x4x4=64
 
     if ( m_GridSrch > 6 ) {
-        //if (m_FParams.debug>1)nvprintf ( "ERROR: Neighbor search is n > 6. \n " );
+        //if (verbosity>1)nvprintf ( "ERROR: Neighbor search is n > 6. \n " );
         exit(-1);
     }
 
@@ -1975,12 +1987,12 @@ void FluidSystem::SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, flo
     if ( mPackGrid != 0x0 ) free ( mPackGrid );
     mPackGrid = (int*) malloc ( sizeof(int) * m_GridTotal );
 
-    std::cout<<"\n-------SetupGrid() finished.-------"<<std::flush;
+    if (verbosity > 0) std::cout<<"\n-------SetupGrid() finished.-------\n\n"<<std::flush;
 
 }
 
 void FluidSystem::SetupSPH_Kernels (){
-    std::cout<<"\n-------SetupSPH_Kernels() started...-------"<<std::flush;
+    std::cout<<"\n-------SetupSPH_Kernels() started... -------"<<std::flush;
     m_Param [ PDIST ] = pow ( (float) m_Param[PMASS] / m_Param[PRESTDENSITY], 1.0f/3.0f );
     m_R2 = m_Param [PSMOOTHRADIUS] * m_Param[PSMOOTHRADIUS];
     m_Poly6Kern = 315.0f / (64.0f * 3.141592f * pow( m_Param[PSMOOTHRADIUS], 9.0f) );	// Wpoly6 kernel (denominator part) - 2003 Muller, p.4
@@ -2368,6 +2380,9 @@ void FluidSystem::SetupExampleGenome()  {   // need to set up a demo genome
 }
 
 void FluidSystem::SetupSpacing (){
+
+                                                                                                                            if(verbosity>0)std::cout<<"\n-----SetupSpacing() started... -----\n";
+
     m_Param [ PSIMSIZE ] = m_Param [ PSIMSCALE ] * (m_Vec[PVOLMAX].z - m_Vec[PVOLMIN].z);
 
     if ( m_Param[PSPACING] == 0 ) {
@@ -2379,7 +2394,7 @@ void FluidSystem::SetupSpacing (){
         m_Param [PDIST] = m_Param[PSPACING] * m_Param[PSIMSCALE] / 0.87f;
         m_Param [PRESTDENSITY] = m_Param[PMASS] / pow ( (float) m_Param[PDIST], 3.0f );
     }
-                                                                                                                        if (m_FParams.debug>0)printf ( "\nSetupSpacing: Density=,%f, Spacing=,%f, PDist=,%f\n", m_Param[PRESTDENSITY], m_Param[PSPACING], m_Param[PDIST] );
+                                                                                                                        if (verbosity>0)printf ( "\nSetupSpacing: Density=,%f, Spacing=,%f, PDist=,%f\n", m_Param[PRESTDENSITY], m_Param[PSPACING], m_Param[PDIST] );
 
     // Particle Boundaries
     m_Vec[PBOUNDMIN] = m_Vec[PVOLMIN];
@@ -2387,13 +2402,13 @@ void FluidSystem::SetupSpacing (){
     m_Vec[PBOUNDMAX] = m_Vec[PVOLMAX];
     m_Vec[PBOUNDMAX] = cl_float3_subtractDouble(&m_Vec[PBOUNDMAX], 2.0*(m_Param[PGRIDSIZE] / m_Param[PSIMSCALE])  );
 
-                                                                                                                        if(m_FParams.debug>0)std::cout<<"\n-----SetupSpacing() finished-----\n";
+                                                                                                                        if(verbosity>0)std::cout<<"\n-----SetupSpacing() finished-----\n";
 
 }
 
 void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * relativePath, int gpu_mode, int cpu_mode
      // Allocate buffers for points
-    std::cout<<"\nSetupSimulation chk1 // m_FParams.debug="<<m_FParams.debug<< " // launchParams.num_particles= " << launchParams.num_particles << std::flush;
+    std::cout<<"\nSetupSimulation chk1 // verbosity="<<verbosity<< " // launchParams.num_particles= " << launchParams.num_particles << std::flush;
     cout << " BEFORE SETUP SIMULATION: launchParams.num_particles = " << launchParams.num_particles << "<----------------------------------------------------------------------------" << flush;
 
     if (launchParams.num_particles > 0) {m_Param[PNUM] = launchParams.num_particles;}                             // TODO changed this to an if-statement, is this correct?
@@ -2416,7 +2431,7 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
 
     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
 
-    std::cout<<"\nSetupSimulation chk3, m_FParams.debug="<<m_FParams.debug<<std::flush;
+    std::cout<<"\nSetupSimulation chk3, verbosity="<<verbosity<<std::flush;
 
     if (gpu_mode != GPU_OFF) {     // create CL instance etc..
         cout << "+OpenCL+ Setup started ...." << flush;
@@ -2425,25 +2440,25 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
         cout << "+OpenCL+ Setup finished." << flush;
     }
-    if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk4, mMaxPoints="<<mMaxPoints<<", gpu_mode="<<gpu_mode<<", cpu_mode="<<cpu_mode<<", m_FParams.debug="<<m_FParams.debug<<std::flush;
+    if (verbosity>1)std::cout<<"\nSetupSimulation chk4, mMaxPoints="<<mMaxPoints<<", gpu_mode="<<gpu_mode<<", cpu_mode="<<cpu_mode<<", verbosity="<<verbosity<<std::flush;
 
     AllocateParticles ( mMaxPoints, gpu_mode, cpu_mode );  // allocates only cpu buffer for particles
-    if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk5 "<<std::flush;
+    if (verbosity>1)std::cout<<"\nSetupSimulation chk5 "<<std::flush;
 
     AllocateGrid(gpu_mode, cpu_mode);
-    if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk6 "<<std::flush;
+    if (verbosity>1)std::cout<<"\nSetupSimulation chk6 "<<std::flush;
 
 }
 
 void FluidSystem::Run2Simulation(){
-    printf("\n\n Run2Simulation(), m_FParams.debug=%i .\n", m_FParams.debug );
+    printf("\n\n Run2Simulation(), verbosity=%i .\n", verbosity );
     Init_CLRand();
     auto old_begin = std::chrono::steady_clock::now();
     TransferPosVelVeval ();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
     setFreeze(true);
     m_Debug_file=0;
-    if (m_FParams.debug>0)std::cout<<"\n\nFreeze()"<<-1<<"\n"<<std::flush;
+    if (verbosity>0)std::cout<<"\n\nFreeze()"<<-1<<"\n"<<std::flush;
     Run2PhysicalSort();
     InitializeBondsCL();
 
@@ -2451,12 +2466,12 @@ void FluidSystem::Run2Simulation(){
     clCheck(clFinish(m_queue), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);
     if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
     if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
-    if (m_FParams.debug>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
+    if (verbosity>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
     launchParams.file_num+=100;
     /*
     for (int k=0; k<launchParams.freeze_steps; k++){
       m_Debug_file=0;
-      if (m_FParams.debug>0)std::cout<<"\n\nFreeze()"<<k<<"\n"<<std::flush;
+      if (verbosity>0)std::cout<<"\n\nFreeze()"<<k<<"\n"<<std::flush;
       //Run2PhysicalSort();
       //InitializeBondsCL();
       //Run (launchParams.outPath, launchParams.file_num, (launchParams.debug>4), (launchParams.gene_activity=='y'), (launchParams.remodelling=='y') );
@@ -2491,7 +2506,7 @@ void FluidSystem::Run2Simulation(){
         clCheck(clFinish(m_queue), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);
         if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
         if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
-        if (m_FParams.debug>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
+        if (verbosity>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
     }
     setFreeze(false);                                                                                       // freeze=false => bonds can be broken now.
     printf("\n\nFreeze finished, starting normal Run ##############################################\n\n");
@@ -2516,7 +2531,7 @@ void FluidSystem::Run2Simulation(){
         clCheck(clFinish(m_queue), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);
         if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
         if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
-        if (m_FParams.debug>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
+        if (verbosity>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
 
         auto end = std::chrono::steady_clock::now();
         std::chrono::duration<double> time = end - begin;

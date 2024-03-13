@@ -107,7 +107,7 @@ std::cout <<"\nchk load_sim_0.2.1\n"<<std::flush;
     fluid.ReadGenome ( genomePath );    
 std::cout <<"\nchk load_sim_0.2.2\n"<<std::flush;
 
-    fluid.ReadPointsCSV2 ( pointsPath, GPU_DUAL, CPU_YES );    // NB currently GPU allocation is by Allocate particles, called by ReadPointsCSV.
+    fluid.ReadPointsCSV2 ( pointsPath, GPU_SINGLE, CPU_YES );    // NB currently GPU allocation is by Allocate particles, called by ReadPointsCSV.
 std::cout <<"\nchk load_sim_0.3\n"<<std::flush;
 
     fluid.Init_CLRand();

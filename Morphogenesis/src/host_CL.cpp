@@ -36,6 +36,9 @@ cl_int FluidSystem::clMemsetD32(cl_mem buffer, int value, size_t count) {
 }
 
 void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size, cl_float3 delta, cl_float3 gmin, cl_float3 gmax, int total, int chk ){
+
+    if (verbosity>0) std::cout << "\n-----FluidSetupCL()  started... -----\n" << std::flush;
+
     m_FParams.pnum = num;
     m_FParams.maxPoints = num;
     m_FParams.freeze = false;
@@ -74,10 +77,13 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size
                     "\nm_FParams.itemsPerGroup:" << m_FParams.itemsPerGroup <<
                     "\nm_FParams.numGroups:" << m_FParams.numGroups <<
                     "\nm_FParams.numItems:" << m_FParams.numItems <<
-            "\n\n++++++++++++++++++++++++++++++++++++++++++\n" << std::flush;
+            "\n\n++++++++++++++++++++++++++++++++++++++++++\n\n\n" << std::flush;
 
     m_FParams.szPnts = (m_FParams.numGroups  * m_FParams.numItems);
-    cout << "m_FParams.szPnts: " << m_FParams.szPnts;
+    if (verbosity > 1) cout << "m_FParams.szPnts: " << m_FParams.szPnts;
+
+    if (verbosity>0) std::cout << "\n-----FluidSetupCL() finished----- \n" << std::flush;
+
 }
 
 void FluidSystem::TransferToTempCL ( int buf_id, int sz ){
@@ -114,7 +120,7 @@ void FluidSystem::TransferFromTempCL ( int buf_id, int sz ){
 void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin sorting
     cl_int err;
 
-    if (m_FParams.debug>1) printf("\n-----InsertParticles() started-----");
+    if (verbosity>1) printf("\n-----InsertParticles() started-----");
 
         printf("\nm_GridTotal = %d\n", m_GridTotal);
 
@@ -189,7 +195,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
     clWaitForEvents(1, &func_insert_event);
 
-    //if (m_FParams.debug > 1)
+    //if (verbosity > 1)
         cout << "\n#######\nCalling InsertParticles kernel: args[1] = {" << mNumPoints << "}, mMaxPoints=" << mMaxPoints
              << "\t m_FParams.numGroups=" << m_FParams.numGroups << ", m_FParams.numItems=" << m_FParams.numItems << " \t" << std::flush;
 
@@ -229,7 +235,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
         clReleaseCommandQueue(m_queue);
     }
     if (m_debug > 4) {
-        if (m_FParams.debug > 1)
+        if (verbosity > 1)
             cout << "\nSaving (FGCELL) InsertParticlesCL: (particleIdx, cell) , mMaxPoints=" << mMaxPoints << "\t" << std::flush;
         err = clEnqueueReadBuffer(m_queue,
                                   gpuVar(&m_Fluid, FGCELL),
@@ -398,7 +404,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
     for (int gene = 0; gene < NUM_GENES; gene++) {
         if (denselist_len[gene] > densebuff_len[gene]) {
-            if (m_FParams.debug > 1)
+            if (verbosity > 1)
                 printf("\n\nPrefixSumCellsCL: enlarging densebuff_len[%u], gpuptr(&m_Fluid, FDENSE_LIST_LENGTHS)[gene]=%p .\t", gene, gpuptr(&m_Fluid, FDENSE_LIST_LENGTHS)[gene]);
             while (denselist_len[gene] > densebuff_len[gene])
                 densebuff_len[gene] *= 4;
@@ -410,7 +416,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     clCheck(clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FDENSE_BUF_LENGTHS), CL_TRUE, 0, NUM_GENES * sizeof(cl_mem), bufC(&m_Fluid, FDENSE_BUF_LENGTHS), 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueWriteBuffer", "FDENSE_BUF_LENGTHS", mbDebug);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //if (m_FParams.debug > 1) {                                                                                                      //
+    //if (verbosity > 1) {                                                                                                      //
     //    std::cout << "\nChk: PrefixSumCellsCL 4" << std::flush;                                                                     //
     //    for (int gene = 0; gene < NUM_GENES; gene++) {                                                                              //
     //        std::cout << "\ngene list_length[" << gene << "]=" << bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene] << "\t" << std::flush;  //
@@ -597,11 +603,11 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
     for(int change_list=0;change_list<NUM_CHANGES;change_list++){                                                   // Note this calculation could be done by a kernel,
         uint * densebuff_len = bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES);                                            // and only bufI(&m_Fluid, FDENSE_LIST_LENGTHS); copied to host.
         uint * denselist_len = bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES);                                           // For each change_list allocate intial buffer,
-        //if (m_FParams.debug>1)printf("\nPrefixSumChangesCL: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
+        //if (verbosity>1)printf("\nPrefixSumChangesCL: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
         if (denselist_len[change_list] > densebuff_len[change_list]) {                                              // write pointer and size to FDENSE_LISTS and FDENSE_LIST_LENGTHS
             while(denselist_len[change_list] >  densebuff_len[change_list])   densebuff_len[change_list] *=4;       // bufI(&m_Fluid, FDENSE_BUF_LENGTHS)[i].
                                                                                                                     // NB Need 2*densebuff_len[change_list] for particle & bond
-            if (m_FParams.debug>1)printf("\nPrefixSumChangesCL: ## enlarging buffer## change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
+            if (verbosity>1)printf("\nPrefixSumChangesCL: ## enlarging buffer## change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
             AllocateBufferDenseLists( change_list, sizeof(uint), 2*densebuff_len[change_list], FDENSE_LISTS_CHANGES );// NB frees previous buffer &=> clears data
         }                                                                                                           // NB buf[2][list_length] holding : particleIdx, bondIdx
     }
@@ -614,7 +620,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
     clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FDENSE_LISTS_CHANGES), CL_TRUE, 0, NUM_CHANGES * sizeof(cl_mem), bufC(&m_Fluid, FDENSE_LISTS_CHANGES), 0, NULL, NULL), "TransferToCL", "clEnqueueWriteBuffer", "FPOS", mbDebug);
 
 
-    if (m_FParams.debug>1) {
+    if (verbosity>1) {
         std::cout << "\nChk: PrefixSumChangesCL 4"<<std::flush;
         for(int change_list=0;change_list<NUM_CHANGES;change_list++){
             std::cout<<"\nPrefixSumChangesCL: change list_length["<<change_list<<"]="<<bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES)[change_list]<<"\t"<<std::flush;
@@ -623,7 +629,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 }
 
 void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
-    if (m_FParams.debug>1) std::cout << "\nCountingSortFullCL()1: mMaxPoints="<<mMaxPoints<<", mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<".\n"<<std::flush;
+    if (verbosity>1) std::cout << "\nCountingSortFullCL()1: mMaxPoints="<<mMaxPoints<<", mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<".\n"<<std::flush;
 
     // get number of active particles & set short lists for later kernels
     int grid_ScanMax = (m_FParams.gridScanMax.y * m_FParams.gridRes.z + m_FParams.gridScanMax.z) * m_FParams.gridRes.x + m_FParams.gridScanMax.x;
@@ -645,7 +651,7 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
 
     clCheck( clEnqueueWriteBuffer(m_queue, m_FParamDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL), "CountingSortFullCL3", "clEnqueueWriteBuffer", "clFParams", mbDebug);
 
-    if (m_FParams.debug>1) std::cout<<"\nCountingSortFullCL()2: mMaxPoints="<<mMaxPoints<<" mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<",  m_GridTotal="<<m_GridTotal<<", grid_ScanMax="<<grid_ScanMax<<"\n"<<std::flush;
+    if (verbosity>1) std::cout<<"\nCountingSortFullCL()2: mMaxPoints="<<mMaxPoints<<" mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<",  m_GridTotal="<<m_GridTotal<<", grid_ScanMax="<<grid_ScanMax<<"\n"<<std::flush;
 
     // Transfer particle data to temp buffers
     //  (gpu-to-gpu copy, no sync needed)
@@ -758,7 +764,7 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     // NB have to reset to long list at start of time step.
     computeNumBlocks ( m_FParams.pnumActive, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);				// particles
 
-    if (m_FParams.debug>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_LISTS\n"<<std::flush;
+    if (verbosity>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_LISTS\n"<<std::flush;
     // countingSortDenseLists ( int pnum ) // NB launch on bins not particles.
     int blockSize = SCAN_BLOCKSIZE/2 << 1;
     int numElem1 = m_GridTotal;
@@ -779,7 +785,7 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
 
     clFinish (m_queue);
 
-    if(m_FParams.debug>3){// debug chk
+    if(verbosity>3){// debug chk
         std::cout<<"\n### Saving UintArray .csv files."<<std::flush;
 
         //clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FEPIGEN), gpuVar(&m_FluidTemp, FEPIGEN),	mMaxPoints *sizeof(uint[NUM_GENES]) ), "CountingSortFullCL8", "cuMemcpyDtoH", "FGRIDCNT", mbDebug);
@@ -806,8 +812,8 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
 }
 
 void FluidSystem::CountingSortChangesCL ( ){
-    //std::cout<<"\n\n#### CountingSortChangesCL ( ):   m_FParams.debug = "<< m_FParams.debug <<"\n";
-    if (m_FParams.debug>1) {std::cout<<"\n\n#### CountingSortChangesCL ( )"<<std::flush;}
+    //std::cout<<"\n\n#### CountingSortChangesCL ( ):   verbosity = "<< verbosity <<"\n";
+    if (verbosity>1) {std::cout<<"\n\n#### CountingSortChangesCL ( )"<<std::flush;}
     /* ////////
     clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES), gpuVar(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES),	sizeof(uint[NUM_CHANGES]) ), "PrefixSumCellsCL", "cuMemcpyDtoH", "FDENSE_LIST_LENGTHS_CHANGES", mbDebug);
 
@@ -815,7 +821,7 @@ void FluidSystem::CountingSortChangesCL ( ){
     for(int change_list=0;change_list<NUM_CHANGES;change_list++){                                                   // Note this calculation could be done by a kernel,
         uint * densebuff_len = bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES);                                            // and only bufI(&m_Fluid, FDENSE_LIST_LENGTHS); copied to host.
         uint * denselist_len = bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES);                                           // For each change_list allocate intial buffer,
-        if (m_FParams.debug>1)printf("\nCountingSortChangesCL1: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
+        if (verbosity>1)printf("\nCountingSortChangesCL1: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
     }
     *//////////
     cl_int err;
@@ -852,10 +858,10 @@ void FluidSystem::CountingSortChangesCL ( ){
 //     for(int change_list=0;change_list<NUM_CHANGES;change_list++){                                                   // Note this calculation could be done by a kernel,
 //         uint * densebuff_len = bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES);                                            // and only bufI(&m_Fluid, FDENSE_LIST_LENGTHS); copied to host.
 //         uint * denselist_len = bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES);                                           // For each change_list allocate intial buffer,
-//         if (m_FParams.debug>1)printf("\nCountingSortChangesCL2: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,\t\t threads=%u, numElem2=%u,  m_GridTotal=%u \t",
+//         if (verbosity>1)printf("\nCountingSortChangesCL2: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,\t\t threads=%u, numElem2=%u,  m_GridTotal=%u \t",
 //                change_list, densebuff_len[change_list], denselist_len[change_list], threads, numElem2,  m_GridTotal );
 //         clFinish ();
-//         if(m_FParams.debug>0){
+//         if(verbosity>0){
 //             uint fDenseList2[1000000] = {UINT_MAXSIZE};//TODO make this array size safe!  NB 10* num particles.
 //             cl_device_idptr*  _list2pointer = (cl_device_idptr*) &bufC(&m_Fluid, FDENSE_LISTS_CHANGES)[change_list*sizeof(cl_device_idptr)];
 //                                                                                                                 // Get device pointer to FDENSE_LISTS_CHANGES[change_list].
@@ -870,7 +876,7 @@ void FluidSystem::CountingSortChangesCL ( ){
 //     }
     // Assuming these variables are defined elsewhere:
     // NUM_CHANGES, m_Fluid, FDENSE_BUF_LENGTHS_CHANGES, FDENSE_LIST_LENGTHS_CHANGES,
-    // m_FParams.debug, threads, numElem2, m_GridTotal, command_queue
+    // verbosity, threads, numElem2, m_GridTotal, command_queue
                                                                                              // If active particles for change_list > existing buff, then enlarge buff.
     for (int change_list = 0; change_list < NUM_CHANGES; change_list++) {                    // Note this calculation could be done by a kernel,
         // Note: In OpenCL, you should use cl_mem objects instead of bufI and bufC functions
@@ -879,13 +885,13 @@ void FluidSystem::CountingSortChangesCL ( ){
         uint densebuff_len = bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES)[change_list];        // and only bufI(&m_Fluid, FDENSE_LIST_LENGTHS); copied to host.
         uint denselist_len = bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES)[change_list];       // For each change_list allocate intial buffer,
 
-        if (m_FParams.debug > 1)
+        if (verbosity > 1)
             printf("\nCountingSortChangesCL2: change_list=%d, densebuff_len=%u, denselist_len=%u, threads=%u, numElem2=%u, m_GridTotal=%u\t",
                 change_list, densebuff_len, denselist_len, t_threads, t_numElem2, m_GridTotal);
 
         clFinish(m_queue);
 
-        if (m_FParams.debug > 0) {
+        if (verbosity > 0) {
             uint fDenseList2[1000000] = {UINT_MAX}; // TODO: Adjust array size as needed.
             cl_mem list2buffer = (cl_mem)&bufC(&m_Fluid, FDENSE_LISTS_CHANGES)[change_list * sizeof(cl_mem)];
 
@@ -933,7 +939,7 @@ void FluidSystem::CreateFluidBuffers() {
 }
 
 void FluidSystem::TransferToCL (){ //TODO This function currently also handles the INITIALIZATION of the gpu buffers, not only the transfer!
-if (m_FParams.debug>1) std::cout<<"\nTransferToCL ()\n"<<std::flush;
+if (verbosity>1) std::cout<<"\nTransferToCL ()\n"<<std::flush;
 cl_int err;
 
     //cout << "CHECKING clEnqueueWriteBuffer: gpuVar(&m_Fluid, FPOS) = " << gpuVar(&m_Fluid, FPOS) << ", mMaxPoints = " << mMaxPoints << "\n\n\n" << flush;
@@ -971,7 +977,7 @@ cl_int err;
 
 
 
-if (m_FParams.debug>1) std::cout<<"TransferToCL ()  finished\n"<<std::flush;
+if (verbosity>1) std::cout<<"TransferToCL ()  finished\n"<<std::flush;
 
 }
 
@@ -1056,8 +1062,8 @@ void FluidSystem::Init_CLRand (){
 //         //seed = clock();
 //         bufI(&m_Fluid, FCURAND_SEED)[i] = seed;
 //         //curand_init(seed, sequence, offset, &m_Fluid.bufCuRNDST(FCURAND_STATE)[i]);
-//         if (m_FParams.debug>1)printf("\n(2:seed=%llu,(FCURAND_SEED)[i]=%llu, rand()=%u), ",seed, bufULL(&m_Fluid, FCURAND_SEED)[i], rand() );
-//         if (m_FParams.debug>1) cout<<"\t(seed="<<seed<<",(FCURAND_SEED)[i]="<<bufI(&m_Fluid, FCURAND_SEED)[i]<<"), "<<std::flush;
+//         if (verbosity>1)printf("\n(2:seed=%llu,(FCURAND_SEED)[i]=%llu, rand()=%u), ",seed, bufULL(&m_Fluid, FCURAND_SEED)[i], rand() );
+//         if (verbosity>1) cout<<"\t(seed="<<seed<<",(FCURAND_SEED)[i]="<<bufI(&m_Fluid, FCURAND_SEED)[i]<<"), "<<std::flush;
 //     }
 //
 //     // transfer to cuda
@@ -1067,18 +1073,18 @@ void FluidSystem::Init_CLRand (){
 //
 //     clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FCURAND_SEED), CL_TRUE, 0, mNumPoints * sizeof(uint), bufC(&m_Fluid, FCURAND_SEED), 0, NULL, NULL), "Init_FCURAND_STATE_CL", "clEnqueueWriteBuffer", "FCURAND_SEED", mbDebug );
 //
-//     if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_2.0\n\n"<<std::flush;
+//     if (verbosity>1) std::cout <<"\nInit_FCURAND_STATE_CL_2.0\n\n"<<std::flush;
 
     /*
     int n=0;
     void* args[1] = {&n};
     int numGroups_=1, numItems_=1;
-    if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_1.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<",\t mNumPoints="<<mNumPoints<<", mMaxPoints="<<mMaxPoints<<"  \n"<<std::flush;
+    if (verbosity>1) std::cout <<"\nInit_FCURAND_STATE_CL_1.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<",\t mNumPoints="<<mNumPoints<<", mMaxPoints="<<mMaxPoints<<"  \n"<<std::flush;
 
     do {
         computeNumBlocks ( pow(256,n), m_FParams.itemsPerGroup, numGroups_, numItems_);
 
-        if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_2.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<
+        if (verbosity>1) std::cout <<"\nInit_FCURAND_STATE_CL_2.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<
         "\t numGroups_="<<numGroups_<<", numItems_="<<numItems_<<"  \n"<<std::flush;
 
         clCheck(clFinish(), "Init_FCURAND_STATE_CL", "clFinish", "Before m_Kern[FUNC_INIT_RANDOMCL], in do-while loop", 1);
@@ -1088,7 +1094,7 @@ void FluidSystem::Init_CLRand (){
         n++;
     } while (pow(256,n) < mNumPoints/256) ;
 
-    if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_3.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<
+    if (verbosity>1) std::cout <<"\nInit_FCURAND_STATE_CL_3.0\t n="<<n<<",  pow(256,n)="<<pow(256,n)<<",  mNumPoints/256="<<mNumPoints/256<<
     "\t m_FParams.numGroups="<<m_FParams.numGroups<<",  m_FParams.numItems="<<m_FParams.numItems<<".  \n"<<std::flush;
 
     */
@@ -1121,7 +1127,7 @@ void FluidSystem::Init_CLRand (){
 //     clCheck( clEnqueueReadBuffer(m_queue, buf_out, CL_TRUE, 0, mNumPoints * sizeof (out [0]), out, 0, NULL, NULL), "Init_FCURAND_STATE_CL", "clFinish", "After clEnqueueWriteBuffer FCURAND_STATE, before 1st timestep", 1);
 
     clCheck( clFinish(m_queue), "Init_FCURAND_STATE_CL", "clFinish", "After clEnqueueWriteBuffer FCURAND_STATE, before 1st timestep", 1);
-    if (m_FParams.debug>1) std::cout <<"\nInit_FCURAND_STATE_CL_4.0\n"<<std::flush;
+    if (verbosity>1) std::cout <<"\nInit_FCURAND_STATE_CL_4.0\n"<<std::flush;
 }*/
 
 /* TODO
@@ -1195,18 +1201,18 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
     for(int change_list=0;change_list<NUM_CHANGES;change_list++){                                                   // Note this calculation could be done by a kernel,
         uint * densebuff_len = bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES);                                            // and only bufI(&m_Fluid, FDENSE_LIST_LENGTHS); copied to host.
         uint * denselist_len = bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES);                                           // For each change_list allocate intial buffer,
-        //if (m_FParams.debug>1)printf("\nPrefixSumChangesCL: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
+        //if (verbosity>1)printf("\nPrefixSumChangesCL: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
         if (denselist_len[change_list] > densebuff_len[change_list]) {                                              // write pointer and size to FDENSE_LISTS and FDENSE_LIST_LENGTHS
             while(denselist_len[change_list] >  densebuff_len[change_list])   densebuff_len[change_list] *=4;       // bufI(&m_Fluid, FDENSE_BUF_LENGTHS)[i].
                                                                                                                     // NB Need 2*densebuff_len[change_list] for particle & bond
-            if (m_FParams.debug>1)printf("\nPrefixSumChangesCL: ## enlarging buffer## change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
+            if (verbosity>1)printf("\nPrefixSumChangesCL: ## enlarging buffer## change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
             AllocateBufferDenseLists( change_list, sizeof(uint), 2*densebuff_len[change_list], FDENSE_LISTS_CHANGES );// NB frees previous buffer &=> clears data
         }                                                                                                           // NB buf[2][list_length] holding : particleIdx, bondIdx
     }
     clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES), bufC(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES),	sizeof(uint[NUM_CHANGES]) ), "PrefixSumChangesCL", "cuMemcpyHtoD", "FDENSE_BUF_LENGTHS_CHANGES", mbDebug);
     cuMemcpyHtoD(gpuVar(&m_Fluid, FDENSE_LISTS_CHANGES), bufC(&m_Fluid, FDENSE_LISTS_CHANGES),  NUM_CHANGES * sizeof(cl_device_idptr)  );                      // update pointers to lists on device
 
-    if (m_FParams.debug>1) {
+    if (verbosity>1) {
         std::cout << "\nChk: PrefixSumChangesCL 4"<<std::flush;
         for(int change_list=0;change_list<NUM_CHANGES;change_list++){
             std::cout<<"\nPrefixSumChangesCL: change list_length["<<change_list<<"]="<<bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES)[change_list]<<"\t"<<std::flush;
@@ -1215,7 +1221,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 }*/
 //
 // void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
-//     if (m_FParams.debug>1) std::cout << "\nCountingSortFullCL()1: mMaxPoints="<<mMaxPoints<<", mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<".\n"<<std::flush;
+//     if (verbosity>1) std::cout << "\nCountingSortFullCL()1: mMaxPoints="<<mMaxPoints<<", mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<".\n"<<std::flush;
 //     // get number of active particles & set short lists for later kernels
 //     int grid_ScanMax = (m_FParams.gridScanMax.y * m_FParams.gridRes.z + m_FParams.gridScanMax.z) * m_FParams.gridRes.x + m_FParams.gridScanMax.x;
 //
@@ -1230,7 +1236,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 //     m_FParams.pnumActive = mActivePoints;                                     // TODO eliminate duplication of information & variables between fluid.h and fluid_system.h
 //     clCheck ( cuMemcpyHtoD ( clFParams,	&m_FParams, sizeof(FParams) ), "CountingSortFullCL3", "cuMemcpyHtoD", "clFParams", mbDebug); // seems the safest way to update fparam.pnumActive on device.
 //
-//     if (m_FParams.debug>1) std::cout<<"\nCountingSortFullCL()2: mMaxPoints="<<mMaxPoints<<" mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<",  m_GridTotal="<<m_GridTotal<<", grid_ScanMax="<<grid_ScanMax<<"\n"<<std::flush;
+//     if (verbosity>1) std::cout<<"\nCountingSortFullCL()2: mMaxPoints="<<mMaxPoints<<" mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<",  m_GridTotal="<<m_GridTotal<<", grid_ScanMax="<<grid_ScanMax<<"\n"<<std::flush;
 //
 //     // Transfer particle data to temp buffers
 //     //  (gpu-to-gpu copy, no sync needed)
@@ -1287,7 +1293,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 //     // NB have to reset to long list at start of time step.
 //     computeNumBlocks ( m_FParams.pnumActive, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);				// particles
 //
-//     if (m_FParams.debug>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_LISTS\n"<<std::flush;
+//     if (verbosity>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_LISTS\n"<<std::flush;
 //     // countingSortDenseLists ( int pnum ) // NB launch on bins not particles.
 //     int blockSize = SCAN_BLOCKSIZE/2 << 1;
 //     int numElem1 = m_GridTotal;
@@ -1298,7 +1304,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 //               "CountingSortFullCL7", "cuLaunch", "FUNC_COUNT_SORT_LISTS", mbDebug );                                   // NB threads/2 required on GTX970m
 //     clFinish ();
 //
-//     if(m_FParams.debug>3){//debug chk
+//     if(verbosity>3){//debug chk
 //         std::cout<<"\n### Saving UintArray .csv files."<<std::flush;
 //
 //         clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FEPIGEN), gpuVar(&m_FluidTemp, FEPIGEN),	mMaxPoints *sizeof(uint[NUM_GENES]) ), "CountingSortFullCL8", "cuMemcpyDtoH", "FGRIDCNT", mbDebug);
@@ -1321,8 +1327,8 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 // }
 //
 // void FluidSystem::CountingSortChangesCL ( ){
-//     //std::cout<<"\n\n#### CountingSortChangesCL ( ):   m_FParams.debug = "<< m_FParams.debug <<"\n";
-//     if (m_FParams.debug>1) {std::cout<<"\n\n#### CountingSortChangesCL ( )"<<std::flush;}
+//     //std::cout<<"\n\n#### CountingSortChangesCL ( ):   verbosity = "<< verbosity <<"\n";
+//     if (verbosity>1) {std::cout<<"\n\n#### CountingSortChangesCL ( )"<<std::flush;}
 //     /* ////////
 //     clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES), gpuVar(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES),	sizeof(uint[NUM_CHANGES]) ), "PrefixSumCellsCL", "cuMemcpyDtoH", "FDENSE_LIST_LENGTHS_CHANGES", mbDebug);
 //
@@ -1330,7 +1336,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 //     for(int change_list=0;change_list<NUM_CHANGES;change_list++){                                                   // Note this calculation could be done by a kernel,
 //         uint * densebuff_len = bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES);                                            // and only bufI(&m_Fluid, FDENSE_LIST_LENGTHS); copied to host.
 //         uint * denselist_len = bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES);                                           // For each change_list allocate intial buffer,
-//         if (m_FParams.debug>1)printf("\nCountingSortChangesCL1: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
+//         if (verbosity>1)printf("\nCountingSortChangesCL1: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
 //     }
 //     *//////////
 //     int blockSize = SCAN_BLOCKSIZE/2 << 1;
@@ -1348,10 +1354,10 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 //     for(int change_list=0;change_list<NUM_CHANGES;change_list++){                                                   // Note this calculation could be done by a kernel,
 //         uint * densebuff_len = bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES);                                            // and only bufI(&m_Fluid, FDENSE_LIST_LENGTHS); copied to host.
 //         uint * denselist_len = bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES);                                           // For each change_list allocate intial buffer,
-//         if (m_FParams.debug>1)printf("\nCountingSortChangesCL2: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,\t\t threads=%u, numElem2=%u,  m_GridTotal=%u \t",
+//         if (verbosity>1)printf("\nCountingSortChangesCL2: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,\t\t threads=%u, numElem2=%u,  m_GridTotal=%u \t",
 //                change_list, densebuff_len[change_list], denselist_len[change_list], threads, numElem2,  m_GridTotal );
 //         clFinish ();
-//         if(m_FParams.debug>0){
+//         if(verbosity>0){
 //             uint fDenseList2[1000000] = {UINT_MAXSIZE};//TODO make this array size safe!  NB 10* num particles.
 //             cl_device_idptr*  _list2pointer = (cl_device_idptr*) &bufC(&m_Fluid, FDENSE_LISTS_CHANGES)[change_list*sizeof(cl_device_idptr)];
 //                                                                                                                 // Get device pointer to FDENSE_LISTS_CHANGES[change_list].
@@ -1369,7 +1375,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 void FluidSystem::InitializeBondsCL (){
 
     cl_int err;
-    if (m_FParams.debug>1)cout << "\n\nInitializeBondsCL ()\n"<<std::flush;
+    if (verbosity>1)cout << "\n\nInitializeBondsCL ()\n"<<std::flush;
     uint gene           = 1;                                                            // solid  (has springs)
     uint list_length    = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
     //void* args[3]       = { &m_FParams.pnumActive, &list_length, &gene};                //initialize_bonds (int ActivePoints, uint list_length, uint gene)
@@ -1379,7 +1385,7 @@ void FluidSystem::InitializeBondsCL (){
     err = clSetKernelArg(m_Kern[FUNC_INITIALIZE_BONDS], 2, sizeof(uint), &gene);
 
 
-    if (m_FParams.debug>1)cout << "\nInitializeBondsCL (): list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<m_FParams.numGroups<<", numItems="<<m_FParams.numItems<<" \t args{m_FParams.pnumActive="<<m_FParams.pnumActive<<", list_length="<<list_length<<", gene="<<gene<<"}"<<std::flush;
+    if (verbosity>1)cout << "\nInitializeBondsCL (): list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<m_FParams.numGroups<<", numItems="<<m_FParams.numItems<<" \t args{m_FParams.pnumActive="<<m_FParams.pnumActive<<", list_length="<<list_length<<", gene="<<gene<<"}"<<std::flush;
 
     int numGroups, numItems;
     computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
@@ -1405,7 +1411,7 @@ void FluidSystem::ComputePressureCL (){
 }
 
 void FluidSystem::ComputeDiffusionCL(){
-    //if (m_FParams.debug>1) std::cout << "\n\nRunning ComputeDiffusionCL()" << std::endl;
+    //if (verbosity>1) std::cout << "\n\nRunning ComputeDiffusionCL()" << std::endl;
     cl_int err;
     //void* args[1] = { &mActivePoints };
     err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_DIFFUSION], 0, sizeof(int), &mActivePoints);
@@ -1419,7 +1425,7 @@ void FluidSystem::ComputeDiffusionCL(){
 }
 
 void FluidSystem::ComputeForceCL (){
-    //if (m_FParams.debug>1)printf("\n\nFluidSystem::ComputeForceCL (),  m_FParams.freeze=%s",(m_FParams.freeze==true) ? "true" : "false");
+    //if (verbosity>1)printf("\n\nFluidSystem::ComputeForceCL (),  m_FParams.freeze=%s",(m_FParams.freeze==true) ? "true" : "false");
     cl_int err;
     //void* args[3] = { &m_FParams.pnumActive ,  &m_FParams.freeze, &m_FParams.frame};
     err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 0, sizeof(int), &mActivePoints);
@@ -1458,7 +1464,7 @@ void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the de
         size_t global_work_size = numGroups * numItems;
         size_t local_work_size = numItems;
 
-        if (m_FParams.debug>1) std::cout<<"\nComputeGenesCL (): gene ="<<gene<<", list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<numGroups<<",  numItems="<<numItems<<". args={mNumPoints="<<mNumPoints<<", list_length="<<list_length<<", gene ="<<gene<<"}"<<std::flush;
+        if (verbosity>1) std::cout<<"\nComputeGenesCL (): gene ="<<gene<<", list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<numGroups<<",  numItems="<<numItems<<". args={mNumPoints="<<mNumPoints<<", list_length="<<list_length<<", gene ="<<gene<<"}"<<std::flush;
 
         if( numGroups>0 && numItems>0){
             //std::cout<<"\nCalling m_Kern[FUNC_COMPUTE_GENE_ACTION], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
@@ -1481,7 +1487,7 @@ void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the de
         size_t local_work_size = numItems;
 
         if( numGroups>0 && numItems>0){
-            if (m_FParams.debug>1) std::cout<<"\nCalling m_Kern[FUNC_TALLY_GENE_ACTION], gene="<<gene<<", list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
+            if (verbosity>1) std::cout<<"\nCalling m_Kern[FUNC_TALLY_GENE_ACTION], gene="<<gene<<", list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
             //clCheck ( cuLaunchKernel ( m_Kern[FUNC_TALLY_GENE_ACTION],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_TALLY_GENE_ACTION", mbDebug);
             err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_TALLY_GENE_ACTION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 
@@ -1490,7 +1496,7 @@ void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the de
 }
 
 void FluidSystem::AssembleFibresCL (){  //kernel: void assembleMuscleFibres ( int pnum, uint list, uint list_length )
-    if (m_FParams.debug>1)cout << "\n\nAssembleFibresCL ()\n"<<std::flush;
+    if (verbosity>1)cout << "\n\nAssembleFibresCL ()\n"<<std::flush;
     cl_int err;
     uint gene = 7; // muscle
     uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
@@ -1522,11 +1528,11 @@ void FluidSystem::AssembleFibresCL (){  //kernel: void assembleMuscleFibres ( in
     // Kernels:  call by tissue type using dense lists by gene.
     //assembleMuscleFibres()
     //assembleFasciaFibres ()
-    if (m_FParams.debug>1) cout << "\nFinished AssembleFibresCL ()\n\n"<<std::flush;
+    if (verbosity>1) cout << "\nFinished AssembleFibresCL ()\n\n"<<std::flush;
 }
 
 void FluidSystem::ComputeBondChangesCL (uint steps_per_InnerPhysicalLoop){// Given the action of the genes, compute the changes to particle properties & splitting/combining  NB also "inserts changes"
-//  if (m_FParams.debug>1)printf("\n gpuVar(&m_Fluid, FGRIDOFF_CHANGES)=%llu   ,\t gpuVar(&m_Fluid, FGRIDCNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FGRIDOFF_CHANGES) , gpuVar(&m_Fluid, FGRIDCNT_CHANGES)   );
+//  if (verbosity>1)printf("\n gpuVar(&m_Fluid, FGRIDOFF_CHANGES)=%llu   ,\t gpuVar(&m_Fluid, FGRIDCNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FGRIDOFF_CHANGES) , gpuVar(&m_Fluid, FGRIDCNT_CHANGES)   );
     cl_int err;
     //clCheck ( cuMemsetD8 ( gpuVar(&m_Fluid, FGRIDOFF_CHANGES), 0,	m_GridTotal *sizeof(uint[NUM_CHANGES]) ), "ComputeBondChangesCL", "cuMemsetD8", "FGRIDOFF", mbDebug );
     err = clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FGRIDOFF_CHANGES), 0, sizeof(uint[NUM_CHANGES]), 0, m_GridTotal * sizeof(uint[NUM_CHANGES]), 0, NULL, NULL);
@@ -1546,9 +1552,9 @@ void FluidSystem::ComputeBondChangesCL (uint steps_per_InnerPhysicalLoop){// Giv
     size_t global_work_size = numGroups * numItems;
     size_t local_work_size = numItems;
 
-    //std::cout<<"\n\nComputeBondChangesCL (): m_FParams.debug = "<<m_FParams.debug<<", (m_FParams.debug>1)="<<(m_FParams.debug>1)<<"\n"<<std::flush;
+    //std::cout<<"\n\nComputeBondChangesCL (): verbosity = "<<verbosity<<", (verbosity>1)="<<(verbosity>1)<<"\n"<<std::flush;
 
-    if (m_FParams.debug>1) std::cout<<"\n\nComputeBondChangesCL (): list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<numGroups<<",  numItems="<<numItems<<". \t\t args={mActivePoints="<<mActivePoints<<", list_length="<<list_length<<"}\n\n"<<std::flush;
+    if (verbosity>1) std::cout<<"\n\nComputeBondChangesCL (): list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<numGroups<<",  numItems="<<numItems<<". \t\t args={mActivePoints="<<mActivePoints<<", list_length="<<list_length<<"}\n\n"<<std::flush;
 
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_BOND_CHANGES],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "computeBondChanges", "cuLaunch", "FUNC_COMPUTE_BOND_CHANGES", mbDebug);
 
@@ -1559,14 +1565,14 @@ void FluidSystem::ComputeBondChangesCL (uint steps_per_InnerPhysicalLoop){// Giv
 void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to execute particle changes. NB Must run concurrently without interfering => no clFinish()
     cl_int err;
     uint startNewPoints = mActivePoints + 1;
-    if (m_FParams.debug>2)printf("\n");
+    if (verbosity>2)printf("\n");
     for (int change_list = 0; change_list<NUM_CHANGES;change_list++){
     //int change_list = 0; // TODO debug, chk one kernel at a time
         uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES)[change_list];  // num blocks and threads by list length
         //uint list_length = bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES)[change_list];
         //if (change_list!=0 && change_list!=1)continue; // only test heal() and lengthenTissue() for now.
 
-        if (m_FParams.debug>2)printf("\n\nComputeParticleChangesCL(): startNewPoints=%u, change_list=%u, list_length=%u, mMaxPoints=%u \t",
+        if (verbosity>2)printf("\n\nComputeParticleChangesCL(): startNewPoints=%u, change_list=%u, list_length=%u, mMaxPoints=%u \t",
             startNewPoints, change_list, list_length, mMaxPoints);
 
         if ((change_list >0)&&(startNewPoints + list_length > mMaxPoints)){         // NB heal() does not create new bonds.
@@ -1594,7 +1600,7 @@ void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to exe
         size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
         size_t local_work_size = m_FParams.numItems;
 
-        if (m_FParams.debug>2) std::cout
+        if (verbosity>2) std::cout
             <<"\nComputeParticleChangesCL ():"
             <<" frame ="                    <<m_FParams.frame
             <<", mActivePoints="            <<mActivePoints
@@ -1610,7 +1616,7 @@ void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to exe
             <<"\t"<<std::flush;
 
         if( (list_length>0) && (numGroups>0) && (numItems>0)){
-            if (m_FParams.debug>0) std::cout
+            if (verbosity>0) std::cout
                 <<"\nComputeParticleChangesCL ():"
                 <<"\tCalling m_Kern[FUNC_HEAL+"             <<change_list
                 <<"], list_length="                         <<list_length
@@ -1640,12 +1646,12 @@ void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to exe
     8   #define FUNC_WEAKEN_TISSUE              31 //weaken_tissue
          */
     }
-    if (m_FParams.debug>1) std::cout<<"\nFinished ComputeParticleChangesCL ()\n"<<std::flush;
+    if (verbosity>1) std::cout<<"\nFinished ComputeParticleChangesCL ()\n"<<std::flush;
 }
 
 void FluidSystem::TransferPosVelVeval (){
 
-    cout<< "-------TransferPosVelVeval started...-------\n" << flush;
+    cout<< "-------TransferPosVelVeval started... -------\n" << flush;
     TransferToTempCL ( FPOS,		 mMaxPoints *sizeof(cl_float3) );    // NB if some points have been removed, then the existing list is no longer dense,
     TransferToTempCL ( FVEL,		 mMaxPoints *sizeof(cl_float3) );    // hence must use mMaxPoints, not mNumPoints
     TransferToTempCL ( FVEVAL,	     mMaxPoints *sizeof(cl_float3) );
@@ -1703,10 +1709,10 @@ void FluidSystem::SpecialParticlesCL (float tm, float dt, float ss){   // For in
     size_t global_work_size = numGroups * numItems;
     size_t local_work_size = numItems;
 
-    if (m_FParams.debug>1) std::cout<<"\nSpecialParticlesCL:EXTERNAL_ACTUATION: list_length="<<list_length<<" , m_FParams.itemsPerGroup="<< m_FParams.itemsPerGroup <<", numGroups="<< numGroups <<", numItems="<< numItems <<", args{m_FParams.pnum="<< m_FParams.pnum <<",  gene="<< gene <<", list_length="<< list_length <<"  }  \n"<<std::flush;
+    if (verbosity>1) std::cout<<"\nSpecialParticlesCL:EXTERNAL_ACTUATION: list_length="<<list_length<<" , m_FParams.itemsPerGroup="<< m_FParams.itemsPerGroup <<", numGroups="<< numGroups <<", numItems="<< numItems <<", args{m_FParams.pnum="<< m_FParams.pnum <<",  gene="<< gene <<", list_length="<< list_length <<"  }  \n"<<std::flush;
 
     if( numGroups>0 && numItems>0){
-        if (m_FParams.debug>1) std::cout<<"\nCalling m_Kern[FUNC_EXTERNAL_ACTUATION], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
+        if (verbosity>1) std::cout<<"\nCalling m_Kern[FUNC_EXTERNAL_ACTUATION], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
         //clCheck ( cuLaunchKernel ( m_Kern[FUNC_EXTERNAL_ACTUATION],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "SpecialParticlesCL", "cuLaunch", "FUNC_EXTERNAL_ACTUATION", mbDebug);
 
         err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_EXTERNAL_ACTUATION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
@@ -1724,10 +1730,10 @@ void FluidSystem::SpecialParticlesCL (float tm, float dt, float ss){   // For in
 
     computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
 
-    if (m_FParams.debug>1) std::cout<<"\nSpecialParticlesCL:FIXED: list_length="<<list_length<<" , m_FParams.itemsPerGroup="<< m_FParams.itemsPerGroup <<", numGroups="<< numGroups <<", numItems="<< numItems <<", args{m_FParams.pnum="<< m_FParams.pnum <<",  gene="<< gene <<", list_length="<< list_length <<"  }  \n"<<std::flush;
+    if (verbosity>1) std::cout<<"\nSpecialParticlesCL:FIXED: list_length="<<list_length<<" , m_FParams.itemsPerGroup="<< m_FParams.itemsPerGroup <<", numGroups="<< numGroups <<", numItems="<< numItems <<", args{m_FParams.pnum="<< m_FParams.pnum <<",  gene="<< gene <<", list_length="<< list_length <<"  }  \n"<<std::flush;
 
     if( numGroups>0 && numItems>0){
-        if (m_FParams.debug>1) std::cout<<"\nCalling m_Kern[FUNC_FIXED], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
+        if (verbosity>1) std::cout<<"\nCalling m_Kern[FUNC_FIXED], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
         //clCheck ( cuLaunchKernel ( m_Kern[FUNC_FIXED],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "SpecialParticlesCL", "cuLaunch", "FUNC_FIXED", mbDebug);
         err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FIXED], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     }

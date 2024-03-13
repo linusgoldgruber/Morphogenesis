@@ -681,10 +681,10 @@ using namespace std;
 
 		cl_float3 GetVec ( int p )			{ return m_Vec[p]; }
 		void SetVec(int p, cl_float3 v);
-		void SetDebug(uint b) { m_debug=b; m_FParams.debug=b; /*mbDebug = (bool)b;*/ 
-            std::cout<<"\n\nSetDebug(uint b): b="<<b<<", m_FParams.debug = "<<m_FParams.debug<<", (m_FParams.debug>1)="<<(m_FParams.debug>1)<<"\n"<<std::flush;
+		void SetDebug(uint b) { m_debug=b; verbosity=b; /*mbDebug = (bool)b;*/
+            std::cout<<"\n\nSetDebug(uint b): b="<<b<<", verbosity = "<<verbosity<<", (verbosity>1)="<<(verbosity>1)<<"\n"<<std::flush;
         }
-        uint GetDebug(){return m_FParams.debug;}
+        uint GetDebug(){return verbosity;}
         
         struct {
             const char * relativePath;
