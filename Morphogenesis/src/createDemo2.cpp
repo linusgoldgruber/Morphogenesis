@@ -69,7 +69,7 @@ int main ( int argc, const char** argv )
     else cout << "output_folder created\n"; // NB 0755 = rwx owner, rx for others.
 
     fluid.WriteDemoSimParams(           // Generates the simulation from data previously loaded from SpecificationFile.txt .
-        fluid.launchParams.paramsPath, GPU_OFF, CPU_YES, fluid.launchParams.num_particles, fluid.launchParams.spacing, fluid.launchParams.x_dim, fluid.launchParams.y_dim, fluid.launchParams.z_dim, fluid.launchParams.demoType, fluid.launchParams.simSpace, fluid.launchParams.debug
+        fluid.launchParams.paramsPath, GPU_SINGLE, CPU_YES, fluid.launchParams.num_particles, fluid.launchParams.spacing, fluid.launchParams.x_dim, fluid.launchParams.y_dim, fluid.launchParams.z_dim, fluid.launchParams.demoType, fluid.launchParams.simSpace, fluid.launchParams.debug
     ); /*const char * relativePath*/
     //std::cout<<"\n\nmake_demo2 chk2 "<<std::flush;
     uint num_particles_start=fluid.ActivePoints();

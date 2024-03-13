@@ -141,7 +141,6 @@ FluidSystem::FluidSystem(Json::Value obj_)
 	obj = obj_;
 	verbosity = obj["verbosity"].asInt();
 	verbosity = 1;
-	std::cout << "-----------------------------------------\nFluidSystem::FluidSystem verbosity = " << verbosity << std::flush;
 																						if(verbosity>1) cout << "\nFluidSystem_chk 0\n" << flush;
 	//createFolders( );																	/*Step1: Getting platforms and choose an available one.*/////////
 	cl_uint 		numPlatforms;														//the NO. of platforms
@@ -567,10 +566,10 @@ void FluidSystem::Exit_no_CL (){
 void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode) {
     bool rtn = true;
     cl_int err;
-    //if (m_FParams.debug > -1) {
+    if (m_FParams.debug > 0) {
         std::cout << "\nAllocateBuffer ( int buf_id=" << buf_id << ", int stride=" << stride << ", int cpucnt=" << cpucnt
                   << ", int gpucnt=" << gpucnt << ", int " << gpumode << ", int " << cpumode << " )\t" << std::flush;
-    //}
+    }
 
     // Initialize the mcpu array for buffer buf_id
     if (buf_id < MAX_BUF) {
@@ -618,12 +617,14 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
         clGetDeviceInfo(m_device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
 
         if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL) {
+
             if (gpuptr(&m_Fluid, buf_id) != 0x0) {
+
                 clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject", "gpuVar", mbDebug);
             }
 
             setGpuBuf(&m_Fluid, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err));
-                                                                                            if(verbosity>0) cout << checkerror(err)  << stride*gpucnt << "\n" << flush;
+                                                                                            if(verbosity>0) cout << checkerror(err)  << "\nstride*gpucnt: " << stride*gpucnt << "\n" << flush;
 
             if (m_FParams.debug > 1) {
                 std::cout << "\t\t gpuptr(&m_Fluid, " << buf_id << ")'" << gpuptr(&m_Fluid, buf_id) << ",   gpu(&m_Fluid, " << buf_id << ")="
@@ -691,7 +692,7 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
     //AllocateBuffer ( FPARTICLE_ID,	        sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
     //AllocateBuffer ( FMASS_RADIUS,          sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
 
-    // CUDA-specific buffers TODO
+    // CL-specific buffers TODO
     //AllocateBuffer ( FCURAND_STATE,	sizeof(curandState_t),	             cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
     AllocateBuffer ( FCURAND_SEED,	sizeof(unsigned long long),	         cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );
 
@@ -874,7 +875,7 @@ void FluidSystem::AddNullPoints (){// fills unallocated particles with null data
     float Conc[NUM_TF];
     uint EpiGen[NUM_GENES];
 
-    //Pos.x = m_FParams.pboundmax.x; // does not work in makeDemo because no CUDA &=> no UpdateParams.
+    //Pos.x = m_FParams.pboundmax.x; // does not work in makeDemo because no CL &=> no UpdateParams.
     //Pos.y = m_FParams.pboundmax.y;
     //Pos.z = m_FParams.pboundmax.z;
 
@@ -1043,6 +1044,756 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
     AddNullPoints ();            // If spare particles remain, fill with null points. NB these can be used to "create" particles.
     if (m_FParams.debug>1)std::cout << "\n SetupAddVolumeMorphogenesis2 finished \n" << std::flush ;
 }
+
+/*void FluidSystem::Run (){   // deprecated, rather use: Run(const char * relativePath, int frame, bool debug)
+
+std::cout << "\tFluidSystem::Run (),  "<<std::flush;
+
+    //case RUN_GPU_FULL: // Full CL pathway, GRID-accelerted GPU, /w deep copy sort
+
+//TransferFromCL ();
+
+//std::cout << "\n\n Chk1 \n"<<std::flush;
+
+    InsertParticlesCL ( 0x0, 0x0, 0x0 );
+    clCheck(void FluidSystem::Run (){   // deprecated, rather use: Run(const char * relativePath, int frame, bool debug)
+
+std::cout << "\tFluidSystem::Run (),  "<<std::flush;
+
+    //case RUN_GPU_FULL: // Full CL pathway, GRID-accelerted GPU, /w deep copy sort
+
+//TransferFromCL ();
+
+//std::cout << "\n\n Chk1 \n"<<std::flush;
+
+    InsertParticlesCL ( 0x0, 0x0, 0x0 );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertParticlesCL", mbDebug);
+
+//TransferFromCL ();
+
+std::cout << "\n\n Chk2 \n"<<std::flush;
+
+    PrefixSumCellsCL ( 1 );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumCellsCL", mbDebug);
+
+//TransferFromCL ();
+
+std::cout << "\n\n Chk3 \n"<<std::flush;
+
+    CountingSortFullCL ( 0x0 );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortFullCL", mbDebug);
+
+//TransferFromCL ();
+
+std::cout << "\n\n Chk4 \n"<<std::flush;
+
+
+
+    ComputePressureCL();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputePressureCL", mbDebug);
+
+//TransferFromCL ();
+
+std::cout << "\n\n Chk5 \n"<<std::flush;
+
+    // FreezeCL ();                                   // makes the system plastic, ie the bonds keep reforming
+
+//std::cout << "\n\n Chk6 \n"<<std::flush;
+
+    ComputeForceCL ();                                // now includes the function of freeze
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeForceCL", mbDebug);
+
+
+    // TODO compute nerve activation ?
+
+
+
+
+
+    // TODO compute muscle action ?
+
+
+
+//std::cout << "\n\n Chk6 \n"<<std::flush;
+
+    ComputeDiffusionCL();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeDiffusionCL", mbDebug);
+
+
+//std::cout << "\n\n Chk7 \n"<<std::flush;
+
+    ComputeGenesCL();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeGenesCL", mbDebug);
+
+
+
+std::cout << "\n\n Chk8 \n"<<std::flush;
+
+    ComputeBondChangesCL ();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeBondChangesCL", mbDebug);
+
+
+
+    //  make dense lists of particle changes
+
+    // insert changes
+
+    // prefix sum changes, inc tally_changelist_lengths
+
+    // counting sort changes
+
+    //InsertChangesCL ( ); // done by ComputeBondChanges() above
+
+    //cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertChangesCL", mbDebug);
+
+
+std::cout << "\n\n Chk9 \n"<<std::flush;
+
+    PrefixSumChangesCL ( 1 );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumChangesCL", mbDebug);
+
+
+
+std::cout << "\n\n Chk10 \n"<<std::flush;
+
+    CountingSortChangesCL (  );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortChangesCL", mbDebug);
+
+
+
+
+
+    //  execute particle changes // _should_ be able to run concurrently => no clFinish(m_queue))
+
+    // => single fn ComputeParticleChangesCL ()
+
+std::cout << "\n\n Chk11 \n"<<std::flush;
+
+    ComputeParticleChangesCL ();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCL", mbDebug);
+
+
+std::cout << "\n\n Chk12 \n"<<std::flush;
+
+    CleanBondsCL ();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CleanBondsCL ", mbDebug);
+
+
+
+std::cout << "\n\n Chk13 \n"<<std::flush;
+
+    TransferPosVelVeval ();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
+
+
+
+    AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
+
+
+
+    SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SpecialParticlesCL", mbDebug);
+
+
+
+
+
+//TransferFromCL ();
+
+    //EmitParticlesCL ( m_Time, (int) m_Vec[PEMIT_RATE].x );
+
+    TransferFromCL (); // return for rendering
+
+//std::cout << "\n\n Chk7 \n"<<std::flush;
+
+
+    AdvanceTime ();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug);
+
+//std::cout << " finished \n";
+
+}*/
+
+
+/*void FluidSystem::Run (const char * relativePath, int frame, bool debug, bool gene_activity, bool remodelling ){       // version to save data after each kernel
+
+    m_FParams.frame = frame;                 // used by computeForceCuda( .. Args)
+
+if (m_FParams.debug>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<frame<<" #########################################################"<<std::flush;
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "begin Run", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame );
+        std::cout << "\n\nRun(relativePath,frame) Chk1, saved "<< frame <<".csv At start of Run(...) \n"<<std::flush;
+    }
+
+    InsertParticlesCL ( 0x0, 0x0, 0x0 );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertParticlesCL", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+1 );
+        std::cout << "\n\nRun(relativePath,frame) Chk2, saved "<< frame+1 <<".csv  After InsertParticlesCL\n"<<std::flush;
+    }
+
+    PrefixSumCellsCL ( 1 );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumCellsCL", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+2 );
+        std::cout << "\n\nRun(relativePath,frame) Chk3, saved "<< frame+2 <<".csv  After PrefixSumCellsCL\n"<<std::flush;
+    }
+
+    CountingSortFullCL ( 0x0 );
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortFullCL", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+3 );
+        std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< frame+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
+    }
+
+    ComputePressureCL();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputePressureCL", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+4 );
+        std::cout << "\n\nRun(relativePath,frame) Chk5, saved "<< frame+4 <<".csv  After ComputePressureCL \n"<<std::flush;
+    }
+
+    ComputeForceCL ();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeForceCL", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+5 );
+        std::cout << "\n\nRun(relativePath,frame) Chk6, saved "<< frame+5 <<".csv  After ComputeForceCL \n"<<std::flush;
+    }
+    // TODO compute nerve activation ?
+
+
+    // TODO compute muscle action ?
+
+
+    ComputeDiffusionCL();
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeDiffusionCL", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+6 );
+        std::cout << "\n\nRun(relativePath,frame) Chk7, saved "<< frame+6 <<".csv  After ComputeDiffusionCL \n"<<std::flush;
+    }
+
+    if(gene_activity){
+
+        ComputeGenesCL();     // NB (i)Epigenetic countdown, (ii) GRN gene regulatory network sensitivity to TransciptionFactors (FCONC)
+        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeGenesCL", mbDebug);
+
+        if(debug){
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+7 );
+            std::cout << "\n\nRun(relativePath,frame) Chk8, saved "<< frame+7 <<".csv  After ComputeGenesCL \n"<<std::flush;
+        }
+        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SavePointsCSV2 after ComputeGenesCL", mbDebug); // wipes out FEPIGEN
+    }
+
+    if(remodelling){
+
+        AssembleFibresCL ();
+
+        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AssembleFibresCL", mbDebug);
+
+        if(debug){
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+8 );
+            std::cout << "\n\nRun(relativePath,frame) Chk9.0, saved "<< frame+8 <<".csv  After AssembleFibresCL  \n"<<std::flush;
+        }
+
+        ComputeBondChangesCL ();
+
+        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeBondChangesCL", mbDebug); // wipes out FEPIGEN ////////////////////////////////////
+
+        if(debug){
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+9 );
+            std::cout << "\n\nRun(relativePath,frame) Chk9, saved "<< frame+8 <<".csv  After ComputeBondChangesCL  \n"<<std::flush;
+        }
+
+        PrefixSumChangesCL ( 1 );
+        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumChangesCL", mbDebug); // writes mangled (?original?) data to FEPIGEN - not anymore
+
+        if(debug){
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+10 );
+            std::cout << "\n\nRun(relativePath,frame) Chk10, saved "<< frame+9 <<".csv  After PrefixSumChangesCL \n"<<std::flush;
+        }
+
+        CountingSortChangesCL (  );
+        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortChangesCL", mbDebug);
+
+        if(debug){
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+11 );
+            std::cout << "\n\nRun(relativePath,frame) Chk11, saved "<< frame+10 <<".csv  After CountingSortChangesCL  \n"<<std::flush;
+        }
+
+        ComputeParticleChangesCL ();                                     // execute particle changes // _should_ be able to run concurrently => no clFinish(m_queue))
+
+        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCL", mbDebug);
+
+        if(debug){
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+12 );
+            std::cout << "\n\nRun(relativePath,frame) Chk12, saved "<< frame+11 <<".csv  After  ComputeParticleChangesCL.  mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
+        }
+        //CleanBondsCL ();
+
+        //cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CleanBondsCL ", mbDebug);
+
+    }
+
+    TransferPosVelVeval ();
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+13 );
+        std::cout << "\n\nRun(relativePath,frame) Chk13, saved "<< frame+12 <<".csv  After  TransferPosVelVeval.  mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
+    }
+
+    AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+14 );
+        std::cout << "\n\nRun(relativePath,frame) Chk14, saved "<< frame+13 <<".csv  After  AdvanceCL\n"<<std::flush;
+    }
+
+    SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]);
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SpecialParticlesCL", mbDebug);
+
+    if(debug){
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+15 );
+        std::cout << "\n\nRun(relativePath,frame) Chk15, saved "<< frame+14 <<".csv  After  SpecialParticlesCL\n"<<std::flush;
+    }
+    AdvanceTime ();*/
+/*
+
+    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+
+        SavePointsCSV2 (  relativePath, frame+15 );
+
+    }
+
+*/
+
+/*
+
+//     if(debug){
+
+//         TransferFromCL ();
+
+//         SavePointsCSV2 (  relativePath, frame+18 );
+
+//         std::cout << "\n\nRun(relativePath,frame) Chk16, saved "<< frame+6 <<".csv  After AdvanceCL \n"<<std::flush;
+
+//     }
+
+    //cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
+
+    //EmitParticlesCL ( m_Time, (int) m_Vec[PEMIT_RATE].x );
+
+    //TransferFromCL (); // return for rendering
+
+
+//     if(debug){
+
+//         TransferFromCL ();
+
+//         SavePointsCSV2 (  relativePath, frame+19 );
+
+//         std::cout << "Run(relativePath,frame) finished,  saved "<< frame+7 <<".csv  After AdvanceTime \n";
+
+//     }
+
+*/
+
+/*}// 0:start, 1:InsertParticles, 2:PrefixSumCellsCL, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
+, "Run", "cuCtxSynchronize", "After InsertParticlesCL", mbDebug);
+
+//TransferFromCL ();
+
+std::cout << "\n\n Chk2 \n"<<std::flush;
+
+    PrefixSumCellsCL ( 1 );
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumCellsCL", mbDebug);
+
+//TransferFromCL ();
+
+std::cout << "\n\n Chk3 \n"<<std::flush;
+
+    CountingSortFullCL ( 0x0 );
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortFullCL", mbDebug);
+
+//TransferFromCL ();
+
+std::cout << "\n\n Chk4 \n"<<std::flush;
+
+    ComputePressureCL();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputePressureCL", mbDebug);
+
+//TransferFromCL ();
+
+std::cout << "\n\n Chk5 \n"<<std::flush;
+
+    // FreezeCL ();                                   // makes the system plastic, ie the bonds keep reforming
+
+//std::cout << "\n\n Chk6 \n"<<std::flush;
+
+    ComputeForceCL ();                                // now includes the function of freeze
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeForceCL", mbDebug);
+
+
+    // TODO compute nerve activation ?
+
+    // TODO compute muscle action ?
+
+//std::cout << "\n\n Chk6 \n"<<std::flush;
+
+    ComputeDiffusionCL();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeDiffusionCL", mbDebug);
+
+//std::cout << "\n\n Chk7 \n"<<std::flush;
+
+    ComputeGenesCL();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeGenesCL", mbDebug);
+
+std::cout << "\n\n Chk8 \n"<<std::flush;
+
+    ComputeBondChangesCL ();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeBondChangesCL", mbDebug);
+
+    //  make dense lists of particle changes
+    // insert changes
+    // prefix sum changes, inc tally_changelist_lengths
+    // counting sort changes
+    //InsertChangesCL ( ); // done by ComputeBondChanges() above
+    //clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertChangesCL", mbDebug);
+
+std::cout << "\n\n Chk9 \n"<<std::flush;
+
+    PrefixSumChangesCL ( 1 );
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumChangesCL", mbDebug);
+
+std::cout << "\n\n Chk10 \n"<<std::flush;
+
+    CountingSortChangesCL (  );
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortChangesCL", mbDebug);
+
+    //  execute particle changes // _should_ be able to run concurrently => no clFinish(m_queue))
+    // => single fn ComputeParticleChangesCL ()
+
+std::cout << "\n\n Chk11 \n"<<std::flush;
+
+    ComputeParticleChangesCL ();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCL", mbDebug);
+
+std::cout << "\n\n Chk12 \n"<<std::flush;
+
+    CleanBondsCL ();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CleanBondsCL ", mbDebug);
+
+std::cout << "\n\n Chk13 \n"<<std::flush;
+
+    TransferPosVelVeval ();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
+
+    AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
+
+    SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SpecialParticlesCL", mbDebug);
+
+//TransferFromCL ();
+
+    //EmitParticlesCL ( m_Time, (int) m_Vec[PEMIT_RATE].x );
+
+    TransferFromCL (); // return for rendering
+
+//std::cout << "\n\n Chk7 \n"<<std::flush;
+
+    AdvanceTime ();
+
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug);
+    //std::cout << " finished \n";
+}*/
+
+/*
+void FluidSystem::Run (const char * relativePath, int frame, bool debug, bool gene_activity, bool remodelling ){       // version to save data after each kernel
+
+    m_FParams.frame = frame;                 // used by computeForceCuda( .. Args)
+
+if (m_FParams.debug>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<frame<<" #########################################################"<<std::flush;
+
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "begin Run", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame );
+        std::cout << "\n\nRun(relativePath,frame) Chk1, saved "<< frame <<".csv At start of Run(...) \n"<<std::flush;
+    }
+
+    InsertParticlesCL ( 0x0, 0x0, 0x0 );
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertParticlesCL", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+1 );
+        std::cout << "\n\nRun(relativePath,frame) Chk2, saved "<< frame+1 <<".csv  After InsertParticlesCL\n"<<std::flush;
+    }
+
+    PrefixSumCellsCL ( 1 );
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumCellsCL", mbDebug);
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+2 );
+        std::cout << "\n\nRun(relativePath,frame) Chk3, saved "<< frame+2 <<".csv  After PrefixSumCellsCL\n"<<std::flush;
+    }
+
+    CountingSortFullCL ( 0x0 );
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortFullCL", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+3 );
+        std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< frame+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
+    }
+
+    ComputePressureCL();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputePressureCL", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+4 );
+        std::cout << "\n\nRun(relativePath,frame) Chk5, saved "<< frame+4 <<".csv  After ComputePressureCL \n"<<std::flush;
+    }
+
+    ComputeForceCL ();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeForceCL", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+5 );
+        std::cout << "\n\nRun(relativePath,frame) Chk6, saved "<< frame+5 <<".csv  After ComputeForceCL \n"<<std::flush;
+    }
+
+    // TODO compute nerve activation ?
+
+    // TODO compute muscle action ?
+
+    ComputeDiffusionCL();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeDiffusionCL", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+6 );
+        std::cout << "\n\nRun(relativePath,frame) Chk7, saved "<< frame+6 <<".csv  After ComputeDiffusionCL \n"<<std::flush;
+    }
+
+    if(gene_activity){
+
+        ComputeGenesCL();     // NB (i)Epigenetic countdown, (ii) GRN gene regulatory network sensitivity to TransciptionFactors (FCONC)
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeGenesCL", mbDebug);
+
+        if(debug){
+
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+7 );
+            std::cout << "\n\nRun(relativePath,frame) Chk8, saved "<< frame+7 <<".csv  After ComputeGenesCL \n"<<std::flush;
+        }
+
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SavePointsCSV2 after ComputeGenesCL", mbDebug); // wipes out FEPIGEN
+    }
+
+    if(remodelling){
+
+        AssembleFibresCL ();
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AssembleFibresCL", mbDebug);
+
+        if(debug){
+
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+8 );
+            std::cout << "\n\nRun(relativePath,frame) Chk9.0, saved "<< frame+8 <<".csv  After AssembleFibresCL  \n"<<std::flush;
+        }
+
+        ComputeBondChangesCL ();
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeBondChangesCL", mbDebug); // wipes out FEPIGEN ////////////////////////////////////
+
+        if(debug){
+
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+9 );
+            std::cout << "\n\nRun(relativePath,frame) Chk9, saved "<< frame+8 <<".csv  After ComputeBondChangesCL  \n"<<std::flush;
+        }
+
+        PrefixSumChangesCL ( 1 );
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumChangesCL", mbDebug); // writes mangled (?original?) data to FEPIGEN - not anymore
+
+        if(debug){
+
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+10 );
+            std::cout << "\n\nRun(relativePath,frame) Chk10, saved "<< frame+9 <<".csv  After PrefixSumChangesCL \n"<<std::flush;
+        }
+
+        CountingSortChangesCL (  );
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortChangesCL", mbDebug);
+
+        if(debug){
+
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+11 );
+            std::cout << "\n\nRun(relativePath,frame) Chk11, saved "<< frame+10 <<".csv  After CountingSortChangesCL  \n"<<std::flush;
+
+        }
+
+        ComputeParticleChangesCL ();                                     // execute particle changes // _should_ be able to run concurrently => no clFinish(m_queue))
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCL", mbDebug);
+
+        if(debug){
+
+            TransferFromCL ();
+            SavePointsCSV2 (  relativePath, frame+12 );
+            std::cout << "\n\nRun(relativePath,frame) Chk12, saved "<< frame+11 <<".csv  After  ComputeParticleChangesCL.  mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
+
+        }
+
+        //CleanBondsCL ();
+        //clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CleanBondsCL ", mbDebug);
+    }
+
+    TransferPosVelVeval ();
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+13 );
+        std::cout << "\n\nRun(relativePath,frame) Chk13, saved "<< frame+12 <<".csv  After  TransferPosVelVeval.  mMaxPoints="<<mMaxPoints<<"\n"<<std::flush;
+
+    }
+
+        AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+14 );
+        std::cout << "\n\nRun(relativePath,frame) Chk14, saved "<< frame+13 <<".csv  After  AdvanceCL\n"<<std::flush;
+    }
+
+        SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]);
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SpecialParticlesCL", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+        SavePointsCSV2 (  relativePath, frame+15 );
+        std::cout << "\n\nRun(relativePath,frame) Chk15, saved "<< frame+14 <<".csv  After  SpecialParticlesCL\n"<<std::flush;
+
+    }
+
+    AdvanceTime ();
+
+/*
+
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug);
+
+    if(debug){
+
+        TransferFromCL ();
+
+        SavePointsCSV2 (  relativePath, frame+15 );
+
+    }
+
+*/
+
+/*
+
+//     if(debug){
+
+//         TransferFromCL ();
+
+//         SavePointsCSV2 (  relativePath, frame+18 );
+
+//         std::cout << "\n\nRun(relativePath,frame) Chk16, saved "<< frame+6 <<".csv  After AdvanceCL \n"<<std::flush;
+
+//     }
+
+    //clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
+
+    //EmitParticlesCL ( m_Time, (int) m_Vec[PEMIT_RATE].x );
+
+    //TransferFromCL (); // return for rendering
+
+
+//     if(debug){
+
+//         TransferFromCL ();
+
+//         SavePointsCSV2 (  relativePath, frame+19 );
+
+//         std::cout << "Run(relativePath,frame) finished,  saved "<< frame+7 <<".csv  After AdvanceTime \n";
+
+//     }
+
+*/
+
+/*}*/// 0:start, 1:InsertParticles, 2:PrefixSumCellsCL, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
+
 
 void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting the particles
 
@@ -1301,7 +2052,7 @@ void FluidSystem::SetupDefaultParams (){
 
     // Default sim config
     m_Param [PGRIDSIZE] = m_Param[PSMOOTHRADIUS] * 2;
-    cout << "\n\n\n++++++++++ m_Param [PGRIDSIZE] = " << m_Param[PGRIDSIZE] << flush;
+    //cout << "\n\n\n++++++++++ m_Param [PGRIDSIZE] = " << m_Param[PGRIDSIZE] << flush; TODO remove
 // 	m_Param [PDRAWMODE] = 1;				// Sprite drawing
 // 	m_Param [PDRAWGRID] = 0;				// No grid
 // 	m_Param [PDRAWTEXT] = 0;				// No text
@@ -1403,14 +2154,16 @@ void FluidSystem::SetupExampleParams (uint spacing){
         m_Time = launchParams.m_Time;
         m_DT = launchParams.m_DT;
         m_Param [ PGRIDSIZE ] = launchParams.gridsize;
-            cout << "\n\n\n++++++++++ m_Param [PGRIDSIZE] = " << m_Param[PGRIDSIZE] << flush;
+            //cout << "\n\n\n++++++++++ m_Param [PGRIDSIZE] = " << m_Param[PGRIDSIZE] << flush;//TODO Remove this debug line
+
 
         m_Param [ PSPACING ] = launchParams.spacing;
         m_Param [ PSIMSCALE ] = launchParams.simscale;
-            std::cout<<"\nX X X X X X X X X launchParams.simscale = " << launchParams.simscale <<std::flush; //TODO Remove this debug line
+            //std::cout<<"\nX X X X X X X X X launchParams.simscale = " << launchParams.simscale <<std::flush; //TODO Remove this debug line
 
         m_Param [ PSMOOTHRADIUS ] = launchParams.smoothradius;
-            cout << "\nXXXXXXXXXXXXXXXXXXXXXXX PSMOOTHRADIUS: " << m_Param[PSMOOTHRADIUS] << flush;
+            //cout << "\nXXXXXXXXXXXXXXXXXXXXXXX PSMOOTHRADIUS: " << m_Param[PSMOOTHRADIUS] << flush;//TODO Remove this debug line
+
 
         m_Param [ PVISC ] = launchParams.visc;
         m_Param [ PSURFACE_TENSION ] = launchParams.surface_tension;
@@ -1648,9 +2401,9 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
     mMaxPoints = m_Param[PNUM];
 
     m_Param [PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
-    std::cout<<"\nX X X X X X X X X m_Param [PGRIDSIZE] = " << m_Param [PGRIDSIZE] <<std::flush; //TODO Remove this debug line
-    std::cout<<"\nX X X X X X X X X m_Param m_Param[PSMOOTHRADIUS] = " << m_Param[PSMOOTHRADIUS] <<std::flush; //TODO Remove this debug line
-    std::cout<<"\nX X X X X X X X X m_Param m_Param[PGRID_DENSITY] = " << m_Param[PGRID_DENSITY] <<std::flush; //TODO Remove this debug line
+    //std::cout<<"\nX X X X X X X X X m_Param [PGRIDSIZE] = " << m_Param [PGRIDSIZE] <<std::flush; //TODO Remove this debug line
+    //std::cout<<"\nX X X X X X X X X m_Param m_Param[PSMOOTHRADIUS] = " << m_Param[PSMOOTHRADIUS] <<std::flush; //TODO Remove this debug line
+    //std::cout<<"\nX X X X X X X X X m_Param m_Param[PGRID_DENSITY] = " << m_Param[PGRID_DENSITY] <<std::flush; //TODO Remove this debug line
     std::cout<<"\nSetupSimulation chk2" <<std::flush;
 
     SetupSPH_Kernels ();
@@ -1665,10 +2418,12 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
 
     std::cout<<"\nSetupSimulation chk3, m_FParams.debug="<<m_FParams.debug<<std::flush;
 
-    if (gpu_mode != GPU_OFF) {     // create CUDA instance etc..
+    if (gpu_mode != GPU_OFF) {     // create CL instance etc..
+        cout << "+OpenCL+ Setup started ...." << flush;
         FluidSetupCL ( mMaxPoints, m_GridSrch, *(cl_int3*)& m_GridRes, *(cl_float3*)& m_GridSize, *(cl_float3*)& m_GridDelta, *(cl_float3*)& m_GridMin, *(cl_float3*)& m_GridMax, m_GridTotal, 0 );
         UpdateParams();            //  sends simulation params to device.
         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
+        cout << "+OpenCL+ Setup finished." << flush;
     }
     if (m_FParams.debug>1)std::cout<<"\nSetupSimulation chk4, mMaxPoints="<<mMaxPoints<<", gpu_mode="<<gpu_mode<<", cpu_mode="<<cpu_mode<<", m_FParams.debug="<<m_FParams.debug<<std::flush;
 

@@ -463,7 +463,7 @@ using namespace std;
 
 		void InitializeKernels(cl_program m_program) {
 		// Setup the array of kernels
-			m_Kern[FUNC_INSERT] = 							clCreateKernel(m_program, "insertParticles", NULL);
+			m_Kern[FUNC_INSERT] = 							clCreateKernel(m_program, "insertParticlesCL", NULL);
 			m_Kern[FUNC_COUNTING_SORT] = 					clCreateKernel(m_program, "countingSortFull", NULL);
 			m_Kern[FUNC_QUERY] = 							clCreateKernel(m_program, "computeQuery", NULL);
 			m_Kern[FUNC_COMPUTE_PRESS] = 					clCreateKernel(m_program, "computePressure", NULL);

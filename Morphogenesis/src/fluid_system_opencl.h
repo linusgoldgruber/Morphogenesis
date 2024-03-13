@@ -26,8 +26,8 @@
 // EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //----------------------------------------------------------------------------------
 
-#ifndef DEF_KERN_CUDA
-	#define DEF_KERN_CUDA
+#ifndef DEF_KERN_CL
+	#define DEF_KERN_CL
     //#include <cuda_runtime.h>
 	//#include <curand.h>
 	//#include <curand_kernel.h>

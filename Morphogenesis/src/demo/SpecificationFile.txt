@@ -56,7 +56,7 @@ initmax_x = 10.000000
  initmax_z = 30.000000
  
 paramsPath = demo/SimParams.txt
- pointsPath = demoPÍ…Û
+ pointsPath = demo
  genomePath = demo/genome.csv
  outPath = out
  

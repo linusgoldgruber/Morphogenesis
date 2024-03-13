@@ -2,31 +2,31 @@
  m_DT = 0.003000
  m_Param [ PSIMSCALE ] = 1.000000
  m_Param [ PGRID_DENSITY ] = 2.000000
- m_Param [ PVISC ] = 0.500000
- m_Param [ PSURFACE_TENSION ] = 1.000000
- m_Param [ PRESTDENSITY ] = 0.001350
+ m_Param [ PVISC ] = 0.100000
+ m_Param [ PSURFACE_TENSION ] = 0.100000
+ m_Param [ PRESTDENSITY ] = 0.000135
  m_Param [ PSPACING ] = 1.000000
- m_Param [ PMASS ] = 0.002050
+ m_Param [ PMASS ] = 0.000205
  m_Param [ PRADIUS ] = 1.000000
  m_Param [ PDIST ] = 1.149425
  m_Param [ PSMOOTHRADIUS ] = 1.000000
- m_Param [ PINTSTIFF ] = 2.000000
+ m_Param [ PINTSTIFF ] = 1.000000
  m_Param [ PEXTSTIFF ] = 50000.000000
  m_Param [ PEXTDAMP ] = 100.000000
  m_Param [ PACCEL_LIMIT ] = 150.000000
  m_Param [ PVEL_LIMIT ] = 3.000000
- m_Param [ PGRAV ] = 10.000000
+ m_Param [ PGRAV ] = 2.000000
  m_Param [ PGROUND_SLOPE ] = 0.100000
  m_Param [ PFORCE_MIN ] = 0.000000
  m_Param [ PFORCE_MAX ] = 0.000000
  m_Param [ PFORCE_FREQ ] = 16.000000
- m_Vec [ PPLANE_GRAV_DIR ].Set ( 0.000000, -9.800000, 0.000000 )
+ m_Vec [ PPLANE_GRAV_DIR ].Set ( 0.000000, -1.000000, 0.000000 )
  // Default sim config
  m_Param [ PGRIDSIZE ] = 1.000000
  m_Vec [ PVOLMIN ].Set ( 0.000000, 0.000000, 0.000000 )
- m_Vec [ PVOLMAX ].Set ( 10.000000, 20.000000, 20.000000 )
+ m_Vec [ PVOLMAX ].Set ( 10.000000, 20.000000, 50.000000 )
  m_Vec [ PINITMIN ].Set ( 3.000000, 3.000000, 3.000000 )
- m_Vec [ PINITMAX ].Set ( 10.000000, 20.000000, 10.000000 )
+ m_Vec [ PINITMAX ].Set ( 10.000000, 20.000000, 30.000000 )
  m_Param [ PFORCE_MIN ] = 0.000000
  m_Param [ PFORCE_FREQ ] = 16.000000
  m_Param [ PGROUND_SLOPE ] = 0.100000

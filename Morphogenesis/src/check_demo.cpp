@@ -76,7 +76,7 @@ int main ( int argc, const char** argv )
 
 
     //fluid.ReadPointsCSV2_DEBUG(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
-    fluid.ReadPointsCSV2(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
+    fluid.ReadPointsCSV2(pointsPath, GPU_SINGLE, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
     printf("\nchk1: ReadPointsCSV2() \n");
     fluid.WriteSimParams ( outPath );
     printf("\nchk2: WriteSimParams() \n");

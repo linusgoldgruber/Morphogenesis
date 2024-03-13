@@ -66,7 +66,26 @@ parserArgumentsOpenCL=-ferror-limit=100 -fspell-checking -Wdocumentation -Wunuse
 Name=GCC
 
 [Launch]
-Launch Configurations=Launch Configuration 2,Launch Configuration 3,Launch Configuration 6
+Launch Configurations=Launch Configuration 2,Launch Configuration 3,Launch Configuration 6,Launch Configuration 0
+
+[Launch][Launch Configuration 0]
+Configured Launch Modes=execute
+Configured Launchers=nativeAppLauncher
+Name=load_sim
+Type=Native Application
+
+[Launch][Launch Configuration 0][Data]
+Arguments=/home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/demo/out 5 10 n n y y 5 n n /home/goldi/Documents/KDevelop\\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
+Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
+Dependency Action=Nothing
+EnvironmentGroup=
+Executable=file:///home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/load_sim
+External Terminal=konsole --noclose --workdir %workdir -e %exe
+Kill Before Executing Again=4194304
+Project Target=src,load_sim
+Use External Terminal=false
+Working Directory=
+isExecutable=true
 
 [Launch][Launch Configuration 2]
 Configured Launch Modes=execute

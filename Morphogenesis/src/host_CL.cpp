@@ -83,6 +83,9 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size
 void FluidSystem::TransferToTempCL ( int buf_id, int sz ){
     cl_int err;
     m_FluidTemp.mgpu[buf_id] = clCreateBuffer(m_context, CL_MEM_READ_WRITE, sz, NULL, &err);
+
+        if(err!=CL_SUCCESS)	{cout<<"\nTransferToTempCL: clCreateBuffer status="<<checkerror(err)<<"\n"<<flush;exit_(err);}
+
 //     cout << "\nX X X X X X X X X 'sz' input value: " << sz << flush;
 //     cout << "\nX X X X X X X X X buf_id value: " << buf_id << flush;
 //     cout << "\nX X X X X X X X X mMaxPoints * sizeof(float) * 3 value: " << mMaxPoints * sizeof(float) * 3 << flush;
@@ -114,7 +117,6 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     if (m_FParams.debug>1) printf("\n-----InsertParticles() started-----");
 
         printf("\nm_GridTotal = %d\n", m_GridTotal);
-
 
     m_Fluid.mgpu[FGRIDCNT] = clCreateBuffer(m_context, CL_MEM_READ_WRITE, m_GridTotal * sizeof(int),NULL, &err);
 
@@ -154,12 +156,10 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
     // first zero the counters
     int zero = 0;
-    clCheck(clEnqueueFillBuffer(m_queue, m_Fluid.mgpu[FGRIDCNT], &zero, sizeof(int), 0, m_GridTotal * sizeof(int), 0, NULL, NULL), "InsertParticlesCL", "clEnqueueFillBuffer 1", NULL, mbDebug);
-
-    clCheck(clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FGRIDOFF), &zero, sizeof(int), 0, m_GridTotal * sizeof(int), 0, NULL, NULL), "InsertParticlesCL", "clEnqueueFillBuffer 2", NULL, mbDebug);
-
-    clCheck(clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FGRIDCNT_ACTIVE_GENES), &zero, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]), 0, NULL, NULL), "InsertParticlesCL", "clEnqueueFillBuffer 3", NULL, mbDebug);
-    clCheck(clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES), &zero, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]), 0, NULL, NULL), "InsertParticlesCL", "clEnqueueFillBuffer 4", NULL, mbDebug);
+    clCheck(clEnqueueFillBuffer(m_queue,    m_Fluid.mgpu[FGRIDCNT],                   &zero, sizeof(int),             0, m_GridTotal * sizeof(int),               0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 1", NULL, mbDebug);
+    clCheck(clEnqueueFillBuffer(m_queue,    gpuVar(&m_Fluid, FGRIDOFF),               &zero, sizeof(int),             0, m_GridTotal * sizeof(int),               0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 2", NULL, mbDebug);
+    clCheck(clEnqueueFillBuffer(m_queue,    gpuVar(&m_Fluid, FGRIDCNT_ACTIVE_GENES),  &zero, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]),   0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 3", NULL, mbDebug);
+    clCheck(clEnqueueFillBuffer(m_queue,    gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES),  &zero, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]),   0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 4", NULL, mbDebug);
 
     // Set long list to sort all particles.
     computeNumBlocks(m_FParams.pnum, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems); // particles
@@ -169,10 +169,13 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
     //void* args[1] = {&mMaxPoints}; //&mNumPoints
     err  = clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(int),     &mMaxPoints);
+    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(int),     &m_Fluid.mgpu[FGRIDCNT]); //volatile global int* fgridcnt
+    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(int),     &m_Fluid.mgpu[FGRIDCNT_ACTIVE_GENES]); //volatile global int* fgridcnt
 
+    //Running kernel
+    cl_event func_insert_event;
 
-    clCheck(
-        clEnqueueNDRangeKernel(m_queue,
+    clCheck(                clEnqueueNDRangeKernel(m_queue,
                                  m_Kern[FUNC_INSERT],
                                  1,
                                  NULL,
@@ -180,8 +183,11 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
                                  (const size_t*)&m_FParams.numItems,
                                  0,
                                  NULL,
-                                 NULL),
+                                 &func_insert_event),
+
     "InsertParticlesCL", "clEnqueueNDRangeKernel", "FUNC_INSERT", mbDebug);
+
+    clWaitForEvents(1, &func_insert_event);
 
     //if (m_FParams.debug > 1)
         cout << "\n#######\nCalling InsertParticles kernel: args[1] = {" << mNumPoints << "}, mMaxPoints=" << mMaxPoints
@@ -217,7 +223,10 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
                                   NULL,
                                   NULL);
 
-        clFinish(m_queue);
+        //clean up TODO is something missing?
+        clReleaseMemObject(m_Fluid.mgpu[FGRIDCNT]);
+        clReleaseKernel(m_Kern[FUNC_INSERT]);
+        clReleaseCommandQueue(m_queue);
     }
     if (m_debug > 4) {
         if (m_FParams.debug > 1)
@@ -1032,7 +1041,7 @@ void FluidSystem::Init_CLRand (){
     clEnqueueReadBuffer(m_queue, res_buf, CL_TRUE, 0, sizeof(unsigned int) * mNumPoints, randBuf, 0, NULL, NULL);                                       if(status!=CL_SUCCESS){cout<<"\nres3 = "<<checkerror(status)<<"\n"<<flush;exit_(status);}
 
     // Print out the results
-                                                                                                                                                        if(verbosity>0) {for (unsigned int i = 0; i < mNumPoints; ++i) {printf("randBuf[%u] = %u\n", i, randBuf[i]);} }
+    printf("Note: randBuf results are not printed (host_CL.cpp, Init_CLRand() )");                                                                                                                                                    //if(verbosity>1) {for (unsigned int i = 0; i < mNumPoints; ++i) {printf("randBuf[%u] = %u\n", i, randBuf[i]);} }
 
     // Free buffers
     free(randBuf);

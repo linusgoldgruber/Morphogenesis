@@ -42,6 +42,7 @@
 #pragma OPENCL EXTENSIONcl_khr_global_int32_extended_atomics: enable
 #pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics: enable
 #pragma OPENCL EXTENSION cl_khr_local_int32_extended_atomics: enable
+#pragma OPENCL_VERSION 120
 
 
 #include "fluid_system_opencl.h"
@@ -114,7 +115,10 @@ __kernel void memset32d_kernel(
 
 __kernel void insertParticlesCL (
 
-    int pnum
+    int pnum,
+    volatile __global int* fgridcnt,
+    volatile __global int* fgridcnt_active_genes
+
     )
 {
     uint i = get_global_id(0);
@@ -139,13 +143,13 @@ __kernel void insertParticlesCL (
     if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
 
 		bufI(&fbuf, FGCELL)[i] = gs;											     // Grid cell insert.
-		bufI(&fbuf, FGNDX)[i] = atomic_add( &bufI(&fbuf, FGRIDCNT)[ gs ], 1 );       // Grid counts.         //  ## counts particles in this bin.
+		bufI(&fbuf, FGNDX)[i] = atomic_add(&fgridcnt[gs], 1 );       // Grid counts.         //  ## counts particles in this bin.
                                                                                                          //  ## add counters for dense lists. ##############
         // for each gene, if active, then atomicAdd bin count for gene
         for(int gene=0; gene<NUM_GENES; gene++){ // NB data ordered FEPIGEN[gene][particle] AND +ve int values -> active genes.
             //if(fparam.debug>2 && i==0)printf("\n");
             if (bufI(&fbuf, FEPIGEN) [i + gene*fparam.maxPoints] >0 ){  // "if((int)bufI(&fbuf, FEPIGEN)" may clash with INT_MAX
-                atomic_add( &bufI(&fbuf, FGRIDCNT_ACTIVE_GENES)[gene*gridTot  + gs ], 1 );
+                atomic_add( &fgridcnt_active_genes[gene*gridTot +gs], 1 );
             }
         }
     } else {
@@ -226,7 +230,10 @@ __kernel void tally_denselist_lengths(
     bufI(&fbuf, fdense_list_lengths)[list] = bufI(&fbuf, fgridcnt)[(list+1)*gridTot -1] + bufI(&fbuf, fgridoff)[(list+1)*gridTot -1];
 }
 
-__kernel void countingSortFull(int pnum) {
+__kernel void countingSortFull(
+    int pnum
+    )
+{
     uint i = get_global_id(0);
     if (i >= pnum) return;
     if (fparam.debug > 1 && i == 0) printf("\ncountingSortFull(): pnum=%u\n", pnum);
@@ -341,7 +348,10 @@ float contributePressure (int i, float3 p, int cell, float *sum_p6k) {
     return sum;;
 }
 
-__kernel void computePressure ( int pnum ) {
+__kernel void computePressure (
+    int pnum
+    )
+{
     int i = get_global_id(0); // particle index
     if (i >= pnum) return;
 
@@ -419,7 +429,12 @@ float3 contributeForce ( int i, float3 ipos, float3 iveleval, float ipress, floa
     return force;                                                                                           // return fluid force && list of potential bonds fron this cell
 }
 
-__kernel void computeForce (int pnum, int freezeBoolToInt, uint frame) {
+__kernel void computeForce (
+    int pnum,
+    int freezeBoolToInt,
+    uint frame
+    )
+{
     uint i = get_global_id(0);
     if (i >= pnum) return;
     uint gc = bufI(&fbuf, FGCELL)[i];
@@ -522,28 +537,6 @@ __kernel void computeForce (int pnum, int freezeBoolToInt, uint frame) {
     bufF3(&fbuf, FFORCE)[i].z += force.z;                                 // temporary hack, ? better to write a float3 atomicAdd using atomicCAS ?  ########
 
 }
-
-// __kernel void init_FCLRAND_STATE (
-//
-//     int pnum,
-//     __global clrngMrg31k3pHostStream* streams) {
-//     int i = get_global_id(0); // global thread index
-//
-//     if (i >= pnum) return;
-//
-//     // Initialize RNG stream
-//     clrngMrg31k3pStream private_stream;
-//     clrngMrg31k3pCreateStreams(NULL, 1, NULL, NULL);
-//
-//     // Generate a seed by calling the RNG twice and combining the results
-//     ulong seed = clrngMrg31k3pRandomU01(&private_stream);
-//     seed = seed << 32;
-//     seed += clrngMrg31k3pRandomU01(&private_stream);
-//
-//     // Store the generated seed
-//     seeds[i] = seed;
-// }
-
 
 __kernel void init_RandCL (
      uint num,

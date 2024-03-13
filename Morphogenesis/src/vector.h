@@ -20,7 +20,7 @@
 
         // #define		USE_JPEG
 
-        //#define		BUILD_CUDA			// CUDA - Visual Studio 2005 only (as of April 2009)
+        //#define		BUILD_CL			// CL - Visual Studio 2005 only (as of April 2009)
 
         #define TEX_SIZE		2048
         #define LIGHT_NEAR		0.5

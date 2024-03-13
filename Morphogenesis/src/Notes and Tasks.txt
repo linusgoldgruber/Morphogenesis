@@ -18,8 +18,7 @@ Probably use a folder with named csv files.
 5) 
 
 
-LINUS
-
+-----------------------------------------------------------------------------------------------------------------------------------------------------
 CMAKE:
 
 Where is the source code: 
@@ -27,6 +26,16 @@ Where is the source code:
 
 Where to build the binaries:
 /home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build
+
+----
+load_sim.cpp
+
+Executable:
+/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/load_sim
+
+Arguments:
+/home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo/out 3 10 n n y y 3 n n /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
+
 
 ----
 createDemo.cpp Launch Configs:
@@ -56,3 +65,5 @@ Executable:
 
 Arguments: 
 /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
+
+

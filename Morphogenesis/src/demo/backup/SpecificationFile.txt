@@ -11,20 +11,20 @@ gridsize = 1.000000
 simscale = 1.000000
  smooth_radius = 1.000000
  
-visc = 0.500000
- surface_t = 1.000000
+visc = 0.100000
+ surface_t = 0.100000
  
-mass = 0.002050
+mass = 0.000205
  radius = 1.000000
  
-int_stiff = 2.000000
+int_stiff = 1.000000
  ext_stiff = 50000.000000
  ext_damp = 100.000000
  
 accel_limit = 150.000000
  vel_limit = 3.000000
  
-grav = 10.000000
+grav = 2.000000
  slope = 0.100000
  
 force_min = 0.000000
@@ -45,7 +45,7 @@ volmin_x = 0.000000
  
 volmax_x = 10.000000
  volmax_y = 20.000000
- volmax_z = 20.000000
+ volmax_z = 50.000000
  
 initmin_x = 3.000000
  initmin_y = 3.000000
@@ -53,10 +53,10 @@ initmin_x = 3.000000
  
 initmax_x = 10.000000
  initmax_y = 20.000000
- initmax_z = 10.000000
+ initmax_z = 30.000000
  
 paramsPath = demo/SimParams.txt
- pointsPath = demo|ûK!
+ pointsPath = demoPêÉó
  genomePath = demo/genome.csv
  outPath = out
  
@@ -74,7 +74,7 @@ save_ply = n
  
 gene_activity = n
  remodelling = n
- read_genome = y
+ read_genome = n
  
 actuation_factor = 0.000000
  actuation_period = 1.000000

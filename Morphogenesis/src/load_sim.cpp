@@ -1,11 +1,26 @@
+#define __CL_ENABLE_EXCEPTIONS
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_TARGET_OPENCL_VERSION 300
+#define SDK_SUCCESS 0
+#define SDK_FAILURE 1
 
 #include <stdio.h>
 #include <inttypes.h>
 #include <errno.h>
 #include <string.h>
 #include <chrono>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <math.h>
+#include <regex>
+#include <filesystem>
+#include <jsoncpp/json/json.h>
+#include "host_CL.cpp"
 #include "fluid_system.h"
 #include <CL/cl.h>
+
+#define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
 
 
 int main ( int argc, const char** argv )
@@ -17,8 +32,8 @@ int main ( int argc, const char** argv )
     uint num_files, steps_per_file, freeze_steps, debug;
     int file_num=0;
     char save_ply, save_csv, save_vtp,  gene_activity, remodelling;
-    if ( argc != 12 ) {
-        printf ( "usage: load_sim  simulation_data_folder  output_folder  num_files  steps_per_file  freeze_steps save_ply(y/n)  save_csv(y/n)  save_vtp(y/n)  debug(0-5) gene_activity(y/n)  remodelling(y/n) \n\ndebug: 0=full speed, 1=current special output,  2=host cout, 3=device printf, 4=SaveUintArray(), 5=save .csv after each kernel.\n\n" );
+    if ( argc != 13 ) {
+        printf ( "usage: load_sim  simulation_data_folder  output_folder  num_files  steps_per_file  freeze_steps save_ply(y/n)  save_csv(y/n)  save_vtp(y/n)  debug(0-5) gene_activity(y/n)  remodelling(y/n) jason_file \n\ndebug: 0=full speed, 1=current special output,  2=host cout, 3=device printf, 4=SaveUintArray(), 5=save .csv after each kernel.\n\n" );
         return 0;
     } else {
         sprintf ( paramsPath, "%s/SimParams.txt", argv[1] );
@@ -58,25 +73,31 @@ int main ( int argc, const char** argv )
         
         remodelling = *argv[11];
         printf ("remodelling = %c\n", remodelling );
+
+        ifstream ifs(argv[12]);
+        printf ("JSON file = %s\n", argv[12]);
+
+
     }
 
 std::cout <<"\nchk load_sim_0.1\n"<<std::flush;  
 
-    }
-std::cout <<"\nchk load_sim_0.2\n"<<std::flush;  
+    // Initialize
+    ifstream ifs(argv[12]);
+    Json::Reader reader;
+    Json::Value obj_;
+    Json::Value obj;
+    obj["verbosity"] = 1;
+    obj["opencl_platform"] = 0;
+    obj["opencl_device"] = 0;
 
-    cl_device_id clDevice;
-    clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, deviceCount, &clDevice, NULL);
-    CUcontext cuContext;
-    cuCtxCreate ( &cuContext, 0, clDevice );
-std::cout <<"\nchk load_sim_0.3\n"<<std::flush;  
-    
-    FluidSystem fluid;
-    fluid.SetDebug ( debug );
+    bool b = reader.parse(ifs, obj);
+    //if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
+    cout << "\n\n\n" << endl;
+    //obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
+    FluidSystem fluid(obj);
+    fluid.Initialize();
     fluid.InitializeOpenCL();
-
-    size_t global_work_size = numGroups * numItems;
-    size_t local_work_size = numItems;
 
 std::cout <<"\nchk load_sim_0.2\n"<<std::flush;
     
@@ -89,7 +110,7 @@ std::cout <<"\nchk load_sim_0.2.2\n"<<std::flush;
     fluid.ReadPointsCSV2 ( pointsPath, GPU_DUAL, CPU_YES );    // NB currently GPU allocation is by Allocate particles, called by ReadPointsCSV.
 std::cout <<"\nchk load_sim_0.3\n"<<std::flush;
 
-    fluid.Init_FCURAND_STATE_CL ();    
+    fluid.Init_CLRand();
 std::cout <<"\nchk load_sim_1.0\n"<<std::flush;
 
     auto old_begin = std::chrono::steady_clock::now();
@@ -100,9 +121,7 @@ std::cout <<"\nchk load_sim_1.0\n"<<std::flush;
     file_num++;
     
     fluid.TransferPosVelVeval ();
-    clCheck(clFinish(), "Run", "clFinish", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
-    
- 
+
 std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
     fluid.setFreeze(true);
     for (int k=0; k<freeze_steps; k++){
@@ -113,7 +132,7 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
          */
         //fluid.Freeze (outPath, file_num, (debug=='y'), (gene_activity=='y'), (remodelling=='y')  );       // creates the bonds // fluid.Freeze(outPath, file_num) saves file after each kernel,, fluid.Freeze() does not.         // fluid.Freeze() creates fixed bond pattern, triangulated cubic here. 
         
-        fluid.Run (outPath, file_num, (debug>4), (gene_activity=='y'), (remodelling=='y') );
+        fluid.Run2Simulation();
         fluid.TransferPosVelVeval (); // Freeze movement until heal() has formed bonds, over 1st n timesteps.
         if(save_csv=='y'||save_vtp=='y') fluid.TransferFromCL ();
         if(save_csv=='y') fluid.SavePointsCSV2 ( outPath, file_num+90);
@@ -128,7 +147,7 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
         
         for ( int j=0; j<steps_per_file; j++ ) {//, bool gene_activity, bool remodelling 
             
-            fluid.Run (outPath, file_num, (debug>4), (gene_activity=='y'), (remodelling=='y') );  // run the simulation  // Run(outPath, file_num) saves file after each kernel,, Run() does not.
+            fluid.Run2Simulation();  // run the simulation  // Run(outPath, file_num) saves file after each kernel,, Run() does not.
         }// 0:start, 1:InsertParticles, 2:PrefixSumCellsCL, 3:CountingSortFull, 4:ComputePressure, 5:ComputeForce, 6:Advance, 7:AdvanceTime
 
         //fluid.SavePoints (i);                         // alternate file formats to write
@@ -184,5 +203,3 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
     */
     return 0;
 }
-
-// note: Any memory allocated with cuMemAllocManaged should be released with cuMemFree.
