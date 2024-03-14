@@ -173,6 +173,9 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
     computeNumBlocks(m_FParams.pnum, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems); // particles
 
+    size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
+    size_t local_work_size = m_FParams.numItems;
+
     cout << "\n+++++++++++++++++++++++++++ m_FParams.numGroups: " << m_FParams.numGroups << "+++++++++++++++++++++++" << flush;
     cout << "\n+++++++++++++++++++++++++++ m_FParams.numItems: " << m_FParams.numItems << "+++++++++++++++++++++++\n\n" << flush;
     // set arguments and launch kernel "InsertParticles"
@@ -184,17 +187,30 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
     //Running kernel
     cl_event func_insert_event;
-    clCheck(                clEnqueueNDRangeKernel(m_queue,
-                                 m_Kern[FUNC_INSERT],
-                                 1,
-                                 NULL,
-                                 (const size_t*)&m_FParams.numGroups,
-                                 (const size_t*)&m_FParams.numItems,
-                                 0,
-                                 NULL,
-                                 &func_insert_event),
+    clCheck(                clEnqueueNDRangeKernel(m_queue,             // cl_command_queue     command_queue,
+                                 m_Kern[FUNC_INSERT],                   // cl_kernel            kernel,
+                                 1,                                     // cl_uint              work_dim,
+                                 NULL,                                  // const size_t         *global_work_offset,
+                                 global_work_size,                      // const size_t         *global_work_size,
+                                 local_work_size,                       // const size_t         *local_work_size,
+                                 0,                                     // cl_uint              num_events_in_wait_list,
+                                 NULL,                                  // const cl_event       *event_wait_list,
+                                 &func_insert_event),                   // cl_event             *event
 
     "InsertParticlesCL", "clEnqueueNDRangeKernel", "FUNC_INSERT", mbDebug);
+    /*
+        cl_int clEnqueueNDRangeKernel (
+                                   cl_command_queue     command_queue,
+                                   cl_kernel            kernel,
+                                   cl_uint              work_dim,
+                                   const size_t         *global_work_offset,
+                                   const size_t         *global_work_size,
+                                   const size_t         *local_work_size,
+                                   cl_uint              num_events_in_wait_list,
+                                   const cl_event       *event_wait_list,
+                                   cl_event             *event
+    )
+    */
 
     clWaitForEvents(1, &func_insert_event);
 
