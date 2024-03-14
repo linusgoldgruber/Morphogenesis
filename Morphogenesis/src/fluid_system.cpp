@@ -134,6 +134,20 @@ bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall
     return true;
 }
 
+void FluidSystem::initializeFBufs(FBufs* fluid) {
+    // Check if fluid is a valid pointer
+    if (fluid == nullptr) {
+        return; // Return if fluid is invalid
+    }
+
+    // Initialize all memory pointers to nullptr
+    for (int i = 0; i < MAX_BUF; ++i) {
+
+        fluid->mcpu[i] = nullptr;
+        fluid->mgpu[i] = nullptr;
+
+    }
+}
 ///////////////////////////////////////////////////////////////// Initialize OpenCL /////////////
 
 FluidSystem::FluidSystem(Json::Value obj_)
@@ -181,7 +195,7 @@ FluidSystem::FluidSystem(Json::Value obj_)
 																						// Multiple queues for latency hiding: Upload, Download, Mapping, Tracking,... autocalibration, SIRFS, SPMP
 																						// NB Might want to create command queues on multiple platforms & devices.
 																						// NB might want to divde a task across multiple MPI Ranks on a multi-GPU WS or cluster.
-    //const char *filename = "../kernels/kernelTest.cl";							/*Step 5: Create program object*///////////////////////////////
+    /*Step 5: Create program object*///////////////////////////////
     const char *filename = obj["kernel_filepath"].asCString();
     printf("\nKernel File Path: %s\n", filename);
 
@@ -208,6 +222,8 @@ FluidSystem::FluidSystem(Json::Value obj_)
 
 	//Initialize the Array of Kernels "m_Kern[]"
 	InitializeKernels(m_program);
+
+    initializeFBufs(&m_Fluid);
 
 	m_FParamDevice=m_FluidDevice=m_FluidTempDevice=m_FGenomeDevice=0;		// set device pointers to zero
 																						if(verbosity>0) cout << "\n-----FluidSystem::FluidSystem finished-----\n\n" << flush;
@@ -407,7 +423,6 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
     memset ( &m_FluidTemp,  0,      sizeof(FBufs) );
     memset ( &m_FParams,    0,      sizeof(FParams) );
     memset ( &m_FGenome,    0,      sizeof(FGenome) );
-
 
     mNumPoints = 0;
 	mMaxPoints = 0;
@@ -622,6 +637,8 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
         m_Fluid.mcpu[buf_id] = dest_buf;
     }
 
+
+
     if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL || gpumode == GPU_TEMP) {
 
         clFinish(m_queue);  // Ensure any previous operations on the command queue are completed
@@ -632,22 +649,49 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
         if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL) {
 
-            if (gpuptr(&m_Fluid, buf_id) != 0x0) {
+            if (bufferAllocated[buf_id]) {
 
-                clCheck(clReleaseMemObject(gpuVar(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject SINGLE/DUAL", "gpuVar", mbDebug);
+                clCheck(clReleaseMemObject(*gpuptr(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject SINGLE/DUAL", "gpuVar", mbDebug);
+
+                cl_mem buf_loc = clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err);
+
+
+
+                                                                                            if(verbosity>0 && err!=CL_SUCCESS) cout << checkerror(err)  << "\nstride*gpucnt: " << stride*gpucnt << "\n" << flush;
+
+                                                                                            if (verbosity > 1) { std::cout << "\t\t gpuptr(&m_Fluid, " << buf_id << ")'" << gpuptr(&m_Fluid, buf_id) << ",   gpu(&m_Fluid, " << buf_id << ")=" << gpuVar(&m_Fluid, buf_id) << "\n" << std::flush;}
+
+                cout << "buf_loc= " << buf_loc << "\n" << flush;
+
+                setGpuBuf(&m_Fluid, buf_id, buf_loc);
+
+            }else{
+
+                cl_mem buf_loc = clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err);
+
+
+
+                                                                                            if(verbosity>0 && err!=CL_SUCCESS) cout << checkerror(err)  << "\nstride*gpucnt: " << stride*gpucnt << "\n" << flush;
+
+                                                                                            if (verbosity > 1) { std::cout << "\t\t gpuptr(&m_Fluid, " << buf_id << ")'" << gpuptr(&m_Fluid, buf_id) << ",   gpu(&m_Fluid, " << buf_id << ")=" << gpuVar(&m_Fluid, buf_id) << "\n" << std::flush;}
+
+                cout << "buf_loc= " << buf_loc << "\n" << flush;
+
+                setGpuBuf(&m_Fluid, buf_id, buf_loc);
+
+                bufferAllocated[buf_id] = true;
+
             }
 
-            setGpuBuf(&m_Fluid, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err));
-                                                                                            if(verbosity>0) cout << checkerror(err)  << "\nstride*gpucnt: " << stride*gpucnt << "\n" << flush;
 
-                                                                                            if (verbosity > 1) { std::cout << "\t\t gpuptr(&m_Fluid, " << buf_id << ")'" << gpuptr(&m_Fluid, buf_id) << ",   gpu(&m_Fluid, " << buf_id << ")=" << gpuVar(&m_Fluid, buf_id) << "\t" << std::flush;}
-
-            if (err != CL_SUCCESS) {_exit(err);}
         }
+        //cout << "-----------------end of if\{}-----------------\n" << flush;
 
         if (gpumode == GPU_TEMP || gpumode == GPU_DUAL) {
-            if (gpuptr(&m_FluidTemp, buf_id) != 0x0) {
-                clCheck(clReleaseMemObject(gpuVar(&m_FluidTemp, buf_id)), "AllocateBuffer", "clReleaseMemObject TEMP/DUAL", "gpuVar", mbDebug);
+            cout << "gpuptr(&m_FluidTemp, buf_id)= " << gpuVar(&m_FluidTemp, buf_id) << "\n" << flush;
+            if (gpuptr(&m_FluidTemp, buf_id) != NULL) {
+
+                clCheck(clReleaseMemObject(*gpuptr(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject TEMP/DUAL", "gpuVar", mbDebug);
             }
 
             setGpuBuf(&m_FluidTemp, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err));
@@ -655,8 +699,11 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
             if (err != CL_SUCCESS) {_exit(err);}
         }
+        //cout << "-----------------clFinish()-----------------\n" << flush;
 
         clFinish(m_queue);  // Ensure any new OpenCL operations are completed
+
+        //cout << "-----------------clGetDeviceInfo()-----------------\n" << flush;
 
         clGetDeviceInfo(m_device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
     }

@@ -939,8 +939,7 @@ void FluidSystem::CreateFluidBuffers() {
 }
 
 void FluidSystem::TransferToCL (){ //TODO This function currently also handles the INITIALIZATION of the gpu buffers, not only the transfer!
-if (verbosity>1) std::cout<<"\nTransferToCL ()\n"<<std::flush;
-cl_int err;
+    if (verbosity>0) std::cout<<"\n-----TransferToCL() started... -----\n"<<std::flush;
 
     //cout << "CHECKING clEnqueueWriteBuffer: gpuVar(&m_Fluid, FPOS) = " << gpuVar(&m_Fluid, FPOS) << ", mMaxPoints = " << mMaxPoints << "\n\n\n" << flush;
 
@@ -975,6 +974,8 @@ cl_int err;
 
     clCheck( clEnqueueWriteBuffer(m_queue,gpuVar(&m_Fluid,FEPIGEN),CL_TRUE ,0,      mMaxPoints*sizeof(uint[NUM_GENES]),             bufC(&m_Fluid,FEPIGEN),0,NULL,NULL),        "TransferToCL","clEnqueueWriteBuffer","FEPIGEN",mbDebug);
 
+    if (verbosity>0) std::cout<<"\n-----TransferToCL() finished. -----\n"<<std::flush;
+
 
 
 if (verbosity>1) std::cout<<"TransferToCL ()  finished\n"<<std::flush;
@@ -982,6 +983,9 @@ if (verbosity>1) std::cout<<"TransferToCL ()  finished\n"<<std::flush;
 }
 
 void FluidSystem::TransferFromCL() {
+
+    if (verbosity>0) std::cout<<"\n-----TransferFromCL() started... -----\n"<<std::flush;
+
     //std::cout<<"\nTransferFromCL () \n"<<std::flush;
     // Return particle buffers
     clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0,             mMaxPoints * sizeof(float) * 3, bufC(&m_Fluid, FPOS), 0, NULL, NULL),      "TransferFromCL", "clEnqueueReadBuffer", "FPOS", mbDebug);
@@ -1005,12 +1009,15 @@ void FluidSystem::TransferFromCL() {
     clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid, FCONC), CL_TRUE ,0 ,              mMaxPoints*sizeof(float[NUM_TF]) ,                bufC(&m_Fluid,FCONC) ,0,NULL,NULL),             "TransferFromCL","clEnqueueReadBuffer","FCONC",mbDebug);
     clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_FluidTemp,FEPIGEN), CL_TRUE ,0,        mMaxPoints*sizeof(uint[NUM_GENES]),                 bufC(&m_FluidTemp,FEPIGEN),0,NULL,NULL),       "TransferFromCL","clEnqueueReadBuffer","FEPIGEN",mbDebug);
 
+    if (verbosity>1) std::cout<<"TransferFromCL ()  finished\n"<<std::flush;
+
+
 }
 
 void FluidSystem::Init_CLRand (){
 
-                                                                                                                                                       if(verbosity>0) cout << "Init_CLRand() started...\n\n" << flush;
-                                                                                                                                                       if(verbosity>0) cout << "nNumPoints = " << mNumPoints << "\n\n";
+                                                                                                                                                        if(verbosity>0) cout << "Init_CLRand() started...\n\n" << flush;
+                                                                                                                                                        if(verbosity>1) cout << "nNumPoints = " << mNumPoints << "\n\n";
     cl_int status;
 
     // Initialize RNG
@@ -1028,9 +1035,9 @@ void FluidSystem::Init_CLRand (){
 
 
     // Set up the kernel arguments
-    clSetKernelArg(m_Kern[FUNC_INIT_RANDOMCL], 0, sizeof(cl_int) * mNumPoints, &mNumPoints);
-    clSetKernelArg(m_Kern[FUNC_INIT_RANDOMCL], 1, sizeof(cl_mem), &seed_buf);
-    clSetKernelArg(m_Kern[FUNC_INIT_RANDOMCL], 2, sizeof(cl_mem), &res_buf);
+    clCheck(clSetKernelArg(m_Kern[FUNC_INIT_RANDOMCL], 0, sizeof(cl_int) * mNumPoints, &mNumPoints), "Init_CLRand", "clSetKernelArg", "mNumPoints", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_INIT_RANDOMCL], 1, sizeof(cl_mem), &seed_buf), "Init_CLRand", "clSetKernelArg", "seed_buf", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_INIT_RANDOMCL], 2, sizeof(cl_mem), &res_buf), "Init_CLRand", "clSetKernelArg", "res_buf", mbDebug);
 
     // Launch the kernel
     size_t global_size_work = mNumPoints;
@@ -1052,7 +1059,7 @@ void FluidSystem::Init_CLRand (){
     // Free buffers
     free(randBuf);
     free(seeds);
-                                                                                                                                                        if(verbosity>0) cout << "-----Init_CLRand() finished-----\n\n" << flush;
+                                                                                                                                                        if(verbosity>0) cout << "\n-----Init_CLRand() finished-----\n\n" << flush;
 }
 //     unsigned long long  seed=0;
 //     srand (time(NULL));

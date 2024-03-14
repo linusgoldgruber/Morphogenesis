@@ -213,6 +213,7 @@ using namespace std;
 
 	cl_mem* gpuptr(FBufs *fb, int n) {
 		return &fb->mgpu[n];
+
 	}
 
 	cl_float3 cl_int3_to_cl_float3(cl_int3 op) {
@@ -501,32 +502,7 @@ using namespace std;
 			m_Kern[FUNC_INITIALIZE_BONDS] = 				clCreateKernel(m_program, "initialize_bonds", NULL);
 			m_Kern[FUNC_MEMSET32D] = 						clCreateKernel(m_program, "memset32d_kernel", NULL);
 		}
-		/*
-		void ReadOutput(uchar* outmat) {
-			ReadOutput(outmat, amem,  (width * height * sizeof(float)) );
-		}
-
-		void ReadOutput(uchar* outmat, cl_mem buf_mem, size_t data_size, size_t offset=0) {
-			cl_event readEvt;
-			cl_int status;
-															cout<<"\nReadOutput: &outmat="<<&outmat<<", buf_mem="<<buf_mem<<", data_size="<<data_size<<", offset="<<offset<<"\t"<<flush;
-			status = clEnqueueReadBuffer(dload_queue,			// command_queue
-												buf_mem,		// buffer
-												CL_FALSE,		// blocking_read
-												offset,			// offset
-												data_size,		// size
-												outmat,			// pointer
-												0,				// num_events_in_wait_list
-												NULL,			// event_waitlist
-												&readEvt);		// event
-															if (status != CL_SUCCESS) { cout << "\nclEnqueueReadBuffer(..) status=" << checkerror(status) <<"\n"<<flush; exit_(status);}
-																else if(verbosity>0) cout <<"\nclEnqueueReadBuffer(..)"<<flush;
-			status = clFlush(dload_queue);					if (status != CL_SUCCESS) { cout << "\nclFlush(m_queue) status = " 		<< checkerror(status) <<"\n"<<flush; exit_(status);}
-																else if(verbosity>0) cout <<"\nclFlush(..)"<<flush;
-			status = clWaitForEvents(1, &readEvt); 			if (status != CL_SUCCESS) { cout << "\nclWaitForEvents status="			<< checkerror(status) <<"\n"<<flush; exit_(status);}
-																else if(verbosity>0) cout <<"\nclWaitForEvents(..)"<<flush;
-		}*/
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////7
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//FluidSystem (RunCL& runcl);
         bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
 		//FluidSystem(RunCL& runCLInstance) : m_runCLInstance(runCLInstance) {}
@@ -537,6 +513,8 @@ using namespace std;
         void InitializeCL ();                             // used for load_sim
 
 		// Particle Utilities
+			// Define a flag array to keep track of whether each buffer has been allocated
+			bool bufferAllocated[MAX_BUF] = { false };
 		void AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode);		
         void AllocateBufferDenseLists ( int buf_id, int stride, int gpucnt, int lists );
         void AllocateParticles ( int cnt, int gpu_mode = GPU_DUAL, int cpu_mode = CPU_YES );
