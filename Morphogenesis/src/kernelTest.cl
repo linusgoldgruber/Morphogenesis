@@ -113,7 +113,7 @@ __kernel void memset32d_kernel(
     buffer[gid] = value;
 }
 
-__kernel void insertParticlesCL (
+__kernel void insertParticlesCL(
 
     int pnum,
     volatile __global int* fgridcnt,

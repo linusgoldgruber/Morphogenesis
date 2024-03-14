@@ -223,7 +223,7 @@ FluidSystem::FluidSystem(Json::Value obj_)
 	//Initialize the Array of Kernels "m_Kern[]"
 	InitializeKernels(m_program);
 
-    initializeFBufs(&m_Fluid);
+    //initializeFBufs(&m_Fluid);
 
 	m_FParamDevice=m_FluidDevice=m_FluidTempDevice=m_FGenomeDevice=0;		// set device pointers to zero
 																						if(verbosity>0) cout << "\n-----FluidSystem::FluidSystem finished-----\n\n" << flush;
@@ -288,9 +288,10 @@ void FluidSystem::InitializeOpenCL()
 	int layerstep 		= m_FParams.szPnts;
     //cout << sizeof(m_FParams) << endl; (= 736)
 	// Get the maximum work group size for executing the kernel on the device ///////// From https://github.com/rsnemmen/OpenCL-examples/blob/e2c34f1dfefbd265cfb607c2dd6c82c799eb322a/square_array/square.c
-	status = clGetKernelWorkGroupInfo(m_Kern[FUNC_FPREFIXUP], deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
-	status = clGetKernelWorkGroupInfo(m_Kern[FUNC_FPREFIXSUM], deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
-	status = clGetKernelWorkGroupInfo(m_Kern[FUNC_TALLYLISTS], deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+    //TODO is this adaption of work group size needed?
+// 	status = clGetKernelWorkGroupInfo(m_Kern[FUNC_FPREFIXUP], deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+// 	status = clGetKernelWorkGroupInfo(m_Kern[FUNC_FPREFIXSUM], deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+// 	status = clGetKernelWorkGroupInfo(m_Kern[FUNC_TALLYLISTS], deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 
 	// Number of total work items, calculated here after 1st image is loaded &=> know the size.
 	// NB localSize must be devisor
@@ -1855,7 +1856,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
 void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting the particles
 
-    if(verbosity>1)std::cout<<"-----starting Run2PhysicalSort-----\n\n";
+    if(verbosity>0)std::cout<<"-----starting Run2PhysicalSort-----\n\n";
     InsertParticlesCL ( 0x0, 0x0, 0x0 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After InsertParticlesCL", mbDebug);
 
@@ -1881,7 +1882,7 @@ void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting 
     CountingSortFullCL ( 0x0 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
 
-    if(verbosity>1)std::cout<<"\n####\nRun2PhysicalSort()end";
+    if(verbosity>0)std::cout<<"\n####\nRun2PhysicalSort()end";
 }
 
 void FluidSystem::Run2InnerPhysicalLoop(){ //
@@ -2498,7 +2499,7 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
 }
 
 void FluidSystem::Run2Simulation(){
-    printf("\n\n Run2Simulation(), verbosity=%i .\n", verbosity );
+        std::cout<<"\n\n-----Run2Simulation() started... -----"<<"\n"<<std::flush;
     Init_CLRand();
     auto old_begin = std::chrono::steady_clock::now();
     TransferPosVelVeval ();

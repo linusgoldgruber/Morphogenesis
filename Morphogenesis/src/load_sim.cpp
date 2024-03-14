@@ -96,6 +96,7 @@ std::cout <<"\nchk load_sim_0.1\n"<<std::flush;
     cout << "\n\n\n" << endl;
     //obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
     FluidSystem fluid(obj);
+    fluid.SetDebug(debug);
     fluid.Initialize();
     fluid.InitializeOpenCL();
 
@@ -131,7 +132,6 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
         file_num+=10;
          */
         //fluid.Freeze (outPath, file_num, (debug=='y'), (gene_activity=='y'), (remodelling=='y')  );       // creates the bonds // fluid.Freeze(outPath, file_num) saves file after each kernel,, fluid.Freeze() does not.         // fluid.Freeze() creates fixed bond pattern, triangulated cubic here. 
-        
         fluid.Run2Simulation();
         fluid.TransferPosVelVeval (); // Freeze movement until heal() has formed bonds, over 1st n timesteps.
         if(save_csv=='y'||save_vtp=='y') fluid.TransferFromCL ();
@@ -141,7 +141,7 @@ std::cout <<"\nchk load_sim_2.0\n"<<std::flush;
     }
     fluid.setFreeze(false);
 
-    if(debug>1) printf("\n\nFreeze finished, starting normal Run ##############################################\n\n");
+    if(debug>0) printf("\n\nFreeze finished, starting normal Run ##############################################\n\n");
     
     for ( ; file_num<num_files; file_num+=100 ) {
         

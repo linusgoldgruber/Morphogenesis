@@ -31,6 +31,8 @@
 //	      GPU Fluids: Rama C. Hoetzlein (Fluids v3 2013)
 //--------------------------------------------------------------------
 
+//#pragma once
+
 #ifndef DEF_FLUID_SYS
 	#define DEF_FLUID_SYS
 
@@ -454,6 +456,7 @@ using namespace std;
 			case CL_INVALID_BUFFER_SIZE:						return "CL_INVALID_BUFFER_SIZE";
 			case CL_INVALID_MIP_LEVEL:							return "CL_INVALID_MIP_LEVEL";
 			case CL_INVALID_GLOBAL_WORK_SIZE:					return "CL_INVALID_GLOBAL_WORK_SIZE";
+			case CL_SUCCESS:									return "CL_SUCCESS";
 		#if CL_HPP_MINIMUM_OPENCL_VERSION >= 200
 				case CL_INVALID_DEVICE_QUEUE:						return "CL_INVALID_DEVICE_QUEUE";
 				case CL_INVALID_PIPE_SIZE:							return "CL_INVALID_PIPE_SIZE";
@@ -464,43 +467,48 @@ using namespace std;
 
 		void InitializeKernels(cl_program m_program) {
 		// Setup the array of kernels
-			m_Kern[FUNC_INSERT] = 							clCreateKernel(m_program, "insertParticlesCL", NULL);
-			m_Kern[FUNC_COUNTING_SORT] = 					clCreateKernel(m_program, "countingSortFull", NULL);
-			m_Kern[FUNC_QUERY] = 							clCreateKernel(m_program, "computeQuery", NULL);
-			m_Kern[FUNC_COMPUTE_PRESS] = 					clCreateKernel(m_program, "computePressure", NULL);
-			m_Kern[FUNC_COMPUTE_FORCE] = 					clCreateKernel(m_program, "computeForce", NULL);
-			m_Kern[FUNC_ADVANCE] = 							clCreateKernel(m_program, "advanceParticles", NULL);
-			m_Kern[FUNC_EMIT] = 							clCreateKernel(m_program, "emitParticles", NULL);
-			m_Kern[FUNC_RANDOMIZE] = 						clCreateKernel(m_program, "randomInit", NULL);
-			m_Kern[FUNC_SAMPLE] = 							clCreateKernel(m_program, "sampleParticles", NULL);
-			m_Kern[FUNC_FPREFIXSUM] = 						clCreateKernel(m_program, "prefixSum", NULL);
-			m_Kern[FUNC_FPREFIXUP] = 						clCreateKernel(m_program, "prefixFixup", NULL);
-			m_Kern[FUNC_TALLYLISTS] = 						clCreateKernel(m_program, "tally_denselist_lengths", NULL);
-			m_Kern[FUNC_COMPUTE_DIFFUSION] = 				clCreateKernel(m_program, "computeDiffusion", NULL);
-			m_Kern[FUNC_COUNT_SORT_LISTS] = 				clCreateKernel(m_program, "countingSortDenseLists", NULL);
-			m_Kern[FUNC_COMPUTE_GENE_ACTION] = 				clCreateKernel(m_program, "computeGeneAction", NULL);
-			m_Kern[FUNC_TALLY_GENE_ACTION] = 				clCreateKernel(m_program, "tallyGeneAction", NULL);
-			m_Kern[FUNC_COMPUTE_BOND_CHANGES] = 			clCreateKernel(m_program, "computeBondChanges", NULL);
-			m_Kern[FUNC_COUNTING_SORT_CHANGES] = 			clCreateKernel(m_program, "countingSortChanges", NULL);
-			m_Kern[FUNC_COMPUTE_NERVE_ACTION] = 			clCreateKernel(m_program, "computeNerveActivation", NULL);
-			m_Kern[FUNC_COMPUTE_MUSCLE_CONTRACTION] = 		clCreateKernel(m_program, "computeMuscleContraction", NULL);
-			m_Kern[FUNC_CLEAN_BONDS] = 						clCreateKernel(m_program, "cleanBonds", NULL);
-			m_Kern[FUNC_HEAL] = 							clCreateKernel(m_program, "heal", NULL);
-			m_Kern[FUNC_LENGTHEN_MUSCLE] = 					clCreateKernel(m_program, "lengthen_muscle", NULL);
-			m_Kern[FUNC_LENGTHEN_TISSUE] = 					clCreateKernel(m_program, "lengthen_tissue", NULL);
-			m_Kern[FUNC_SHORTEN_MUSCLE] = 					clCreateKernel(m_program, "shorten_muscle", NULL);
-			m_Kern[FUNC_SHORTEN_TISSUE] = 					clCreateKernel(m_program, "shorten_tissue", NULL);
-			m_Kern[FUNC_STRENGTHEN_MUSCLE] = 				clCreateKernel(m_program, "strengthen_muscle", NULL);
-			m_Kern[FUNC_STRENGTHEN_TISSUE] = 				clCreateKernel(m_program, "strengthen_tissue", NULL);
-			m_Kern[FUNC_WEAKEN_MUSCLE] = 					clCreateKernel(m_program, "weaken_muscle", NULL);
-			m_Kern[FUNC_WEAKEN_TISSUE] = 					clCreateKernel(m_program, "weaken_tissue", NULL);
-			m_Kern[FUNC_EXTERNAL_ACTUATION] = 				clCreateKernel(m_program, "externalActuation", NULL);
-			m_Kern[FUNC_FIXED] = 							clCreateKernel(m_program, "fixedParticles", NULL);
-			m_Kern[FUNC_INIT_RANDOMCL] = 					clCreateKernel(m_program, "init_RandCL", NULL);
-			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = 	clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
-			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = 	clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
-			m_Kern[FUNC_INITIALIZE_BONDS] = 				clCreateKernel(m_program, "initialize_bonds", NULL);
-			m_Kern[FUNC_MEMSET32D] = 						clCreateKernel(m_program, "memset32d_kernel", NULL);
+			cl_int err;
+			m_Kern[FUNC_INSERT] = 							clCreateKernel(m_program, "insertParticlesCL", &err);
+			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;
+			m_Kern[FUNC_COUNTING_SORT] = 					clCreateKernel(m_program, "countingSortFull", &err);
+			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;
+			/*m_Kern[FUNC_QUERY] = 							clCreateKernel(m_program, "computeQuery", &err);
+			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;*/
+			m_Kern[FUNC_COMPUTE_PRESS] = 					clCreateKernel(m_program, "computePressure", &err);
+			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;
+			m_Kern[FUNC_COMPUTE_FORCE] = 					clCreateKernel(m_program, "computeForce", &err);
+// 			m_Kern[FUNC_ADVANCE] = 							clCreateKernel(m_program, "advanceParticles", NULL);
+// 			m_Kern[FUNC_EMIT] = 							clCreateKernel(m_program, "emitParticles", NULL);
+// 			m_Kern[FUNC_RANDOMIZE] = 						clCreateKernel(m_program, "randomInit", NULL);
+// 			m_Kern[FUNC_SAMPLE] = 							clCreateKernel(m_program, "sampleParticles", NULL);
+ 			m_Kern[FUNC_FPREFIXSUM] = 						clCreateKernel(m_program, "prefixSum", NULL);
+ 			m_Kern[FUNC_FPREFIXUP] = 						clCreateKernel(m_program, "prefixFixup", NULL);
+ 			m_Kern[FUNC_TALLYLISTS] = 						clCreateKernel(m_program, "tally_denselist_lengths", NULL);
+// 			m_Kern[FUNC_COMPUTE_DIFFUSION] = 				clCreateKernel(m_program, "computeDiffusion", NULL);
+// 			m_Kern[FUNC_COUNT_SORT_LISTS] = 				clCreateKernel(m_program, "countingSortDenseLists", NULL);
+// 			m_Kern[FUNC_COMPUTE_GENE_ACTION] = 				clCreateKernel(m_program, "computeGeneAction", NULL);
+// 			m_Kern[FUNC_TALLY_GENE_ACTION] = 				clCreateKernel(m_program, "tallyGeneAction", NULL);
+// 			m_Kern[FUNC_COMPUTE_BOND_CHANGES] = 			clCreateKernel(m_program, "computeBondChanges", NULL);
+// 			m_Kern[FUNC_COUNTING_SORT_CHANGES] = 			clCreateKernel(m_program, "countingSortChanges", NULL);
+// 			m_Kern[FUNC_COMPUTE_NERVE_ACTION] = 			clCreateKernel(m_program, "computeNerveActivation", NULL);
+// 			m_Kern[FUNC_COMPUTE_MUSCLE_CONTRACTION] = 		clCreateKernel(m_program, "computeMuscleContraction", NULL);
+// 			m_Kern[FUNC_CLEAN_BONDS] = 						clCreateKernel(m_program, "cleanBonds", NULL);
+// 			m_Kern[FUNC_HEAL] = 							clCreateKernel(m_program, "heal", NULL);
+// 			m_Kern[FUNC_LENGTHEN_MUSCLE] = 					clCreateKernel(m_program, "lengthen_muscle", NULL);
+// 			m_Kern[FUNC_LENGTHEN_TISSUE] = 					clCreateKernel(m_program, "lengthen_tissue", NULL);
+// 			m_Kern[FUNC_SHORTEN_MUSCLE] = 					clCreateKernel(m_program, "shorten_muscle", NULL);
+// 			m_Kern[FUNC_SHORTEN_TISSUE] = 					clCreateKernel(m_program, "shorten_tissue", NULL);
+// 			m_Kern[FUNC_STRENGTHEN_MUSCLE] = 				clCreateKernel(m_program, "strengthen_muscle", NULL);
+// 			m_Kern[FUNC_STRENGTHEN_TISSUE] = 				clCreateKernel(m_program, "strengthen_tissue", NULL);
+// 			m_Kern[FUNC_WEAKEN_MUSCLE] = 					clCreateKernel(m_program, "weaken_muscle", NULL);
+// 			m_Kern[FUNC_WEAKEN_TISSUE] = 					clCreateKernel(m_program, "weaken_tissue", NULL);
+// 			m_Kern[FUNC_EXTERNAL_ACTUATION] = 				clCreateKernel(m_program, "externalActuation", NULL);
+// 			m_Kern[FUNC_FIXED] = 							clCreateKernel(m_program, "fixedParticles", NULL);
+ 			m_Kern[FUNC_INIT_RANDOMCL] = 					clCreateKernel(m_program, "init_RandCL", &err);
+// 			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = 	clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
+// 			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = 	clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
+// 			m_Kern[FUNC_INITIALIZE_BONDS] = 				clCreateKernel(m_program, "initialize_bonds", NULL);
+// 			m_Kern[FUNC_MEMSET32D] = 						clCreateKernel(m_program, "memset32d_kernel", NULL);
 		}
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//FluidSystem (RunCL& runcl);

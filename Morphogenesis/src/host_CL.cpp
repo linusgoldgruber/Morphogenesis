@@ -152,12 +152,14 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     //printf("Size of int: %zu\n", sizeof(int)); // = 4
 
     if (offset + fillSize > bufferSize) {
-         printf("\n-----BUFFER TOO SMALL-----");
-    } else {
-        // Perform the fill operation
-        printf("\n-----BUFFER SIZE SUFFICES-----\n");
-        //clEnqueueFillBuffer(m_queue, m_Fluid.mgpu[FGRIDCNT], 0, sizeof(int), offset, fillSize, 0, NULL, NULL);
+         printf("\n--------------------------BUFFER TOO SMALL!-------------------------------------------");
+         exit_(err);
     }
+    /*DEBUGGING: else {
+        // Perform the fill operation
+        printf("\nBUFFER SIZE SUFFICES\n");
+        //clEnqueueFillBuffer(m_queue, m_Fluid.mgpu[FGRIDCNT], 0, sizeof(int), offset, fillSize, 0, NULL, NULL);
+    }*/
 
 
     // first zero the counters
@@ -168,19 +170,20 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     clCheck(clEnqueueFillBuffer(m_queue,    gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES),  &zero, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]),   0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 4", NULL, mbDebug);
 
     // Set long list to sort all particles.
+
     computeNumBlocks(m_FParams.pnum, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems); // particles
 
-
+    cout << "\n+++++++++++++++++++++++++++ m_FParams.numGroups: " << m_FParams.numGroups << "+++++++++++++++++++++++" << flush;
+    cout << "\n+++++++++++++++++++++++++++ m_FParams.numItems: " << m_FParams.numItems << "+++++++++++++++++++++++\n\n" << flush;
     // set arguments and launch kernel "InsertParticles"
 
     //void* args[1] = {&mMaxPoints}; //&mNumPoints
     err  = clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(int),     &mMaxPoints);
-    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(int),     &m_Fluid.mgpu[FGRIDCNT]); //volatile global int* fgridcnt
-    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(int),     &m_Fluid.mgpu[FGRIDCNT_ACTIVE_GENES]); //volatile global int* fgridcnt
+    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(cl_mem),     &m_Fluid.mgpu[FGRIDCNT]); //volatile global int* fgridcnt
+    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(cl_mem),     &m_Fluid.mgpu[FGRIDCNT_ACTIVE_GENES]); //volatile global int* fgridcnt_active_genes
 
     //Running kernel
     cl_event func_insert_event;
-
     clCheck(                clEnqueueNDRangeKernel(m_queue,
                                  m_Kern[FUNC_INSERT],
                                  1,
@@ -978,7 +981,7 @@ void FluidSystem::TransferToCL (){ //TODO This function currently also handles t
 
 
 
-if (verbosity>1) std::cout<<"TransferToCL ()  finished\n"<<std::flush;
+    if (verbosity>0) std::cout<<"TransferToCL ()  finished\n"<<std::flush;
 
 }
 
@@ -992,31 +995,31 @@ void FluidSystem::TransferFromCL() {
     clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FVEL), CL_TRUE, 0,             mMaxPoints * sizeof(float) * 3, bufC(&m_Fluid, FVEL), 0, NULL, NULL),      "TransferFromCL", "clEnqueueReadBuffer", "FVEL", mbDebug);
 
     clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FVEVAL), CL_TRUE, 0,           mMaxPoints * sizeof(float) * 3, bufC(&m_Fluid, FVEVAL), 0, NULL, NULL),     "TransferFromCL", "clEnqueueReadBuffer", "FVEVAL", mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FFORCE), CL_TRUE, 0,       mMaxPoints * sizeof(float) * 3, bufC(&m_FluidTemp, FFORCE), 0, NULL, NULL), "TransferFromCL", "clEnqueueReadBuffer", "FFORCE", mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FFORCE), CL_TRUE, 0,       mMaxPoints * sizeof(float) * 3, bufC(&m_Fluid, FFORCE), 0, NULL, NULL), "TransferFromCL", "clEnqueueReadBuffer", "FFORCE", mbDebug);
     //NB PhysicalSort zeros gpuVar(&m_FluidTemp, FFORCE)
-    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FPRESS), CL_TRUE, 0,       mMaxPoints * sizeof(float),     bufC(&m_FluidTemp, FPRESS), 0, NULL, NULL),     "TransferFromCL", "clEnqueueReadBuffer", "FPRESS", mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FDENSITY), CL_TRUE, 0,     mMaxPoints * sizeof(float),     bufC(&m_FluidTemp, FDENSITY), 0, NULL,NULL),    "TransferFromCL", "clEnqueueReadBuffer", "FDENSITY", mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPRESS), CL_TRUE, 0,       mMaxPoints * sizeof(float),     bufC(&m_Fluid, FPRESS), 0, NULL, NULL),     "TransferFromCL", "clEnqueueReadBuffer", "FPRESS", mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FDENSITY), CL_TRUE, 0,     mMaxPoints * sizeof(float),     bufC(&m_Fluid, FDENSITY), 0, NULL,NULL),    "TransferFromCL", "clEnqueueReadBuffer", "FDENSITY", mbDebug);
 
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_FluidTemp,FAGE), CL_TRUE ,0 ,          mMaxPoints*sizeof(uint) ,       bufC(&m_FluidTemp,FAGE) ,0 ,NULL ,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FAGE" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_FluidTemp,FCLR), CL_TRUE ,0 ,          mMaxPoints*sizeof(uint) ,       bufC(&m_FluidTemp,FCLR) ,0 ,NULL ,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FCLR" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FAGE), CL_TRUE ,0 ,          mMaxPoints*sizeof(uint) ,       bufC(&m_Fluid,FAGE) ,0 ,NULL ,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FAGE" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FCLR), CL_TRUE ,0 ,          mMaxPoints*sizeof(uint) ,       bufC(&m_Fluid,FCLR) ,0 ,NULL ,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FCLR" ,mbDebug);
 
     // add extra data for morphogenesis
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_FluidTemp,FELASTIDX), CL_TRUE ,0 ,     mMaxPoints*sizeof(uint[BOND_DATA]) ,                bufC(&m_FluidTemp,FELASTIDX) ,0 ,NULL ,NULL) ,"TransferFromCL" ,"clEnqueueReadBuffer" ,"FELASTIDX" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_FluidTemp,FPARTICLEIDX), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint[BONDS_PER_PARTICLE *2]),     bufC(&m_FluidTemp,FPARTICLEIDX) ,0 ,NULL ,NULL) ,"TransferFromCL" ,"clEnqueueReadBuffer" ,"FPARTICLEIDX" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_FluidTemp,FPARTICLE_ID), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint) ,                           bufC(&m_FluidTemp,FPARTICLE_ID) ,0 ,NULL,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FPARTICLE_ID" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_FluidTemp,FMASS_RADIUS), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint) ,                           bufC(&m_FluidTemp,FMASS_RADIUS) ,0 ,NULL,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FMASS_RADIUS" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_FluidTemp,FNERVEIDX), CL_TRUE ,0 ,     mMaxPoints*sizeof(uint) ,                           bufC(&m_FluidTemp,FNERVEIDX) ,0 ,NULL,NULL) ,            "TransferFromCL" ,"clEnqueueReadBuffer" ,"FNERVEIDX" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FELASTIDX), CL_TRUE ,0 ,     mMaxPoints*sizeof(uint[BOND_DATA]) ,                bufC(&m_Fluid,FELASTIDX) ,0 ,NULL ,NULL) ,"TransferFromCL" ,"clEnqueueReadBuffer" ,"FELASTIDX" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FPARTICLEIDX), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint[BONDS_PER_PARTICLE *2]),     bufC(&m_Fluid,FPARTICLEIDX) ,0 ,NULL ,NULL) ,"TransferFromCL" ,"clEnqueueReadBuffer" ,"FPARTICLEIDX" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FPARTICLE_ID), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint) ,                           bufC(&m_Fluid,FPARTICLE_ID) ,0 ,NULL,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FPARTICLE_ID" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FMASS_RADIUS), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint) ,                           bufC(&m_Fluid,FMASS_RADIUS) ,0 ,NULL,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FMASS_RADIUS" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FNERVEIDX), CL_TRUE ,0 ,     mMaxPoints*sizeof(uint) ,                           bufC(&m_Fluid,FNERVEIDX) ,0 ,NULL,NULL) ,            "TransferFromCL" ,"clEnqueueReadBuffer" ,"FNERVEIDX" ,mbDebug);
     clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid, FCONC), CL_TRUE ,0 ,              mMaxPoints*sizeof(float[NUM_TF]) ,                bufC(&m_Fluid,FCONC) ,0,NULL,NULL),             "TransferFromCL","clEnqueueReadBuffer","FCONC",mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_FluidTemp,FEPIGEN), CL_TRUE ,0,        mMaxPoints*sizeof(uint[NUM_GENES]),                 bufC(&m_FluidTemp,FEPIGEN),0,NULL,NULL),       "TransferFromCL","clEnqueueReadBuffer","FEPIGEN",mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FEPIGEN), CL_TRUE ,0,        mMaxPoints*sizeof(uint[NUM_GENES]),                 bufC(&m_Fluid,FEPIGEN),0,NULL,NULL),       "TransferFromCL","clEnqueueReadBuffer","FEPIGEN",mbDebug);
 
-    if (verbosity>1) std::cout<<"TransferFromCL ()  finished\n"<<std::flush;
+    if (verbosity>0) std::cout<<"TransferFromCL ()  finished\n"<<std::flush;
 
 
 }
 
 void FluidSystem::Init_CLRand (){
 
-                                                                                                                                                        if(verbosity>0) cout << "Init_CLRand() started...\n\n" << flush;
+                                                                                                                                                        if(verbosity>0) cout << "-----Init_CLRand() started... -----\n\n" << flush;
                                                                                                                                                         if(verbosity>1) cout << "nNumPoints = " << mNumPoints << "\n\n";
     cl_int status;
 

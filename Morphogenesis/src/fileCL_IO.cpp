@@ -35,9 +35,11 @@ int iDivUp (int a, int b) {
 
 void computeNumBlocks (int numPnts, int minThreads, int &numGroups, int &numItems){
 
-    cout << "\nRunning computeNumBlocks() with " << numPnts <<" Points and " << minThreads << " minThreads";
+    cout << "\nRunning computeNumBlocks() with " << numPnts <<" Points and " << minThreads << " minThreads\n\n";
+
     if (numPnts==0 & minThreads==0) {printf("\nError: numPnts and minThreads = 0 \n");exit(1);}
     numItems = min( minThreads, numPnts );
+
     numGroups = (numItems==0) ? 1 : iDivUp ( numPnts, numItems );
 
 }

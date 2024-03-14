@@ -1,4 +1,3 @@
-
 //----------------------------------------------------------------------------------
 //
 // FLUIDS v.3 - SPH Fluid Simulator for CPU and GPU
@@ -36,6 +35,15 @@
 #define M 2147483647
 #define Q (M / A)
 #define R (M % A)
+
+#pragma OPENCL EXTENSION cl_khr_fp64: enable
+#pragma OPENCL EXTENSION cl_khr_int64_base_atomics: enable
+#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics: enable
+#pragma OPENCL EXTENSIONcl_khr_global_int32_extended_atomics: enable
+#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics: enable
+#pragma OPENCL EXTENSION cl_khr_local_int32_extended_atomics: enable
+#pragma OPENCL_VERSION 120
+
 
 #include "../fluid_system_opencl.h"
 #include "../fluid.h"
@@ -87,11 +95,13 @@ __constant struct FPrefix       fprefix = {};
 //__constant_FBondParams    fbondparams;    // GPU copy of remodelling parameters.
 //__constant uint			gridActive;
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////// Kernels /////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 __kernel void memset32d_kernel(
 
@@ -103,53 +113,49 @@ __kernel void memset32d_kernel(
     buffer[gid] = value;
 }
 
-// Custom atomic add function using atomic_cmpxchg
-int atomicAddCustom(volatile __global int *addr, int val) {
-    int old, new;
-    do {
-        old = *addr;
-        new = old + val;
-    } while (atomic_cmpxchg((volatile __global int *)addr, old, new) != old);
-    return old;
+__kernel void insertParticlesCL(
+
+    int pnum,
+    volatile __global int* fgridcnt,
+    volatile __global int* fgridcnt_active_genes
+
+    )
+{
+    uint i = get_global_id(0);
+    if ( i >= pnum ) return;
+
+
+
+    float3  gridMin     =  fparam.gridMin;
+    float3  gridDelta   =  fparam.gridDelta;
+    int3    gridRes     =  fparam.gridRes;
+    int3    gridScan    =  fparam.gridScanMax;
+    int     gridTot     =  fparam.gridTotal;
+
+    int     gs;
+    float3  gcf;
+    int3    gc;
+
+    gcf = (bufF3(&fbuf, FPOS)[i] - gridMin) * gridDelta;
+    gc  = (int3)(gcf.x, gcf.y, gcf.z);
+    gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
+
+    if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
+
+		bufI(&fbuf, FGCELL)[i] = gs;											     // Grid cell insert.
+		bufI(&fbuf, FGNDX)[i] = atomic_add(&fgridcnt[gs], 1 );       // Grid counts.         //  ## counts particles in this bin.
+                                                                                                         //  ## add counters for dense lists. ##############
+        // for each gene, if active, then atomicAdd bin count for gene
+        for(int gene=0; gene<NUM_GENES; gene++){ // NB data ordered FEPIGEN[gene][particle] AND +ve int values -> active genes.
+            //if(fparam.debug>2 && i==0)printf("\n");
+            if (bufI(&fbuf, FEPIGEN) [i + gene*fparam.maxPoints] >0 ){  // "if((int)bufI(&fbuf, FEPIGEN)" may clash with INT_MAX
+                atomic_add( &fgridcnt_active_genes[gene*gridTot +gs], 1 );
+            }
+        }
+    } else {
+        bufI(&fbuf, FGCELL)[i] = GRID_UNDEF;
+    }
 }
-
-// __kernel void insertParticlesCL (
-//
-//     int pnum
-//     )
-//
-// {
-//     uint i = get_global_id(0);
-//     if ( i >= pnum ) return;
-//
-//     float3  gridMin     =  fparam.gridMin;
-//     float3  gridDelta   =  fparam.gridDelta;
-//     int3    gridRes     =  fparam.gridRes;
-//     int3    gridScan    =  fparam.gridScanMax;
-//     int     gridTot     =  fparam.gridTotal;
-//
-//     int     gs;
-//     float3  gcf;
-//     int3    gc;
-//
-//     gcf = (bufF3(&fbuf, FPOS)[i] - gridMin) * gridDelta;
-//     gc  = (int3)(gcf.x, gcf.y, gcf.z);
-//     gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
-//
-//     if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
-//         bufI(&fbuf, FGCELL)[i] = gs;
-//         bufI(&fbuf, FGNDX)[i] = atomicAddCustom(&bufI(&fbuf, FGRIDCNT)[gs], 1);
-//
-//         for(int gene=0; gene<NUM_GENES; gene++){
-//             if (bufI(&fbuf, FEPIGEN)[i + gene*fparam.maxPoints] > 0){
-//                 atomicAddCustom(&bufI(&fbuf, FGRIDCNT_ACTIVE_GENES)[gene*gridTot + gs], 1);
-//             }
-//         }
-//     } else {
-//         bufI(&fbuf, FGCELL)[i] = GRID_UNDEF;
-//     }
-// }
-
 
 __kernel void prefixFixup(
 
@@ -211,9 +217,7 @@ __kernel void prefixSum(
         if (aux) aux[get_group_id(0)] = scan_array[2 * SCAN_BLOCKSIZE - 1];
     }
 }
-__kernel void tally_denselist_lengths
-
-    (
+__kernel void tally_denselist_lengths(
     int num_lists,
     int fdense_list_lengths,
     int fgridcnt,
@@ -226,8 +230,7 @@ __kernel void tally_denselist_lengths
     bufI(&fbuf, fdense_list_lengths)[list] = bufI(&fbuf, fgridcnt)[(list+1)*gridTot -1] + bufI(&fbuf, fgridoff)[(list+1)*gridTot -1];
 }
 
-__kernel void countingSortFull
-    (
+__kernel void countingSortFull(
     int pnum
     )
 {
@@ -313,15 +316,7 @@ __kernel void countingSortFull
         }
 }
 
-float contributePressure
-
-    (
-    int i,
-    float3 p,
-    int cell,
-    float *sum_p6k
-    )
-{
+float contributePressure (int i, float3 p, int cell, float *sum_p6k) {
 
     if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return 0.0;                       // If the cell is empty, skip it.
 
@@ -353,9 +348,7 @@ float contributePressure
     return sum;;
 }
 
-
-__kernel void computePressure
-    (
+__kernel void computePressure (
     int pnum
     )
 {
@@ -385,16 +378,7 @@ __kernel void computePressure
     bufF(&fbuf, FDENSITY)[i] = 1.0f / sum;
 }
 
-float3 contributeForce
-
-    (
-    int i,
-    float3 ipos,
-    float3 iveleval,
-    float ipress,
-    float idens,
-    int cell
-    )
+float3 contributeForce ( int i, float3 ipos, float3 iveleval, float ipress, float idens, int cell)
 {
 	if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return (float3)(0,0,0);                                        // If the cell is empty, skip it.
 	float  dsq, sdist, c, r, sr=fparam.psmoothradius;//1.0;//
@@ -445,9 +429,7 @@ float3 contributeForce
     return force;                                                                                           // return fluid force && list of potential bonds fron this cell
 }
 
-__kernel void computeForce
-
-    (
+__kernel void computeForce (
     int pnum,
     int freezeBoolToInt,
     uint frame
@@ -556,8 +538,7 @@ __kernel void computeForce
 
 }
 
-__kernel void init_RandCL
-     (
+__kernel void init_RandCL (
      uint num,
      global long* seed,
      global uint* res
