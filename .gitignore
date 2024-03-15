@@ -166,9 +166,17 @@ _deps
 
 # End of https://www.toptal.com/developers/gitignore/api/cmake,clion,cuda,c++
 
-/build/
-/data/check/
-/data/demo/
-/data/test/
-/Debug/
+./build/
+./data/check/
+./data/demo/
+./data/test/
+./Debug/
 VTK-9.3.0
+*.DS_Store
+*.kdev4
+Morphogenesis/src/src.kdev4
+Morphogenesis/Morphogenesis/src/src.kdev4
+./Morphogenesis/src/.kdev4/src.kdev4
+./*/*.kdev4
+./*/*/*.kdev4
+
