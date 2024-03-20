@@ -1336,7 +1336,7 @@ extern "C" __device__ void addParticle (uint parent_Idx, uint &new_particle_Idx)
     /**/if (fparam.debug>2  && threadIdx.x==0) printf("\naddParticle()1:  parent_Idx=%u, new_particle_Idx=%u, bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx]=%u", parent_Idx, new_particle_Idx, bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx] );
     
     atomicCAS(&bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx /*_otherParticleBondIndex*/], UINT_MAXSIZE, parent_Idx);// this prevents colision between kernels if run concurrently. 
-    //NB cuMemsetD32 gpuVar(&m_Fluid, FPARTICLEIDX) UINT_MAXSIZE in CountingSortFullCL(...), Run2PhyysicalSort()
+    //NB clMemsetD32 gpuVar(&m_Fluid, FPARTICLEIDX) UINT_MAXSIZE in CountingSortFullCL(...), Run2PhyysicalSort()
     
     if(bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx]== parent_Idx){//   // problem causes failure pf particle adition
         bufI(&fbuf, FPARTICLE_ID)[new_particle_Idx]= new_particle_Idx;
@@ -2899,7 +2899,7 @@ extern "C" __global__ void weaken_tissue ( int ActivePoints, int list_length, in
     //                  (i) available genes (ii) active genes (iii) diffusion particles (iv) active/reserve particles. 
     //                   NB sequence of kernels called bu fluid_system::run()
     //                   InsertParticlesCL - sort particles into bins
-    //                   PrefixSumCellsCL - count particles in bins - need to count (i&ii) above. (NB FUNC_FPREFIXSUM & FUNC_FPREFIXFIXUP)
+    //                   PrefixSumCellsCL - count particles in bins - need to count (i&ii) above. (NB FUNC_FPREFIXSUM & FUNC_FPREFIXUP)
     //                   CountingSortFullCL - build arrays - need (NB TransferToTempCL(..) for each fbuf array )
     
     // NB bitonic merge sort _may_ be useful to sort particles in active gene lists wrt to their location in the main particle list.

@@ -27,7 +27,7 @@
 //----------------------------------------------------------------------------------
 
 #define CL_KERNEL
-#define SCAN_BLOCKSIZE		512
+#define SCAN_BLOCKSIZE		256
 #define GRID_UNDEF			4294967295
 //#define FLT_MIN  0.000000001              // set here as 2^(-30) //REDEFINED
 //#define UINT_MAX 65535    //REDEFINED
@@ -105,7 +105,7 @@ __constant struct FPrefix       fprefix = {};
 
 __kernel void memset32d_kernel(
 
-    __global int* buffer,
+    volatile __global int* buffer,
     const int value
     )
 {
@@ -157,7 +157,7 @@ __kernel void insertParticlesCL(
     }
 }
 
-__kernel void prefixFixup(
+__kernel void prefixUp(
 
     __global uint *input,
     __global uint *aux,
@@ -170,25 +170,24 @@ __kernel void prefixFixup(
     if (start < len)					input[start] += aux[get_group_id(0)];
     if (start + SCAN_BLOCKSIZE < len)   input[start + SCAN_BLOCKSIZE] += aux[get_group_id(0)];
 }
-
+/*
 __kernel void prefixSum(
-
-    __global uint *input,
-    __global uint *output,
-    __global uint *aux,
-    __global size_t *offset_array0,
-    __global size_t *offset_scan0,
+    __global uint* input,
+    __global uint* output,
+    __global uint* aux,
+//     int input_offset,
+//     int output_offset,
     int len,
     int zeroff
-        ) //, __constant size_t *offset_scan0)
+    )
 {
     __local uint scan_array[SCAN_BLOCKSIZE << 1];
-    unsigned int t1 = get_local_id(0) + 2 * get_group_id(0) * SCAN_BLOCKSIZE;
-    unsigned int t2 = t1 + SCAN_BLOCKSIZE;
+    int t1 = get_global_id(0) * 2 * SCAN_BLOCKSIZE + input_offset;
+    int t2 = t1 + SCAN_BLOCKSIZE;
 
     // Pre-load into shared memory
-    scan_array[get_local_id(0)] = (t1<len) ? input[t1] : 0.0f;
-    scan_array[get_local_id(0) + SCAN_BLOCKSIZE] = (t2<len) ? input[t2] : 0.0f;
+    scan_array[get_local_id(0)] = (t1 < len) ? input[t1] : 0;
+    scan_array[get_local_id(0) + SCAN_BLOCKSIZE] = (t2 < len) ? input[t2] : 0;
     barrier(CLK_LOCAL_MEM_FENCE);
 
     // Reduction
@@ -210,12 +209,81 @@ __kernel void prefixSum(
     barrier(CLK_LOCAL_MEM_FENCE);
 
     // Output values & aux
-    if (t1 + zeroff < len) output[t1 + zeroff] = scan_array[get_local_id(0)];
-    if (t2 + zeroff < len) output[t2 + zeroff] = (get_local_id(0) == SCAN_BLOCKSIZE - 1 && zeroff) ? 0 : scan_array[get_local_id(0) + SCAN_BLOCKSIZE];
+    if (t1 + output_offset < len)    output[t1 + output_offset] = scan_array[get_local_id(0)];
+    if (t2 + output_offset < len)    output[t2 + output_offset] = (get_local_id(0) == SCAN_BLOCKSIZE - 1 && zeroff) ? 0 : scan_array[get_local_id(0) + SCAN_BLOCKSIZE];
+    if (get_local_id(0) == 0) {
+        if (zeroff && output_offset == 0) output[0] = 0;
+        if (aux) aux[get_group_id(0)] = scan_array[2 * SCAN_BLOCKSIZE - 1];
+    }
+}*/
+
+
+__kernel void prefixSum(
+
+    __global uint *input,
+    __global uint *output,
+    __global uint *aux,
+    int len,
+    int zeroff
+        ) //, __constant size_t *offset_scan0)
+{
+    // Declares a locally shared, temporary array, with dimemsions 2 x BLOCKSIZE (1024 as of rn)
+    __local uint scan_array[SCAN_BLOCKSIZE << 1];
+
+    //-------------------------------------------------------------------------------------
+    //      Assigning t1 and t2
+    //
+    // t1 represents a position for each work item, so does t2, but with an offset of SCAN_BLOCKSIZE
+    //
+    // Visualisation:
+    //  t2[
+    //      ITEM_1[0*2*BLOCKSIZE+256],
+    //      ITEM_2[1*2*BLOCKSIZE+256],
+    //      ITEM_3[2*2*BLOCKSIZE+256]
+    //      [...]
+    //      [...]...
+    //  ]
+    unsigned int t1 = get_global_id(0) * 2 * SCAN_BLOCKSIZE;
+    unsigned int t2 = t1 + SCAN_BLOCKSIZE;
+
+    //-------------------------------------------------------------------------------------
+    //      Pre-load into shared memory
+    // This also checks, if t1 or t2 exceed len = m_GridTotal (= 10000 as of rn).
+    // If not, it asigns the corresponding element from the input[] array.
+    //
+    scan_array[get_local_id(0)] = (t1 < len) ? input[t1] : 0;
+    scan_array[get_local_id(0) + SCAN_BLOCKSIZE] = (t2 < len) ? input[t2] : 0;
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    //-------------------------------------------------------------------------------------
+    //      Reduction
+    // Each iteration, the first half of the previously calculated threads will be added to the second half
+    //
+    int stride;
+    for (stride = 1; stride <= SCAN_BLOCKSIZE; stride <<= 1) {
+        int index = (get_local_id(0) + 1) * stride * 2 - 1;
+        if (index < 2 * SCAN_BLOCKSIZE)
+            scan_array[index] += scan_array[index - stride];
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+    // Post reduction
+    for (stride = SCAN_BLOCKSIZE >> 1; stride > 0; stride >>= 1) {
+        int index = (get_local_id(0) + 1) * stride * 2 - 1;
+        if (index + stride < 2 * SCAN_BLOCKSIZE)
+            scan_array[index + stride] += scan_array[index];
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    // Output values & aux
+    if (t1 < len)    output[t1] = scan_array[get_local_id(0)];
+    if (t2 < len)    output[t2] = (get_local_id(0) == SCAN_BLOCKSIZE - 1 && zeroff) ? 0 : scan_array[get_local_id(0) + SCAN_BLOCKSIZE];
     if (get_local_id(0) == 0) {
         if (zeroff) output[0] = 0;
         if (aux) aux[get_group_id(0)] = scan_array[2 * SCAN_BLOCKSIZE - 1];
     }
+
 }
 __kernel void tally_denselist_lengths(
     int num_lists,

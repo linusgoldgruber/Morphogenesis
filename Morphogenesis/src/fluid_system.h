@@ -64,7 +64,7 @@
 	extern bool gProfileRend;
 
     #define EPSILON			0.00001f			// for collision detection
-    #define SCAN_BLOCKSIZE		512				// must match value in fluid_system_cuda.cu
+    #define SCAN_BLOCKSIZE		256				// must match value in fluid_system_cuda.cu
 
 	#define MAX_PARAM			50             // used for m_Param[], m_Vec[], m_Toggle[]
 	#define GRID_UCHAR			0xFF           // used in void FluidSystem::InsertParticles (){.. memset(..); ...}
@@ -347,8 +347,7 @@ using namespace std;
 		cl_program			m_program;
 		cl_kernel			m_Kern[FUNC_MAX];
 		cl_mem				m_FParamDevice, m_FluidDevice, m_FluidTempDevice, m_FGenomeDevice, m_FPrefixDevice;		//GPU pointer containers
-
-		size_t  			global_work_size, local_work_size;
+		size_t 				num_work_groups, global_work_size, local_work_size;
 		bool 				gpu, amdPlatform;
 		cl_device_id 		deviceId;
 		float 				params[16] = {0};
@@ -365,6 +364,7 @@ using namespace std;
 		void allocatemem(FParams fparam, FBufs *fbuf, FBufs *ftemp, FGenome fgenome, FPrefix fprefix);
 		void exit_(cl_int res);
 		cl_int clMemsetD32(cl_mem buffer, int value, size_t count);
+		void CalculateWorkGroupSizes(size_t maxWorkGroupSize, size_t numComputeUnits, size_t numItems, size_t &numGroups, size_t &numItemsPerGroup);
 		~FluidSystem();
 
 		//void DownloadAndSaveVolume_3Channel(cl_mem buffer, std::string count, boost::filesystem::path folder, size_t image_size_bytes, cv::Size size_mat, int type_mat, bool show );
@@ -480,9 +480,8 @@ using namespace std;
 // 			m_Kern[FUNC_ADVANCE] = 							clCreateKernel(m_program, "advanceParticles", NULL);
 // 			m_Kern[FUNC_EMIT] = 							clCreateKernel(m_program, "emitParticles", NULL);
 // 			m_Kern[FUNC_RANDOMIZE] = 						clCreateKernel(m_program, "randomInit", NULL);
-// 			m_Kern[FUNC_SAMPLE] = 							clCreateKernel(m_program, "sampleParticles", NULL);
- 			m_Kern[FUNC_FPREFIXSUM] = 						clCreateKernel(m_program, "prefixSum", NULL);
- 			m_Kern[FUNC_FPREFIXUP] = 						clCreateKernel(m_program, "prefixFixup", NULL);
+ 			m_Kern[FUNC_FPREFIXSUM] = 						clCreateKernel(m_program, "prefixSum", &err);
+ 			m_Kern[FUNC_FPREFIXUP] = 						clCreateKernel(m_program, "prefixUp", &err);
  			m_Kern[FUNC_TALLYLISTS] = 						clCreateKernel(m_program, "tally_denselist_lengths", NULL);
 // 			m_Kern[FUNC_COMPUTE_DIFFUSION] = 				clCreateKernel(m_program, "computeDiffusion", NULL);
 // 			m_Kern[FUNC_COUNT_SORT_LISTS] = 				clCreateKernel(m_program, "countingSortDenseLists", NULL);
@@ -508,7 +507,9 @@ using namespace std;
 // 			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = 	clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
 // 			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = 	clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
 // 			m_Kern[FUNC_INITIALIZE_BONDS] = 				clCreateKernel(m_program, "initialize_bonds", NULL);
-// 			m_Kern[FUNC_MEMSET32D] = 						clCreateKernel(m_program, "memset32d_kernel", NULL);
+ 			m_Kern[FUNC_MEMSET32D] = 						clCreateKernel(m_program, "memset32d_kernel", NULL);
+			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;
+
 		}
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//FluidSystem (RunCL& runcl);

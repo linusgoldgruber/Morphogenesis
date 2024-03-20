@@ -33,14 +33,18 @@ int iDivUp (int a, int b) {
     return (a % b != 0) ? (a / b + 1) : (a / b);
 }
 
-void computeNumBlocks (int numPnts, int minThreads, int &numGroups, int &numItems){
+void computeNumBlocks (int numPnts, int minThreads, size_t &numGroups, size_t &numItems){
 
-    cout << "\nRunning computeNumBlocks() with " << numPnts <<" Points and " << minThreads << " minThreads\n\n";
+    cout << "\nRunning computeNumBlocks() with " << numPnts <<" Points and " << minThreads << " minThreads\n";
 
     if (numPnts==0 & minThreads==0) {printf("\nError: numPnts and minThreads = 0 \n");exit(1);}
+
+
     numItems = min( minThreads, numPnts );
 
     numGroups = (numItems==0) ? 1 : iDivUp ( numPnts, numItems );
+
+    //numItems = m_FParams.numItems
 
 }
 
@@ -337,6 +341,7 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
     if (gpu_mode != GPU_OFF) {     // create CL instance etc..
         FluidSetupCL ( mMaxPoints, m_GridSrch, *(cl_int3*)& m_GridRes, *(cl_float3*)& m_GridSize, *(cl_float3*)& m_GridDelta, *(cl_float3*)& m_GridMin, *(cl_float3*)& m_GridMax, m_GridTotal, 0 );
+
         UpdateParams();            //  sends simulation params to device.
         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
     }

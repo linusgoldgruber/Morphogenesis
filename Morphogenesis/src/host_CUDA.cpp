@@ -337,10 +337,10 @@ void FluidSystem::PrefixSumCellsCL ( int zero_offsets ){
         clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], 1, 1, 1, threads, 1, 1, 0, NULL, argsC, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
 
         void* argsD[3] = { &scan2, &scan3, &numElem2 };	                        // merge scan3 into scan2. output -> scan2      i.e. FAUXSCAN2, FAUXSCAN1 -> FAUXSCAN1
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXFIXUP], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
     }
     void* argsE[3] = { &scan1, &scan2, &numElem1 };		                        // merge scan2 into scan1. output -> scan1      i.e. FAUXSCAN1, FGRIDOFF -> FGRIDOFF
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXFIXUP], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
     
     // Loop to PrefixSum the Dense Lists - NB by doing one gene at a time, we reuse the FAUX* arrays & scans.
     // For each gene, input FGRIDCNT_ACTIVE_GENES[gene*m_GridTotal], output FGRIDOFF_ACTIVE_GENES[gene*m_GridTotal]
@@ -362,7 +362,7 @@ void FluidSystem::PrefixSumCellsCL ( int zero_offsets ){
         clCheck ( cuMemsetD8 ( scan3,  0,	numElem3*sizeof(int) ), "PrefixSumCellsCL", "cuMemsetD8", "FGRIDCNT", mbDebug );
         
         void* argsA[5] = {&array1, &scan1, &array2, &numElem1, &zero_offsets };     // sum array1. output -> scan1, array2.         i.e. FGRIDCNT -> FGRIDOFF, FAUXARRAY1
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsA, NULL ), 
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsA, NULL ),
                   "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXSUM", mbDebug);
 
         void* argsB[5] = { &array2, &scan2, &array3, &numElem2, &zon };             // sum array2. output -> scan2, array3.         i.e. FAUXARRAY1 -> FAUXSCAN1, FAUXARRAY2
@@ -374,10 +374,10 @@ void FluidSystem::PrefixSumCellsCL ( int zero_offsets ){
             clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], 1, 1, 1, threads, 1, 1, 0, NULL, argsC, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
 
             void* argsD[3] = { &scan2, &scan3, &numElem2 };	                        // merge scan3 into scan2. output -> scan2      i.e. FAUXSCAN2, FAUXSCAN1 -> FAUXSCAN1
-            clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXFIXUP], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+            clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
         }
         void* argsE[3] = { &scan1, &scan2, &numElem1 };		                        // merge scan2 into scan1. output -> scan1      i.e. FAUXSCAN1, FGRIDOFF -> FGRIDOFF
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXFIXUP], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
     }
     
     int num_lists = NUM_GENES, length = FDENSE_LIST_LENGTHS, fgridcnt = FGRIDCNT_ACTIVE_GENES, fgridoff = FGRIDOFF_ACTIVE_GENES;
@@ -452,7 +452,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
         clCheck ( cuMemsetD8 ( scan3,  0,	numElem3*sizeof(int) ), "PrefixSumChangesCL", "cuMemsetD8", "FGRIDCNT", mbDebug );
         
         void* argsA[5] = {&array1, &scan1, &array2, &numElem1, &zero_offsets };     // sum array1. output -> scan1, array2.         i.e. FGRIDCNT -> FGRIDOFF, FAUXARRAY1
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsA, NULL ), 
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsA, NULL ),
                   "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXSUM", mbDebug);
         void* argsB[5] = { &array2, &scan2, &array3, &numElem2, &zon };             // sum array2. output -> scan2, array3.         i.e. FAUXARRAY1 -> FAUXSCAN1, FAUXARRAY2
         clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsB, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXSUM", mbDebug);
@@ -461,10 +461,10 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
             void* argsC[5] = { &array3, &scan3, &nptr, &numElem3, &zon };	        // sum array3. output -> scan3                  i.e. FAUXARRAY2 -> FAUXSCAN2, &nptr
             clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], 1, 1, 1, threads, 1, 1, 0, NULL, argsC, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
             void* argsD[3] = { &scan2, &scan3, &numElem2 };	                        // merge scan3 into scan2. output -> scan2      i.e. FAUXSCAN2, FAUXSCAN1 -> FAUXSCAN1
-            clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXFIXUP], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+            clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
         }
         void* argsE[3] = { &scan1, &scan2, &numElem1 };		                        // merge scan2 into scan1. output -> scan1      i.e. FAUXSCAN1, FGRIDOFF -> FGRIDOFF
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXFIXUP], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
     }
     
     int num_lists = NUM_CHANGES, length = FDENSE_LIST_LENGTHS_CHANGES, fgridcnt = FGRIDCNT_CHANGES, fgridoff = FGRIDOFF_CHANGES;
@@ -545,21 +545,21 @@ void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
     
     float max_pos = max(max(m_Vec[PVOLMAX].x, m_Vec[PVOLMAX].y), m_Vec[PVOLMAX].z);
     uint * uint_max_pos = (uint*)&max_pos;
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPOS), *uint_max_pos, mMaxPoints * 3 ),  "CountingSortFullCL", "cuMemsetD32", "FELASTIDX",   mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPOS), *uint_max_pos, mMaxPoints * 3 ),  "CountingSortFullCL", "clMemsetD32", "FELASTIDX",   mbDebug);
     
     //cout<<"\nCountingSortFullCL: m_Vec[PVOLMAX]=("<<m_Vec[PVOLMAX].x<<", "<<m_Vec[PVOLMAX].y<<", "<<m_Vec[PVOLMAX].z<<"),  max_pos = "<< max_pos <<std::flush;
     // NB resetting  gpuVar(&m_Fluid, FPOS)  ensures no zombie particles. ?hopefully?
     
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FELASTIDX),    UINT_MAXSIZE,  mMaxPoints * BOND_DATA              ),  "CountingSortFullCL", "cuMemsetD32", "FELASTIDX",    mbDebug);
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPARTICLEIDX), UINT_MAXSIZE,  mMaxPoints * BONDS_PER_PARTICLE *2  ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPARTICLE_ID), UINT_MAXSIZE,  mMaxPoints                          ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FFORCE),      (uint)0.0,  mMaxPoints * 3 /* ie num elements */),  "CountingSortFullCL", "cuMemsetD32", "FFORCE",       mbDebug);
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FCONC),             0.0,  mMaxPoints * NUM_TF                 ),  "CountingSortFullCL", "cuMemsetD32", "FCONC",        mbDebug);
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FEPIGEN),     (uint)0.0,  mMaxPoints * NUM_GENES              ),  "CountingSortFullCL", "cuMemsetD32", "FEPIGEN",      mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FELASTIDX),    UINT_MAXSIZE,  mMaxPoints * BOND_DATA              ),  "CountingSortFullCL", "clMemsetD32", "FELASTIDX",    mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLEIDX), UINT_MAXSIZE,  mMaxPoints * BONDS_PER_PARTICLE *2  ),  "CountingSortFullCL", "clMemsetD32", "FPARTICLEIDX", mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLE_ID), UINT_MAXSIZE,  mMaxPoints                          ),  "CountingSortFullCL", "clMemsetD32", "FPARTICLEIDX", mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FFORCE),      (uint)0.0,  mMaxPoints * 3 /* ie num elements */),  "CountingSortFullCL", "clMemsetD32", "FFORCE",       mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FCONC),             0.0,  mMaxPoints * NUM_TF                 ),  "CountingSortFullCL", "clMemsetD32", "FCONC",        mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FEPIGEN),     (uint)0.0,  mMaxPoints * NUM_GENES              ),  "CountingSortFullCL", "clMemsetD32", "FEPIGEN",      mbDebug);
     clFinish ();    // needed to prevent colision with previous operations
 
     // Reset grid cell IDs
-    // clCheck(cuMemsetD32(gpuVar(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "cuMemsetD32(Sort)");
+    // clCheck(clMemsetD32(gpuVar(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "clMemsetD32(Sort)");
     void* args[1] = { &mMaxPoints };
     clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNTING_SORT], m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL),
               "CountingSortFullCL5", "cuLaunch", "FUNC_COUNTING_SORT", mbDebug );
@@ -855,8 +855,8 @@ void FluidSystem::TransferPosVelVevalFromTemp (){
 
 void FluidSystem::ZeroVelCL (){                                       // Used to remove velocity, kinetic energy and momentum during initialization.
     clCheck(clFinish(), "Run", "clFinish", "After freeze Run2PhysicalSort ", mbDebug);
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FVEL),   0.0,  mMaxPoints ),  "ZeroVelCL", "cuMemsetD32", "FVEL",        mbDebug);
-    clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FVEVAL), 0.0,  mMaxPoints ),  "ZeroVelCL", "cuMemsetD32", "FVEVAL",      mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FVEL),   0.0,  mMaxPoints ),  "ZeroVelCL", "clMemsetD32", "FVEL",        mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FVEVAL), 0.0,  mMaxPoints ),  "ZeroVelCL", "clMemsetD32", "FVEVAL",      mbDebug);
     clCheck(clFinish(), "Run", "clFinish", "After freeze ZeroVelCL ", mbDebug);
 }
 

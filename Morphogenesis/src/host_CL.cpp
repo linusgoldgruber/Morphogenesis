@@ -18,22 +18,25 @@ cl_int FluidSystem::clMemsetD32(cl_mem buffer, int value, size_t count) {
     cl_int err;
 
     // Set kernel arguments
+
     err  = clSetKernelArg(m_Kern[FUNC_MEMSET32D], 0, sizeof(cl_mem), &buffer);
+        std::cout << "\nCountingSortFullCL()2: chk -------B---------"<< std::flush;
+
     err |= clSetKernelArg(m_Kern[FUNC_MEMSET32D], 1, sizeof(int), &value);
     clCheck(err, "clMemsetD32", "clSetKernelArg", NULL, mbDebug);
 
     // Enqueue kernel
     err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_MEMSET32D], 1, NULL, &count, NULL, 0, NULL, NULL);
     clCheck(err, "clMemsetD32", "clEnqueueNDRangeKernel", NULL, mbDebug);
+    std::cout << "\nCountingSortFullCL()2: chk -------C---------"<< std::flush;
 
     // Ensure all commands have finished
+    clFlush(m_queue);
     clFinish(m_queue);
-
-    // Release kernel
-    clReleaseKernel(m_Kern[FUNC_MEMSET32D]);
 
     return CL_SUCCESS;
 }
+
 
 void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size, cl_float3 delta, cl_float3 gmin, cl_float3 gmax, int total, int chk ){
 
@@ -64,18 +67,65 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size
             for (int x=0; x < gsrch; x++ )
                 m_FParams.gridAdj [ cell++]  = ( y * m_FParams.gridRes.z+ z )*m_FParams.gridRes.x +  x ;
 
-    // Compute number of blocks and threads
-    m_FParams.itemsPerGroup = 512;                    //TODO probe hardware to set m_FParams.itemsPerGroup
+    //Calculate the work group sizes
+    cl_int status;
+    status = clGetKernelWorkGroupInfo(m_Kern[FUNC_INSERT], m_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
+    cout << "\nclGetKernelWorkGroupInfo: CL_KERNEL_WORK_GROUP_SIZE = " << &local_work_size << "\n\n" << flush;
 
-    computeNumBlocks ( m_FParams.pnum, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);				// particles
-    computeNumBlocks ( m_FParams.gridTotal, m_FParams.itemsPerGroup, m_FParams.gridBlocks, m_FParams.gridThreads);		// grid cell
+    num_work_groups = (mMaxPoints + local_work_size - 1) / local_work_size;
+    global_work_size = num_work_groups * local_work_size;
+
+
+    // Print global_work_size
+
+    std::cout << "\n+--------------------------------------+" << std::endl;
+    std::cout << "|           total_num_work_items       |" << std::endl;
+    std::cout << "+--------------------------------------+" << std::endl;
+    std::cout << "total_num_work_items = " <<  mMaxPoints << std::endl;
+
+    std::cout << "+----------------------------------+" << std::endl;
+    std::cout << "|           global_work_size       |" << std::endl;
+    std::cout << "+----------------------------------+" << std::endl;
+    std::cout << "global_work_size = " << num_work_groups * local_work_size << std::endl;
+
+    // Print num_work_groups
+    std::cout << "+----------------------------------+" << std::endl;
+    std::cout << "|           num_work_groups        |" << std::endl;
+    std::cout << "+----------------------------------+" << std::endl;
+    std::cout << "num_work_groups = " << num_work_groups << std::endl;
+
+    // Print local_work_size
+    std::cout << "+----------------------------------+" << std::endl;
+    std::cout << "|           local_work_size        |" << std::endl;
+    std::cout << "+----------------------------------+" << std::endl;
+    std::cout << "local_work_size = " << local_work_size << "\n" <<std::endl;
+
+    // Compute number of blocks and threads
+    m_FParams.itemsPerGroup = 256;                    //TODO probe hardware to set m_FParams.itemsPerGroup
+
+    computeNumBlocks ( m_FParams.pnum, local_work_size, m_FParams.numGroups, m_FParams.numItems);				// particles
+
+    // num_work_groups = m_FParams.numGroups
+
+    std::cout << "+-------------------------------------+" << std::endl;
+    std::cout << "|           m_FParams.numGroups       |" << std::endl;
+    std::cout << "+-------------------------------------+" << std::endl;
+    std::cout << "m_FParams.numGroups = " << m_FParams.numGroups << std::endl;
+
+    std::cout << "+------------------------------------+" << std::endl;
+    std::cout << "|           m_FParams.numItems       |" << std::endl;
+    std::cout << "+------------------------------------+" << std::endl;
+    std::cout << "m_FParams.numItems = " << m_FParams.numItems << std::endl;
+
+    computeNumBlocks ( m_FParams.gridTotal, local_work_size, m_FParams.gridBlocks, m_FParams.gridThreads);		// grid cell
 
     // Compute particle buffer & grid dimensions
 
     cout << "\n\n++++++++++++++++++++++++++++++++++++++++++\n" <<
-                    "\nm_FParams.pnum:" << m_FParams.pnum <<
-                    "\nm_FParams.itemsPerGroup:" << m_FParams.itemsPerGroup <<
-                    "\nm_FParams.numGroups:" << m_FParams.numGroups <<
+                    "\nNumber of Particles:" << m_FParams.pnum <<
+                    "\nLocal Work Size:" << local_work_size <<
+                    "\nItem per Group (hardcoded): " << m_FParams.itemsPerGroup <<
+                    "\nNumber of Groups:" << num_work_groups <<
                     "\nm_FParams.numItems:" << m_FParams.numItems <<
             "\n\n++++++++++++++++++++++++++++++++++++++++++\n\n\n" << std::flush;
 
@@ -120,7 +170,7 @@ void FluidSystem::TransferFromTempCL ( int buf_id, int sz ){
 void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin sorting
     cl_int err;
 
-    if (verbosity>1) printf("\n-----InsertParticles() started-----");
+    if (verbosity>1) printf("\n-----InsertParticles() started... -----");
 
         printf("\nm_GridTotal = %d\n", m_GridTotal);
 
@@ -164,26 +214,26 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
     // first zero the counters
     int zero = 0;
-    clCheck(clEnqueueFillBuffer(m_queue,    m_Fluid.mgpu[FGRIDCNT],                   &zero, sizeof(int),             0, m_GridTotal * sizeof(int),               0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 1", NULL, mbDebug);
+    clCheck(clEnqueueFillBuffer(m_queue,    gpuVar(&m_Fluid, FGRIDCNT),                   &zero, sizeof(int),             0, m_GridTotal * sizeof(int),               0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 1", NULL, mbDebug);
     clCheck(clEnqueueFillBuffer(m_queue,    gpuVar(&m_Fluid, FGRIDOFF),               &zero, sizeof(int),             0, m_GridTotal * sizeof(int),               0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 2", NULL, mbDebug);
     clCheck(clEnqueueFillBuffer(m_queue,    gpuVar(&m_Fluid, FGRIDCNT_ACTIVE_GENES),  &zero, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]),   0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 3", NULL, mbDebug);
     clCheck(clEnqueueFillBuffer(m_queue,    gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES),  &zero, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]),   0, NULL, NULL),   "InsertParticlesCL", "clEnqueueFillBuffer 4", NULL, mbDebug);
 
     // Set long list to sort all particles.
 
-    computeNumBlocks(m_FParams.pnum, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems); // particles
+    //computeNumBlocks(m_FParams.pnum, local_work_size, m_FParams.numGroups, m_FParams.numItems); // particles
 
-    size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
-    size_t local_work_size = m_FParams.numItems;
+    //size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
+    //size_t local_work_size = m_FParams.numItems;
 
-    cout << "\n+++++++++++++++++++++++++++ m_FParams.numGroups: " << m_FParams.numGroups << "+++++++++++++++++++++++" << flush;
-    cout << "\n+++++++++++++++++++++++++++ m_FParams.numItems: " << m_FParams.numItems << "+++++++++++++++++++++++\n\n" << flush;
+    cout << "\n+++++++++++++++++++++++++++ num_work_groups: " << num_work_groups << " +++++++++++++++++++++++" << flush;
+    cout << "\n+++++++++++++++++++++++++++ mMaxPoints: " << mMaxPoints << " +++++++++++++++++++++++\n\n" << flush;
     // set arguments and launch kernel "InsertParticles"
 
     //void* args[1] = {&mMaxPoints}; //&mNumPoints
-    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(int),     &mMaxPoints);
-    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(cl_mem),     &m_Fluid.mgpu[FGRIDCNT]); //volatile global int* fgridcnt
-    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(cl_mem),     &m_Fluid.mgpu[FGRIDCNT_ACTIVE_GENES]); //volatile global int* fgridcnt_active_genes
+    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(int),          &mMaxPoints);
+    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(cl_mem),       &m_Fluid.mgpu[FGRIDCNT]); //volatile global int* fgridcnt
+    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(cl_mem),       &m_Fluid.mgpu[FGRIDCNT_ACTIVE_GENES]); //volatile global int* fgridcnt_active_genes
 
     //Running kernel
     cl_event func_insert_event;
@@ -191,30 +241,17 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
                                  m_Kern[FUNC_INSERT],                   // cl_kernel            kernel,
                                  1,                                     // cl_uint              work_dim,
                                  NULL,                                  // const size_t         *global_work_offset,
-                                 global_work_size,                      // const size_t         *global_work_size,
-                                 local_work_size,                       // const size_t         *local_work_size,
+                                 &global_work_size,                      // const size_t         *global_work_size,
+                                 &local_work_size,                       // const size_t         *local_work_size,
                                  0,                                     // cl_uint              num_events_in_wait_list,
                                  NULL,                                  // const cl_event       *event_wait_list,
                                  &func_insert_event),                   // cl_event             *event
 
     "InsertParticlesCL", "clEnqueueNDRangeKernel", "FUNC_INSERT", mbDebug);
-    /*
-        cl_int clEnqueueNDRangeKernel (
-                                   cl_command_queue     command_queue,
-                                   cl_kernel            kernel,
-                                   cl_uint              work_dim,
-                                   const size_t         *global_work_offset,
-                                   const size_t         *global_work_size,
-                                   const size_t         *local_work_size,
-                                   cl_uint              num_events_in_wait_list,
-                                   const cl_event       *event_wait_list,
-                                   cl_event             *event
-    )
-    */
 
     clWaitForEvents(1, &func_insert_event);
 
-    //if (verbosity > 1)
+    if (verbosity > 0)
         cout << "\n#######\nCalling InsertParticles kernel: args[1] = {" << mNumPoints << "}, mMaxPoints=" << mMaxPoints
              << "\t m_FParams.numGroups=" << m_FParams.numGroups << ", m_FParams.numItems=" << m_FParams.numItems << " \t" << std::flush;
 
@@ -250,8 +287,6 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
         //clean up TODO is something missing?
         clReleaseMemObject(m_Fluid.mgpu[FGRIDCNT]);
-        clReleaseKernel(m_Kern[FUNC_INSERT]);
-        clReleaseCommandQueue(m_queue);
     }
     if (m_debug > 4) {
         if (verbosity > 1)
@@ -266,61 +301,192 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
                                   NULL,
                                   NULL);
         // TODO Has to be implemented again. CUCLCUCL
-        //SaveUintArray(bufI(&m_Fluid, FGCELL), mMaxPoints, "InsertParticlesCL__bufI(&m_Fluid, FGCELL).csv");
+        SaveUintArray(bufI(&m_Fluid, FGCELL), mMaxPoints, "InsertParticlesCL__bufI(&m_Fluid, FGCELL).csv");
     }
                                                                             if(verbosity>0) cout << "\n-----InsertParticlesCL finished-----\n\n" << flush;
 }
 
- void FluidSystem::PrefixSumCellsCL (int zero_offsets) {
+ void FluidSystem::PrefixSumCellsCL (int zero_offsets) { //CUCLCUCL
 
+    if (verbosity>1) printf("\n-----PrefixSumCellsCL() started... -----\n");
 
     cl_int status;
     cl_event writeEvt;
     // Prefix Sum - determine grid offsets
-    int t_blockSize = SCAN_BLOCKSIZE << 1;
 
-    size_t t_fixedNumElem = static_cast<size_t>(1);
-    const size_t* fixedNumElem = &t_fixedNumElem;
+    // Doing this, because different variable types of the same values are needed as parameters.
+    int t_blockSize = SCAN_BLOCKSIZE << 1;
+//     size_t t_fixedNumElem = static_cast<size_t>(1);
+//     const size_t* fixedNumElem = &t_fixedNumElem;
+
+    cout << "\n\n-----------------------------------------------------------t_blockSize = " << t_blockSize << "\n\n" << flush;
+
     size_t sizeValue0 = static_cast<size_t>(t_blockSize);
     const size_t* blockSize = &sizeValue0;
 
     int t_numElem1 = m_GridTotal;
-    cout << m_GridTotal;
     size_t sizeValue1 = static_cast<size_t>(t_numElem1);
-    const size_t* numElem1 = &sizeValue1;
+    const size_t* allElements = &sizeValue1;
+    cout << "\nnumElem1/allElements = " << *allElements << flush;          //allElements = 10000 = m_GridTotal
 
-    int t_numElem2 = int ((*numElem1) / (*blockSize)) + 1;
+
+    int t_numElem2 = int ((*allElements) / (*blockSize)) + 1;
     size_t sizeValue2 = static_cast<size_t>(t_numElem2);
-    const size_t* numElem2 = &sizeValue2;
+    const size_t* numWorkGroups = &sizeValue2;
+    cout << "\nnumElem2/numWorkGroups = " << *numWorkGroups << flush;          //numWorkGroups = 20
 
-    int t_numElem3 = int ((*numElem2) / (*blockSize)) + 1;
+
+    int t_numElem3 = int ((*numWorkGroups) / (*blockSize)) + 1;
     size_t sizeValue3 = static_cast<size_t>(t_numElem3);
-    const size_t* numElem3 = &sizeValue3;
+    const size_t* numWorkGroups2 = &sizeValue3;
+    cout << "\nnumElem3/numWorkGroups2 = " << *numWorkGroups2 << flush;          //numWorkGroups2 = 1
 
     int t_threads = SCAN_BLOCKSIZE;
     size_t sizeValue4 = static_cast<size_t>(t_threads);
     const size_t* threads = &sizeValue4;
+    cout << "\nthreads = " << *threads << flush;
+
 
 
     int zon = 1;
 
-    cl_mem array1 = gpuVar(&m_Fluid, FGRIDCNT);
-    cl_mem scan1 = gpuVar(&m_Fluid, FGRIDOFF);
-    cl_mem array2 = gpuVar(&m_Fluid, FAUXARRAY1);
-    cl_mem scan2 = gpuVar(&m_Fluid, FAUXSCAN1);
-    cl_mem array3 = gpuVar(&m_Fluid, FAUXARRAY2);
-    cl_mem scan3 = gpuVar(&m_Fluid, FAUXSCAN2);
+    cl_mem array1  = gpuVar(&m_Fluid, FGRIDCNT);		// input
+    cl_mem scan1   = gpuVar(&m_Fluid, FGRIDOFF);		// output
+    cl_mem array2  = gpuVar(&m_Fluid, FAUXARRAY1);
+    cl_mem scan2   = gpuVar(&m_Fluid, FAUXSCAN1);
+    cl_mem array3  = gpuVar(&m_Fluid, FAUXARRAY2);
+    cl_mem scan3   = gpuVar(&m_Fluid, FAUXSCAN2);
+
+#ifndef xlong
+    typedef unsigned long long	xlong;		// 64-bit integer
+#endif
+    if ( t_numElem1 > SCAN_BLOCKSIZE*xlong(SCAN_BLOCKSIZE)*SCAN_BLOCKSIZE) { if (m_FParams.debug>1)printf ( "\nERROR: Number of elements exceeds prefix sum max. Adjust SCAN_BLOCKSIZE.\n" );  }
+
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 0, sizeof(cl_mem), &array1);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 1, sizeof(cl_mem), &scan1);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 2, sizeof(cl_mem), &array2);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 3, sizeof(int), &allElements);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 4, sizeof(int), &zero_offsets);
+    //cout << "\n\n\n+++++ numWorkGroups: " << *numWorkGroups << " +++++++++++++++++++++++" << flush;
+
+    computeNumBlocks ( m_GridTotal, local_work_size, m_FParams.numGroups, m_FParams.numItems);
+    //cout << "\n+++++ m_FParams.numGroups: " << m_FParams.numGroups << " +++++++++++++++++++++++" << flush;
+    //cout << "\n+++++ m_FParams.numItems: " << m_FParams.numItems << " +++++++++++++++++++++++\n" << flush;
+
+    //clCheck(clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, numWorkGroups, threads, 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_FPREFIXSUM_1", mbDebug);
+    clCheck(clEnqueueNDRangeKernel( //----------------------------------------------FUNC_FPREFIXSUM
+
+        m_queue, m_Kern[FUNC_FPREFIXSUM],
+        1,
+        NULL,
+        allElements,
+        &m_FParams.numGroups,
+        0,
+        NULL,
+        NULL),
+
+    "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_FPREFIXSUM 1.1", mbDebug);
+
+    clFlush(m_queue);
+    clFinish(m_queue);
 
 
-    #ifndef xlong
-        typedef unsigned long long xlong;
-    #endif
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 0, sizeof(cl_mem), &array2);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 1, sizeof(cl_mem), &scan2);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 2, sizeof(cl_mem), &array3);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 3, sizeof(int), &numWorkGroups);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 4, sizeof(int), &zon);
 
+    clCheck(clEnqueueNDRangeKernel( //----------------------------------------------FUNC_FPREFIXSUM
+
+        m_queue,
+        m_Kern[FUNC_FPREFIXSUM],
+        1,
+        NULL,
+        threads,
+        numWorkGroups2,
+        0,
+        NULL,
+        NULL),
+    "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_FPREFIXSUM 1.2", mbDebug);
+
+    if (t_numElem3 > 1) {
+        cl_mem nptr_cl = NULL;
+        //void* argsC[5] = { &array3, &scan3, &nptr, &numWorkGroups2, &zon };	        // sum array3. output -> scan3                  i.e. FAUXARRAY2 -> FAUXSCAN2, &nptr
+                clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 0, sizeof(cl_mem), &array3);
+                clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 1, sizeof(cl_mem), &scan3);
+                clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 2, sizeof(cl_mem), &nptr_cl);
+                clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 3, sizeof(int), &numWorkGroups2);
+                clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 4, sizeof(int), &zon);
+
+        clCheck(clEnqueueNDRangeKernel( //----------------------------------------------FUNC_FPREFIXSUM
+
+
+            m_queue, m_Kern[FUNC_FPREFIXSUM],
+            1,
+            NULL,
+            threads,
+            &m_FParams.numGroups,
+            0,
+            NULL,
+            NULL),
+
+        "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_FPREFIXSUM 2.1", mbDebug);
+        //clCheck ( clLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], 1, 1, 1, threads, 1, 1, 0, NULL, argsC, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+
+        //void* argsD[3] = { &scan2, &scan3, &numWorkGroups };	                        // merge scan3 into scan2. output -> scan2      i.e. FAUXSCAN2, FAUXSCAN1 -> FAUXSCAN1
+                clSetKernelArg(m_Kern[FUNC_FPREFIXUP], 0, sizeof(cl_mem), &scan2);
+                clSetKernelArg(m_Kern[FUNC_FPREFIXUP], 1, sizeof(cl_mem), &scan3);
+                clSetKernelArg(m_Kern[FUNC_FPREFIXUP], 2, sizeof(int), &numWorkGroups);
+
+        //clCheck ( clLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numWorkGroups2, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+        clCheck(clEnqueueNDRangeKernel( //----------------------------------------------FUNC_FPREFIXUP
+
+
+            m_queue,
+            m_Kern[FUNC_FPREFIXUP],
+            1,
+            NULL,
+            threads,
+            numWorkGroups2,
+            0,
+            NULL,
+            NULL),
+
+        "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_FPREFIXUP 1.1", mbDebug);
+
+    }
+
+
+    //void* argsE[3] = { &scan1, &scan2, &numElem1 };		                        // merge scan2 into scan1. output -> scan1      i.e. FAUXSCAN1, FGRIDOFF -> FGRIDOFF
+            clSetKernelArg(m_Kern[FUNC_FPREFIXUP], 0, sizeof(cl_mem), &scan1);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXUP], 1, sizeof(cl_mem), &scan2);
+            clSetKernelArg(m_Kern[FUNC_FPREFIXUP], 2, sizeof(int), &allElements);
+
+    //clCheck ( clLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numWorkGroups, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+    clCheck(clEnqueueNDRangeKernel( //----------------------------------------------FUNC_FPREFIXUP
+
+
+        m_queue,
+        m_Kern[FUNC_FPREFIXUP],
+        1,
+        NULL,
+        threads,
+        numWorkGroups,
+        0,
+        NULL,
+        NULL),
+
+    "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_FPREFIXUP 1.2", mbDebug);
+
+
+    // Loop to PrefixSum the Dense Lists - NB by doing one gene at a time, we reuse the FAUX* arrays & scans.
+    // For each gene, input FGRIDCNT_ACTIVE_GENES[gene*m_GridTotal], output FGRIDOFF_ACTIVE_GENES[gene*m_GridTotal]
     cl_mem array0 = gpuVar(&m_Fluid,FGRIDCNT_ACTIVE_GENES);
     cl_mem scan0 = gpuVar(&m_Fluid,FGRIDOFF_ACTIVE_GENES);
     cout << "____\n\n\n";
 
-    for (int gene = 0; gene < NUM_GENES; gene++) {
+    /*for (int gene = 0; gene < NUM_GENES; gene++) {
     size_t offset_array0 = gene * t_numElem1 * sizeof(int);
     size_t offset_scan0 = gene * t_numElem1 * sizeof(int);
 
@@ -347,28 +513,40 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 //         clCheck(clEnqueueFillBuffer(m_queue, array3, &pattern, sizeof(pattern), 0, t_numElem3 * sizeof(int), 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueFillBuffer", "FGRIDCNT", mbDebug);
 //         clCheck(clEnqueueFillBuffer(m_queue, scan3, &pattern, sizeof(pattern), 0, t_numElem3 * sizeof(int), 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueFillBuffer", "FGRIDCNT", mbDebug);
 
-    //void* argsA[5] = {&array1, &scan1, &array2, &numElem1, &zero_offsets};
+    //void* argsA[5] = {&array1, &scan1, &array2, &allElements, &zero_offsets};
 
     status = clFlush(m_queue); 				if (status != CL_SUCCESS)	{ cout << "\nclFlush(m_queue) status = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 	status = clFinish(m_queue); 			if (status != CL_SUCCESS)	{ cout << "\nclFinish(m_queue) = "		 <<checkerror(status)  <<"\n"<<flush; exit_(status);}
-    clCheck(clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, 0, &global_work_size, 0, 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_PREFIXSUM", mbDebug);
+    clCheck(clEnqueueNDRangeKernel(
+
+        m_queue,
+        m_Kern[FUNC_FPREFIXSUM],
+        1,
+        0,
+        &global_work_size,
+        0,
+        0,
+        NULL,
+        NULL),
+
+    "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_PREFIXSUM", mbDebug);
 
 
     printf("\nPREFIX SUM done.\n");
-//     //void* argsB[5] = {&array2, &scan2, &array3, &numElem2, &zon};
-//     clCheck(clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, numElem3, threads, 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_PREFIXSUM", mbDebug);
+//     //void* argsB[5] = {&array2, &scan2, &array3, &numWorkGroups, &zon};
+//     clCheck(clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, numWorkGroups2, threads, 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_PREFIXSUM", mbDebug);
 //
-//     if ((*numElem3) > 1) {
+//     if ((*numWorkGroups2) > 1) {
 //         cl_mem nptr = {0};
-//         //void* argsC[5] = {&array3, &scan3, &nptr, &numElem3, &zon};
+//         //void* argsC[5] = {&array3, &scan3, &nptr, &numWorkGroups2, &zon};
 //         clCheck(clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, fixedNumElem, threads, 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueNDRangeKernel", "FUNC_PREFIXFIXUP", mbDebug);
 //
-//         //void* argsD[3] = {&scan2,&scan3,&numElem2};
-//         clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXUP],1, NULL, numElem3, threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);
+//         //void* argsD[3] = {&scan2,&scan3,&numWorkGroups};
+//         clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXUP],1, NULL, numWorkGroups2, threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);
 //     }
 //
-// //     void* argsE[3] = {&scan1,&scan2,&numElem1};
-//     clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXUP],1,NULL, numElem2, threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);
+// //     void* argsE[3] = {&scan1,&scan2,&allElements};
+//     clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXUP],1,NULL, numWorkGroups, threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);
 
     // Loop to PrefixSum the Dense Lists - NB by doing one gene at a time,
     // we reuse the FAUX* arrays & scans.
@@ -378,25 +556,25 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
 /*
 
-//         void* argsA[5] = {&array1,&scan1,&array2,&numElem1,&zero_offsets};
-        clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXSUM],1,NULL,numElem2,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXSUM",mbDebug);
+            //         void* argsA[5] = {&array1,&scan1,&array2,&allElements,&zero_offsets};
+                    clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXSUM],1,NULL,numWorkGroups,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXSUM",mbDebug);
 
-//         void* argsB[5] = {&array2,&scan2,&array3,&numElem2,&zon};
-        clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXSUM],1,NULL,numElem3,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXSUM",mbDebug);
+            //         void* argsB[5] = {&array2,&scan2,&array3,&numWorkGroups,&zon};
+                    clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXSUM],1,NULL,numWorkGroups2,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXSUM",mbDebug);
 
-        if ((*numElem3) > 1) {
-            cl_mem nptr = {0};
-//             void* argsC[5] = {&array3,&scan3,&nptr,&numElem3,&zon};
-            clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXSUM],1,NULL,fixedNumElem,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);
+                    if ((*numWorkGroups2) > 1) {
+                        cl_mem nptr = {0};
+            //             void* argsC[5] = {&array3,&scan3,&nptr,&numWorkGroups2,&zon};
+                        clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXSUM],1,NULL,fixedNumElem,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);
 
-//             void* argsD[3] = {&scan2,&scan3,&numElem2};
-            clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXUP],1,NULL,numElem3,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);
-        }
+            //             void* argsD[3] = {&scan2,&scan3,&numWorkGroups};
+                        clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXUP],1,NULL,numWorkGroups2,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);
+                    }
 
-//         void* argsE[3] = {&scan1,&scan2,&numElem1};
-        clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXUP],1,NULL,numElem2,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);*/
-    }
-
+            //         void* argsE[3] = {&scan1,&scan2,&allElements};
+                    //clCheck(clEnqueueNDRangeKernel(m_queue,m_Kern[FUNC_FPREFIXUP],1,NULL,numWorkGroups,threads,0,NULL,NULL),"PrefixSumCellsCL","clEnqueueNDRangeKernel","FUNC_PREFIXFIXUP",mbDebug);
+    }*/
+/*
     printf("\nPhase 3 done.\n");
 
     int num_lists = NUM_GENES,
@@ -432,7 +610,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     }
 
     clCheck(clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FDENSE_LISTS), CL_TRUE, 0, NUM_GENES * sizeof(cl_mem), bufC(&m_Fluid, FDENSE_LISTS), 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueWriteBuffer", "FDENSE_LISTS", mbDebug);
-    clCheck(clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FDENSE_BUF_LENGTHS), CL_TRUE, 0, NUM_GENES * sizeof(cl_mem), bufC(&m_Fluid, FDENSE_BUF_LENGTHS), 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueWriteBuffer", "FDENSE_BUF_LENGTHS", mbDebug);
+    clCheck(clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FDENSE_BUF_LENGTHS), CL_TRUE, 0, NUM_GENES * sizeof(cl_mem), bufC(&m_Fluid, FDENSE_BUF_LENGTHS), 0, NULL, NULL), "PrefixSumCellsCL", "clEnqueueWriteBuffer", "FDENSE_BUF_LENGTHS", mbDebug);*/
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //if (verbosity > 1) {                                                                                                      //
@@ -442,6 +620,9 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //}
     //}
+
+    if (verbosity>1) printf("\n-----PrefixSumCellsCL() finished-----\n");
+
 
 }
 
@@ -460,7 +641,6 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
     const size_t* blockSize = &sizeValue0;
 
     int t_numElem1 = m_GridTotal;
-    cout << m_GridTotal;
     size_t sizeValue1 = static_cast<size_t>(t_numElem1);
     const size_t* numElem1 = &sizeValue1;
 
@@ -486,11 +666,8 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
     cl_mem array3  = gpuVar(&m_Fluid, FAUXARRAY2);
     cl_mem scan3   = gpuVar(&m_Fluid, FAUXSCAN2);
 
-    // Loop to PrefixSum the Dense Lists - NB by doing one change_list at a time, we reuse the FAUX* arrays & scans.
-    // For each change_list, input FGRIDCNT_ACTIVE_GENES[change_list*m_GridTotal], output FGRIDOFF_ACTIVE_GENES[change_list*m_GridTotal]
-    cl_mem array0 = gpuVar(&m_Fluid,FGRIDCNT_CHANGES);
-    cl_mem scan0 = gpuVar(&m_Fluid,FGRIDCNT_CHANGES);
-    cout << "____\n\n\n";
+    cl_mem array0  = gpuVar(&m_Fluid, FGRIDCNT_CHANGES);
+    cl_mem scan0   = gpuVar(&m_Fluid, FGRIDOFF_CHANGES);
 
     if(m_debug>3){
         // debug chk
@@ -511,7 +688,9 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
         //   SaveUintArray( bufI(&m_Fluid, FDENSE_LISTS), numElem1, "bufI(&m_Fluid, FDENSE_LISTS).csv" );
     }
 
-    clFinish (m_queue);
+    clFlush(m_queue);
+    clFinish(m_queue);
+
 
     for(int change_list=0; change_list<NUM_CHANGES; change_list++){
         //array1  = array0 + change_list*t_numElem1*sizeof(int); //gpuVar(&m_Fluid, FGRIDCNT_ACTIVE_GENES);//[change_list*numElem1]   ;      // cl_device_idptr to change_list within gpuVar(&m_Fluid, FGRIDCNT_CHANGES), for start of prefix-sum.
@@ -525,9 +704,9 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
         clCheck ( clEnqueueFillBuffer(m_queue, array3, 0, sizeof(cl_mem), 0, t_numElem3*sizeof(cl_mem), 0, NULL, NULL),   "PrefixSumChangesCL", "cuMemsetD8", "FGRIDCNT", mbDebug );
         clCheck ( clEnqueueFillBuffer(m_queue, scan3,  0, sizeof(cl_mem), 0, t_numElem3*sizeof(cl_mem), 0, NULL, NULL),     "PrefixSumChangesCL", "cuMemsetD8", "FGRIDCNT", mbDebug );
 
-//         size_t* global_work_size = numElem2;
-//         size_t* global_work_size3 = numElem3;
-//         size_t* local_work_size = threads;
+        const size_t* global_work_size = numElem2;
+        const size_t* global_work_size3 = numElem3;
+        const size_t* local_work_size = threads;
 
         // void* argsA[5] = {&array1, &scan1, &array2, &numElem1, &zero_offsets };     // sum array1. output -> scan1, array2.         i.e. FGRIDCNT -> FGRIDOFF, FAUXARRAY1
 
@@ -540,7 +719,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
         clSetKernelArg(m_Kern[FUNC_FPREFIXSUM],  6, sizeof(size_t),  &offset_scan0);
 
         // clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsA, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXSUM", mbDebug);
-        clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, numElem2 , threads , 0 , NULL , NULL);
+        clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, global_work_size , local_work_size , 0 , NULL , NULL);
         clFlush(m_queue);
         clFinish(m_queue);
 
@@ -552,7 +731,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
         clSetKernelArg(m_Kern[FUNC_FPREFIXSUM],  4, sizeof(cl_mem), &zon);
 
         //clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsB, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXSUM", mbDebug);
-        clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, numElem3 , threads , 0 , NULL , NULL);
+        clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, global_work_size3 , local_work_size , 0 , NULL , NULL);
         clFlush(m_queue);
         clFinish(m_queue);
 
@@ -567,7 +746,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 
             size_t global_one = 1;
             //clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], 1, 1, 1, threads, 1, 1, 0, NULL, argsC, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
-            clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, &global_one, threads , 0 , NULL , NULL);
+            clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXSUM], 1, NULL, &global_one, local_work_size , 0 , NULL , NULL);
             clFlush(m_queue);
             clFinish(m_queue);
             //void* argsD[3] = { &scan2, &scan3, &numElem2 };	                        // merge scan3 into scan2. output -> scan2      i.e. FAUXSCAN2, FAUXSCAN1 -> FAUXSCAN1
@@ -575,7 +754,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
             clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 1, sizeof(cl_mem), &scan3);
             clSetKernelArg(m_Kern[FUNC_FPREFIXSUM], 2, sizeof(cl_mem), &numElem2);
             //clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
-            clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXUP], 1, NULL, numElem3 , threads , 0 , NULL , NULL);
+            clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FPREFIXUP], 1, NULL, global_work_size3 , local_work_size , 0 , NULL , NULL);
             clFlush(m_queue);
             clFinish(m_queue);
 
@@ -647,19 +826,18 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
     }
 }
 
-void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
+void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){ //CUCLCUCL
     if (verbosity>1) std::cout << "\nCountingSortFullCL()1: mMaxPoints="<<mMaxPoints<<", mNumPoints="<<mNumPoints<<",\tmActivePoints="<<mActivePoints<<".\n"<<std::flush;
 
     // get number of active particles & set short lists for later kernels
     int grid_ScanMax = (m_FParams.gridScanMax.y * m_FParams.gridRes.z + m_FParams.gridScanMax.z) * m_FParams.gridRes.x + m_FParams.gridScanMax.x;
-
-    //clCheck( cuMemcpyDtoH ( &mNumPoints,  gpuVar(&m_Fluid, FGRIDOFF)+(m_GridTotal-1/*grid_ScanMax+1*/)*sizeof(int), sizeof(int) ), "CountingSortFullCL1", "cuMemcpyDtoH", "FGRIDOFF", mbDebug);
-
+    std::cout << "\nCountingSortFullCL()1: chk ----> 2"<< std::flush;    //clCheck( cuMemcpyDtoH ( &mNumPoints,  gpuVar(&m_Fluid, FGRIDOFF)+(m_GridTotal-1/*grid_ScanMax+1*/)*sizeof(int), sizeof(int) ), "CountingSortFullCL1", "cuMemcpyDtoH", "FGRIDOFF", mbDebug);
     clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FGRIDOFF), CL_TRUE, (m_GridTotal-1)*sizeof(int), sizeof(int), &mNumPoints, 0, NULL, NULL), "CountingSortFullCL1", "clEnqueueReadBuffer", "FGRIDOFF", mbDebug);
 
+    std::cout << "\nCountingSortFullCL()1: chk ----> 3"<< std::flush;
     //clCheck( cuMemcpyDtoH ( &mActivePoints,  gpuVar(&m_Fluid, FGRIDOFF)+(grid_ScanMax/*-1*/)*sizeof(int), sizeof(int) ), "CountingSortFullCL2", "cuMemcpyDtoH", "FGRIDOFF", mbDebug);
-
     clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FGRIDOFF), CL_TRUE, grid_ScanMax*sizeof(int), sizeof(int), &mActivePoints, 0, NULL, NULL), "CountingSortFullCL2", "clEnqueueReadBuffer", "FGRIDOFF", mbDebug);
+
     /*
     int totalPoints = 0;
     clCheck( cuMemcpyDtoH ( &totalPoints,  gpuVar(&m_Fluid, FGRIDOFF)+(m_GridTotal)*sizeof(int), sizeof(int) ), "CountingSortFullCL3", "cuMemcpyDtoH", "FGRIDOFF", mbDebug);
@@ -667,6 +845,7 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     */
     m_FParams.pnumActive = mActivePoints;                                     // TODO eliminate duplication of information & variables between fluid.h and fluid_system.h
     //clCheck ( cuMemcpyHtoD ( clFParams,	&m_FParams, sizeof(FParams) ), "CountingSortFullCL3", "cuMemcpyHtoD", "clFParams", mbDebug); // seems the safest way to update fparam.pnumActive on device.
+    std::cout << "\nCountingSortFullCL()1: chk ----> 4"<< std::flush;
 
     clCheck( clEnqueueWriteBuffer(m_queue, m_FParamDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL), "CountingSortFullCL3", "clEnqueueWriteBuffer", "clFParams", mbDebug);
 
@@ -677,13 +856,14 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     //TransferToTempCL ( FPOS,		mMaxPoints *sizeof(cl_float3) );    // NB if some points have been removed, then the existing list is no longer dense,
     //TransferToTempCL ( FVEL,		mMaxPoints *sizeof(cl_float3) );    // hence must use mMaxPoints, not mNumPoints
     //TransferToTempCL ( FVEVAL,	mMaxPoints *sizeof(cl_float3) );    // { Could potentially use (old_mNumPoints + mNewPoints) instead of mMaxPoints}
-    TransferToTempCL ( FFORCE,	mMaxPoints *sizeof(cl_float3) );    // NB buffers are declared and initialized on mMaxPoints.
-    TransferToTempCL ( FPRESS,	mMaxPoints *sizeof(float) );
-    TransferToTempCL ( FDENSITY,	mMaxPoints *sizeof(float) );
-    TransferToTempCL ( FCLR,		mMaxPoints *sizeof(uint) );
-    TransferToTempCL ( FAGE,		mMaxPoints *sizeof(uint) );
-    TransferToTempCL ( FGCELL,	mMaxPoints *sizeof(uint) );
-    TransferToTempCL ( FGNDX,		mMaxPoints *sizeof(uint) );
+    TransferToTempCL ( FFORCE,	     mMaxPoints *sizeof(cl_float3)   );    // NB buffers are declared and initialized on mMaxPoints.
+    TransferToTempCL ( FPRESS,	     mMaxPoints *sizeof(float)       );
+    TransferToTempCL ( FDENSITY,	 mMaxPoints *sizeof(float)       );
+    TransferToTempCL ( FCLR,		 mMaxPoints *sizeof(uint)        );
+    TransferToTempCL ( FAGE,		 mMaxPoints *sizeof(uint)        );
+    TransferToTempCL ( FGCELL,	     mMaxPoints *sizeof(uint)        );
+    TransferToTempCL ( FGNDX,		 mMaxPoints *sizeof(uint)        );
+    std::cout << "\nCountingSortFullCL()2: chk ----> 1"<< std::flush;
 
     // extra data for morphogenesis
     TransferToTempCL ( FELASTIDX,		mMaxPoints *sizeof(uint[BOND_DATA]) );
@@ -692,7 +872,8 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     TransferToTempCL ( FMASS_RADIUS,	mMaxPoints *sizeof(uint) );
     TransferToTempCL ( FNERVEIDX,		mMaxPoints *sizeof(uint) );
     TransferToTempCL ( FCONC,		    mMaxPoints *sizeof(float[NUM_TF]) );
-    TransferToTempCL ( FEPIGEN,	    mMaxPoints *sizeof(uint[NUM_GENES]) );
+    TransferToTempCL ( FEPIGEN,	        mMaxPoints *sizeof(uint[NUM_GENES]) );
+    std::cout << "\nCountingSortFullCL()2: chk ----> 2"<< std::flush;
 
     // debug chk
     //clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FEPIGEN), gpuVar(&m_FluidTemp, FEPIGEN),	mMaxPoints *sizeof(uint[NUM_GENES]) ), "CountingSortFullCL4", "cuMemcpyDtoH", "FGRIDCNT", mbDebug);
@@ -701,94 +882,145 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     // reset bonds and forces in fbuf FELASTIDX, FPARTICLEIDX and FFORCE, required to prevent interference between time steps,
     // because these are not necessarily overwritten by the FUNC_COUNTING_SORT kernel.
     clFinish (m_queue);    // needed to prevent colision with previous operations
+    std::cout << "\nCountingSortFullCL()2: chk ----> 3"<< std::flush;
 
     float max_pos = max(max(m_Vec[PVOLMAX].x, m_Vec[PVOLMAX].y), m_Vec[PVOLMAX].z);
+    std::cout << "\nCountingSortFullCL()2: chk ----> 31"<< std::flush;
+
     uint * uint_max_pos = (uint*)&max_pos;
-    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPOS), *uint_max_pos, mMaxPoints * 3 ),  "CountingSortFullCL", "cuMemsetD32", "FELASTIDX",   mbDebug);
+    std::cout << "\nCountingSortFullCL()2: chk ----> 32"<< std::flush;
+
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPOS), *uint_max_pos, mMaxPoints * 3 ),  "CountingSortFullCL", "clMemsetD32", "FELASTIDX",   mbDebug);
 
     //cout<<"\nCountingSortFullCL: m_Vec[PVOLMAX]=("<<m_Vec[PVOLMAX].x<<", "<<m_Vec[PVOLMAX].y<<", "<<m_Vec[PVOLMAX].z<<"),  max_pos = "<< max_pos <<std::flush;
     // NB resetting  gpuVar(&m_Fluid, FPOS)  ensures no zombie particles. ?hopefully?
+    std::cout << "\nCountingSortFullCL()2: chk ----> 4"<< std::flush;
 
-    // Define the variables
-//     struct Var {
-//         cl_mem buffer;
-//         int value;
-//         size_t size;
-//         const char* name;
-//     };
-//
-//     Var vars[] = {
-//         {NULL, (double)*uint_max_pos, (size_t)(mMaxPoints * 3), "FPOS"},
-//         {NULL, UINT_MAXSIZE, mMaxPoints * BOND_DATA, "FELASTIDX"},
-//         {NULL, UINT_MAXSIZE, mMaxPoints * BONDS_PER_PARTICLE * 2, "FPARTICLEIDX"},
-//         {NULL, UINT_MAXSIZE, mMaxPoints, "FPARTICLE_ID"},
-//         {NULL, 0.0, mMaxPoints * 3, "FFORCE"},
-//         {NULL, 0.0, mMaxPoints * NUM_TF, "FCONC"},
-//         {NULL, 0.0, mMaxPoints * NUM_GENES, "FEPIGEN"}
-//     };
-//
-//     // Iterate over the variables
-//     for (int i = 0; i < sizeof(vars) / sizeof(Var); i++) {
-//         // Create buffer
-//         vars[i].buffer = clCreateBuffer(m_context, CL_MEM_READ_WRITE,
-//                                         sizeof(int) * vars[i].size,
-//                                         NULL, &err);
-//         clCheck(err, "CountingSortFullCL", "clCreateBuffer", vars[i].name, mbDebug);
-//
-//         // Set kernel arguments
-//         err  = clSetKernelArg(m_Kern[FUNC_MEMSET32D], 0, sizeof(cl_mem), &vars[i].buffer);
-//         err |= clSetKernelArg(m_Kern[FUNC_MEMSET32D], 1, sizeof(int), &vars[i].value);
-//         clCheck(err, "CountingSortFullCL", "clSetKernelArg", vars[i].name, mbDebug);
-//
-//         // Determine global size
-//         size_t global_size = vars[i].size;
-//
-//         // Enqueue kernel
-//         err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_MEMSET32D], 1,
-//                                     NULL,
-//                                     &global_size,
-//                                     NULL,
-//                                     0,
-//                                     NULL,
-//                                     NULL);
-//         clCheck(err, "CountingSortFullCL", "clEnqueueNDRangeKernel", vars[i].name, mbDebug);
-//     }
+
+    //------------------------------------------------------------------------------------------------
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FELASTIDX),    UINT_MAX,  mMaxPoints * BOND_DATA              ),     "CountingSortFullCUDA", "clMemsetD32", "FELASTIDX",    mbDebug);
+
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLEIDX), UINT_MAX,  mMaxPoints * BONDS_PER_PARTICLE *2  ),  "CountingSortFullCUDA", "clMemsetD32", "FPARTICLEIDX", mbDebug);
+
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLE_ID), UINT_MAX,  mMaxPoints                          ),  "CountingSortFullCUDA", "clMemsetD32", "FPARTICLEIDX", mbDebug);
+
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FFORCE),      (uint)0.0,  mMaxPoints * 3 /* ie num elements */),  "CountingSortFullCUDA", "clMemsetD32", "FFORCE",       mbDebug);
+
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FCONC),             0.0,  mMaxPoints * NUM_TF                 ),  "CountingSortFullCUDA", "clMemsetD32", "FCONC",        mbDebug);
+
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FEPIGEN),     (uint)0.0,  mMaxPoints * NUM_GENES              ),  "CountingSortFullCUDA", "clMemsetD32", "FEPIGEN",      mbDebug);
+
+    clFinish (m_queue);    // needed to prevent colision with previous operations
+    std::cout << "\nCountingSortFullCL()2: chk ----> 5"<< std::flush;
+
+    cl_int err;
+    // Reset grid cell IDs
+
+    // clCheck(clMemsetD32(gpu(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "clMemsetD32(Sort)");
+
+    //void* args[1] = { &mMaxPoints };
+    err  = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT], 0, sizeof(int), &mMaxPoints);
+
+    clCheck ( clEnqueueNDRangeKernel(
+
+        m_queue,
+        m_Kern[FUNC_COUNTING_SORT],
+        1,
+        0,
+        &global_work_size,
+        0,
+        0,
+        NULL,
+        NULL),
+
+              "CountingSortFullCUDA5", "cuLaunch", "FUNC_COUNTING_SORT", mbDebug );
+
+
+
+    // Having sorted the particle data, we can start using a shortened list of particles.
+
+    // NB have to reset to long list at start of time step.
+    std::cout << "\nCountingSortFullCL()2: chk ----> 6"<< std::flush;
+
+    computeNumBlocks ( m_FParams.pnumActive, local_work_size, m_FParams.numGroups, m_FParams.numItems); // particles
+
+
+
+    if (m_FParams.debug>1) std::cout<<"\n CountingSortFullCUDA : FUNC_COUNT_SORT_LISTS\n"<<std::flush;
+
+    // countingSortDenseLists ( int pnum ) // NB launch on bins not particles.
+
+    int blockSize = SCAN_BLOCKSIZE/2 << 1;
+    int numElem1 = m_GridTotal;
+    int numElem2 = 2*  int( numElem1 / blockSize ) + 1;
+    int threads = SCAN_BLOCKSIZE/2;
+
+    clFinish (m_queue);
+
+    // Enqueue the kernel
+    clCheck (
+        clEnqueueNDRangeKernel(
+            m_queue,
+            m_Kern[FUNC_COUNT_SORT_LISTS],
+            1,
+            NULL,
+            &global_work_size,
+            &local_work_size,
+            0,
+            NULL,
+            NULL),
+
+    "CountingSortFullCUDA5", "cuLaunch", "FUNC_COUNTING_SORT", mbDebug );
+
+        clCheck ( clEnqueueNDRangeKernel(
+
+        m_queue,
+        m_Kern[FUNC_COUNT_SORT_LISTS],
+        1,
+        0,
+        &global_work_size,
+        0,
+        0,
+        NULL,
+        NULL),
+
+              "CountingSortFullCUDA5", "cuLaunch", "FUNC_COUNTING_SORT", mbDebug );
+
+    // NB threads/2 required on GTX970m
+
+    clFinish (m_queue);
+    //-------------------------------------------------------------------------------------------
 
     // Ensure all commands have finished
     clFinish(m_queue);
 
-    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FELASTIDX),    UINT_MAXSIZE,  mMaxPoints * BOND_DATA              ),  "CountingSortFullCL", "cuMemsetD32", "FELASTIDX",    mbDebug);
-    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLEIDX), UINT_MAXSIZE,  mMaxPoints * BONDS_PER_PARTICLE *2  ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
-    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLE_ID), UINT_MAXSIZE,  mMaxPoints                          ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
-    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FFORCE),      (uint)0.0,  mMaxPoints * 3 /* ie num elements */),  "CountingSortFullCL", "cuMemsetD32", "FFORCE",       mbDebug);
-    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FCONC),             0.0,  mMaxPoints * NUM_TF                 ),  "CountingSortFullCL", "cuMemsetD32", "FCONC",        mbDebug);
-    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FEPIGEN),     (uint)0.0,  mMaxPoints * NUM_GENES              ),  "CountingSortFullCL", "cuMemsetD32", "FEPIGEN",      mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FELASTIDX),    UINT_MAXSIZE,  mMaxPoints * BOND_DATA              ),  "CountingSortFullCL", "clMemsetD32", "FELASTIDX",    mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLEIDX), UINT_MAXSIZE,  mMaxPoints * BONDS_PER_PARTICLE *2  ),  "CountingSortFullCL", "clMemsetD32", "FPARTICLEIDX", mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLE_ID), UINT_MAXSIZE,  mMaxPoints                          ),  "CountingSortFullCL", "clMemsetD32", "FPARTICLEIDX", mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FFORCE),      (uint)0.0,  mMaxPoints * 3 /* ie num elements */),  "CountingSortFullCL", "clMemsetD32", "FFORCE",       mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FCONC),             0.0,  mMaxPoints * NUM_TF                 ),  "CountingSortFullCL", "clMemsetD32", "FCONC",        mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FEPIGEN),     (uint)0.0,  mMaxPoints * NUM_GENES              ),  "CountingSortFullCL", "clMemsetD32", "FEPIGEN",      mbDebug);
     clFinish (m_queue);    // needed to prevent colision with previous operations
 
     // Reset grid cell IDs
-    // clCheck(cuMemsetD32(gpuVar(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "cuMemsetD32(Sort)");
+    // clCheck(clMemsetD32(gpuVar(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "clMemsetD32(Sort)");
     void* args[1] = { &mMaxPoints };
     for (int i = 0; i < sizeof(args) / sizeof(args[0]); i++) {clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT], i, sizeof(args[i]), &args[i]), "CountingSortFullCL5", "clSetKernelArg", "FUNC_COUNTING_SORT", mbDebug);}
 
-    // Determine global and local work sizes
-    size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
-    size_t local_work_size = m_FParams.numItems;
 
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNTING_SORT], m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL),
     //          "CountingSortFullCL5", "cuLaunch", "FUNC_COUNTING_SORT", mbDebug );
 
     clCheck ( clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COUNTING_SORT], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL),
               "CountingSortFullCL5", "cuLaunch", "FUNC_COUNTING_SORT", mbDebug );
+
     // Having sorted the particle data, we can start using a shortened list of particles.
     // NB have to reset to long list at start of time step.
-    computeNumBlocks ( m_FParams.pnumActive, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);				// particles
+    computeNumBlocks ( m_FParams.pnumActive, local_work_size, m_FParams.numGroups, m_FParams.numItems);				// particles
 
     if (verbosity>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_LISTS\n"<<std::flush;
     // countingSortDenseLists ( int pnum ) // NB launch on bins not particles.
-    int blockSize = SCAN_BLOCKSIZE/2 << 1;
-    int numElem1 = m_GridTotal;
-    int numElem2 = 2*  int( numElem1 / blockSize ) + 1;
-    int threads = SCAN_BLOCKSIZE/2;
+
     clFinish (m_queue);                             // NB threads/2 required on GTX970m
 
     // Set kernel arguments, assuming args is an array of arguments for the kernel
@@ -1212,10 +1444,10 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
             void* argsC[5] = { &array3, &scan3, &nptr, &numElem3, &zon };	        // sum array3. output -> scan3                  i.e. FAUXARRAY2 -> FAUXSCAN2, &nptr
             clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXSUM], 1, 1, 1, threads, 1, 1, 0, NULL, argsC, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
             void* argsD[3] = { &scan2, &scan3, &numElem2 };	                        // merge scan3 into scan2. output -> scan2      i.e. FAUXSCAN2, FAUXSCAN1 -> FAUXSCAN1
-            clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXFIXUP], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+            clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numElem3, 1, 1, threads, 1, 1, 0, NULL, argsD, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
         }
         void* argsE[3] = { &scan1, &scan2, &numElem1 };		                        // merge scan2 into scan1. output -> scan1      i.e. FAUXSCAN1, FGRIDOFF -> FGRIDOFF
-        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXFIXUP], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+        clCheck ( cuLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numElem2, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumChangesCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
     }
 
     int num_lists = NUM_CHANGES, length = FDENSE_LIST_LENGTHS_CHANGES, fgridcnt = FGRIDCNT_CHANGES, fgridoff = FGRIDOFF_CHANGES;
@@ -1296,28 +1528,28 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 //
 //     float max_pos = max(max(m_Vec[PVOLMAX].x, m_Vec[PVOLMAX].y), m_Vec[PVOLMAX].z);
 //     uint * uint_max_pos = (uint*)&max_pos;
-//     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPOS), *uint_max_pos, mMaxPoints * 3 ),  "CountingSortFullCL", "cuMemsetD32", "FELASTIDX",   mbDebug);
+//     clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPOS), *uint_max_pos, mMaxPoints * 3 ),  "CountingSortFullCL", "clMemsetD32", "FELASTIDX",   mbDebug);
 //
 //     //cout<<"\nCountingSortFullCL: m_Vec[PVOLMAX]=("<<m_Vec[PVOLMAX].x<<", "<<m_Vec[PVOLMAX].y<<", "<<m_Vec[PVOLMAX].z<<"),  max_pos = "<< max_pos <<std::flush;
 //     // NB resetting  gpuVar(&m_Fluid, FPOS)  ensures no zombie particles. ?hopefully?
 //
-//     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FELASTIDX),    UINT_MAXSIZE,  mMaxPoints * BOND_DATA              ),  "CountingSortFullCL", "cuMemsetD32", "FELASTIDX",    mbDebug);
-//     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPARTICLEIDX), UINT_MAXSIZE,  mMaxPoints * BONDS_PER_PARTICLE *2  ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
-//     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FPARTICLE_ID), UINT_MAXSIZE,  mMaxPoints                          ),  "CountingSortFullCL", "cuMemsetD32", "FPARTICLEIDX", mbDebug);
-//     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FFORCE),      (uint)0.0,  mMaxPoints * 3 /* ie num elements */),  "CountingSortFullCL", "cuMemsetD32", "FFORCE",       mbDebug);
-//     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FCONC),             0.0,  mMaxPoints * NUM_TF                 ),  "CountingSortFullCL", "cuMemsetD32", "FCONC",        mbDebug);
-//     clCheck ( cuMemsetD32 ( gpuVar(&m_Fluid, FEPIGEN),     (uint)0.0,  mMaxPoints * NUM_GENES              ),  "CountingSortFullCL", "cuMemsetD32", "FEPIGEN",      mbDebug);
+//     clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FELASTIDX),    UINT_MAXSIZE,  mMaxPoints * BOND_DATA              ),  "CountingSortFullCL", "clMemsetD32", "FELASTIDX",    mbDebug);
+//     clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLEIDX), UINT_MAXSIZE,  mMaxPoints * BONDS_PER_PARTICLE *2  ),  "CountingSortFullCL", "clMemsetD32", "FPARTICLEIDX", mbDebug);
+//     clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPARTICLE_ID), UINT_MAXSIZE,  mMaxPoints                          ),  "CountingSortFullCL", "clMemsetD32", "FPARTICLEIDX", mbDebug);
+//     clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FFORCE),      (uint)0.0,  mMaxPoints * 3 /* ie num elements */),  "CountingSortFullCL", "clMemsetD32", "FFORCE",       mbDebug);
+//     clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FCONC),             0.0,  mMaxPoints * NUM_TF                 ),  "CountingSortFullCL", "clMemsetD32", "FCONC",        mbDebug);
+//     clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FEPIGEN),     (uint)0.0,  mMaxPoints * NUM_GENES              ),  "CountingSortFullCL", "clMemsetD32", "FEPIGEN",      mbDebug);
 //     clFinish ();    // needed to prevent colision with previous operations
 //
 //     // Reset grid cell IDs
-//     // clCheck(cuMemsetD32(gpuVar(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "cuMemsetD32(Sort)");
+//     // clCheck(clMemsetD32(gpuVar(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "clMemsetD32(Sort)");
 //     void* args[1] = { &mMaxPoints };
 //     clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNTING_SORT], m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL),
 //               "CountingSortFullCL5", "cuLaunch", "FUNC_COUNTING_SORT", mbDebug );
 //
 //     // Having sorted the particle data, we can start using a shortened list of particles.
 //     // NB have to reset to long list at start of time step.
-//     computeNumBlocks ( m_FParams.pnumActive, m_FParams.itemsPerGroup, m_FParams.numGroups, m_FParams.numItems);				// particles
+//     computeNumBlocks ( m_FParams.pnumActive, local_work_size, m_FParams.numGroups, m_FParams.numItems);				// particles
 //
 //     if (verbosity>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_LISTS\n"<<std::flush;
 //     // countingSortDenseLists ( int pnum ) // NB launch on bins not particles.
@@ -1413,8 +1645,8 @@ void FluidSystem::InitializeBondsCL (){
 
     if (verbosity>1)cout << "\nInitializeBondsCL (): list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<m_FParams.numGroups<<", numItems="<<m_FParams.numItems<<" \t args{m_FParams.pnumActive="<<m_FParams.pnumActive<<", list_length="<<list_length<<", gene="<<gene<<"}"<<std::flush;
 
-    int numGroups, numItems;
-    computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
+    size_t numGroups, numItems;
+    computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
 
     size_t global_work_size = numGroups * numItems;
     size_t local_work_size = numItems;
@@ -1483,8 +1715,8 @@ void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the de
         err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_GENE_ACTION], 1, sizeof(int), &gene);
         err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_GENE_ACTION], 2, sizeof(uint), &list_length);
 
-        int numGroups, numItems;
-        computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
+        size_t numGroups, numItems;
+        computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
 
 
         size_t global_work_size = numGroups * numItems;
@@ -1506,8 +1738,8 @@ void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the de
         err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 1, sizeof(int), &gene);
         err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 2, sizeof(uint), &list_length);
 
-        int numGroups, numItems;
-        computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
+        size_t numGroups, numItems;
+        computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
 
         size_t global_work_size = numGroups * numItems;
         size_t local_work_size = numItems;
@@ -1530,8 +1762,8 @@ void FluidSystem::AssembleFibresCL (){  //kernel: void assembleMuscleFibres ( in
     err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 0, sizeof(int), &m_FParams.pnumActive);
     err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 1, sizeof(int), &gene);
     err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 2, sizeof(uint), &list_length);
-    int numGroups, numItems;
-    computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
+    size_t numGroups, numItems;
+    computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
 
     /*CUCLCUCL Kein KERNEL?!
     if( numGroups>0 && numItems>0){
@@ -1572,8 +1804,8 @@ void FluidSystem::ComputeBondChangesCL (uint steps_per_InnerPhysicalLoop){// Giv
     err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_BOND_CHANGES], 1, sizeof(int), &list_length);
     err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_BOND_CHANGES], 2, sizeof(uint), &steps_per_InnerPhysicalLoop);
 
-    int numGroups, numItems;
-    computeNumBlocks (list_length, m_FParams.itemsPerGroup, numGroups, numItems);
+    size_t numGroups, numItems;
+    computeNumBlocks (list_length, local_work_size, numGroups, numItems);
 
     size_t global_work_size = numGroups * numItems;
     size_t local_work_size = numItems;
@@ -1616,12 +1848,12 @@ void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to exe
         err  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 3, sizeof(uint), &startNewPoints);
         err  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 4, sizeof(int), &mMaxPoints);
 
-        int numItems, numGroups;
+        size_t numItems, numGroups;
 
         //int numItems = 1;//m_FParams.itemsPerGroup;
         //int numGroups  = 1;//iDivUp ( list_length, numItems );
 
-        computeNumBlocks (list_length, m_FParams.itemsPerGroup, numGroups, numItems);
+        computeNumBlocks (list_length, local_work_size, numGroups, numItems);
 
         size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
         size_t local_work_size = m_FParams.numItems;
@@ -1693,8 +1925,8 @@ void FluidSystem::TransferPosVelVevalFromTemp (){
 
 void FluidSystem::ZeroVelCL (){                                       // Used to remove velocity, kinetic energy and momentum during initialization.
     clCheck(clFinish(m_queue), "Run", "clFinish", "After freeze Run2PhysicalSort ", mbDebug);
-    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FVEL),   0.0,  mMaxPoints ),  "ZeroVelCL", "cuMemsetD32", "FVEL",        mbDebug);
-    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FVEVAL), 0.0,  mMaxPoints ),  "ZeroVelCL", "cuMemsetD32", "FVEVAL",      mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FVEL),   0.0,  mMaxPoints ),  "ZeroVelCL", "clMemsetD32", "FVEL",        mbDebug);
+    clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FVEVAL), 0.0,  mMaxPoints ),  "ZeroVelCL", "clMemsetD32", "FVEVAL",      mbDebug);
     clCheck(clFinish(m_queue), "Run", "clFinish", "After freeze ZeroVelCL ", mbDebug);
 }
 
@@ -1729,8 +1961,8 @@ void FluidSystem::SpecialParticlesCL (float tm, float dt, float ss){   // For in
     err  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 3, sizeof(float),    &ss);
     err  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 4, sizeof(int),      &m_FParams.pnumActive);
 
-    int numGroups, numItems;
-    computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
+    size_t numGroups, numItems;
+    computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
 
     size_t global_work_size = numGroups * numItems;
     size_t local_work_size = numItems;
@@ -1754,7 +1986,7 @@ void FluidSystem::SpecialParticlesCL (float tm, float dt, float ss){   // For in
     err  = clSetKernelArg(m_Kern[FUNC_FIXED], 0, sizeof(uint),  &list_length);
     err  = clSetKernelArg(m_Kern[FUNC_FIXED], 1, sizeof(int),   &m_FParams.pnum);
 
-    computeNumBlocks ( list_length , m_FParams.itemsPerGroup, numGroups, numItems);
+    computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
 
     if (verbosity>1) std::cout<<"\nSpecialParticlesCL:FIXED: list_length="<<list_length<<" , m_FParams.itemsPerGroup="<< m_FParams.itemsPerGroup <<", numGroups="<< numGroups <<", numItems="<< numItems <<", args{m_FParams.pnum="<< m_FParams.pnum <<",  gene="<< gene <<", list_length="<< list_length <<"  }  \n"<<std::flush;
 

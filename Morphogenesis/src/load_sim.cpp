@@ -100,6 +100,7 @@ std::cout <<"\nchk load_sim_0.1\n"<<std::flush;
     fluid.Initialize();
     fluid.InitializeOpenCL();
 
+
 std::cout <<"\nchk load_sim_0.2\n"<<std::flush;
     
     fluid.ReadSimParams ( paramsPath );

@@ -125,7 +125,7 @@ bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall
 
     if (status != CL_SUCCESS) {
         std::string errorMessage = checkerror(status);
-        std::cout << "OpenCL Error: " << errorMessage << std::endl;
+        std::cout << "\nOpenCL Error: " << errorMessage << std::endl;
         std::cout << "Caller: " << method << std::endl;
         std::cout << "Call: " << apicall << std::endl;
         std::cout << "Args: " << arg << std::endl;
@@ -133,6 +133,14 @@ bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall
     }
     return true;
 }
+
+// void FluidSystem::CalculateWorkGroupSizes(size_t maxWorkGroupSize, size_t numComputeUnits, size_t numItems, size_t &numGroups, size_t &numItemsPerGroup) {
+//     // Calculate the ideal number of items per group
+//     numItemsPerGroup = std::min(maxWorkGroupSize, numItems / numComputeUnits);
+//
+//     // Calculate the number of work groups
+//     numGroups = (numItems + numItemsPerGroup - 1) / numItemsPerGroup;
+// }
 
 void FluidSystem::initializeFBufs(FBufs* fluid) {
     // Check if fluid is a valid pointer
@@ -233,17 +241,17 @@ FluidSystem::~FluidSystem()
 {
 	cl_int status;
 
-//	status = clReleaseKernel(m_Kern[FUNC_INSERT]); 							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INSERT status = " << checkerror(status) << "\n" << flush;}
+	status = clReleaseKernel(m_Kern[FUNC_INSERT]); 							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INSERT status = " << checkerror(status) << "\n" << flush;}
 	status = clReleaseKernel(m_Kern[FUNC_COUNTING_SORT]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COUNTING_SORT status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_QUERY]); 							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_QUERY status = " << checkerror(status) << "\n" << flush;}
-// 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_PRESS]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_PRESS status = " << checkerror(status) << "\n" << flush;}
-// 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_FORCE]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_FORCE status = " << checkerror(status) << "\n" << flush;}
+ 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_PRESS]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_PRESS status = " << checkerror(status) << "\n" << flush;}
+ 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_FORCE]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_FORCE status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_ADVANCE]); 						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_ADVANCE status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_EMIT]); 							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_EMIT status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_RANDOMIZE]); 						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_RANDOMIZE status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_SAMPLE]); 							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_SAMPLE status = " << checkerror(status) << "\n" << flush;}
 	status = clReleaseKernel(m_Kern[FUNC_FPREFIXSUM]); 						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXSUM status = " << checkerror(status) << "\n" << flush;}
-	status = clReleaseKernel(m_Kern[FUNC_FPREFIXUP]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXFIXUP status = " << checkerror(status) << "\n" << flush;}
+	status = clReleaseKernel(m_Kern[FUNC_FPREFIXUP]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXUP status = " << checkerror(status) << "\n" << flush;}
 	status = clReleaseKernel(m_Kern[FUNC_TALLYLISTS]);						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_TALLYLISTS status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_DIFFUSION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_DIFFUSION status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_COUNT_SORT_LISTS]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COUNT_SORT_LISTS status = " << checkerror(status) << "\n" << flush;}
@@ -264,10 +272,12 @@ FluidSystem::~FluidSystem()
 // 	status = clReleaseKernel(m_Kern[FUNC_WEAKEN_TISSUE]);					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_WEAKEN_TISSUE status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_EXTERNAL_ACTUATION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_EXTERNAL_ACTUATION status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_FIXED]);							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FIXED status = " << checkerror(status) << "\n" << flush;}
-// 	status = clReleaseKernel(m_Kern[FUNC_INIT_RANDOMCL]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INIT_RANDOMCL status = " << checkerror(status) << "\n" << flush;}
+ 	status = clReleaseKernel(m_Kern[FUNC_INIT_RANDOMCL]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INIT_RANDOMCL status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING]);	if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING]);	if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_INITIALIZE_BONDS]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INITIALIZE_BONDS status = " << checkerror(status) << "\n" << flush;}
+    // Release kernel
+    status = clReleaseKernel(m_Kern[FUNC_MEMSET32D]);                   if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INIT_RANDOMCL status = " << checkerror(status) << "\n" << flush;}
 
 	status = clReleaseProgram(m_program);			if (status != CL_SUCCESS)	{ cout << "\nRelease Program status = " << checkerror(status) <<"\n"<<flush; }
 	status = clReleaseCommandQueue(m_queue);		if (status != CL_SUCCESS)	{ cout << "\nRelease CQ1 status = " << checkerror(status) <<"\n"<<flush; }
@@ -286,23 +296,7 @@ void FluidSystem::InitializeOpenCL()
 	cl_event writeEvt;
 
 	int layerstep 		= m_FParams.szPnts;
-    //cout << sizeof(m_FParams) << endl; (= 736)
-	// Get the maximum work group size for executing the kernel on the device ///////// From https://github.com/rsnemmen/OpenCL-examples/blob/e2c34f1dfefbd265cfb607c2dd6c82c799eb322a/square_array/square.c
-    //TODO is this adaption of work group size needed?
-// 	status = clGetKernelWorkGroupInfo(m_Kern[FUNC_FPREFIXUP], deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
-// 	status = clGetKernelWorkGroupInfo(m_Kern[FUNC_FPREFIXSUM], deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
-// 	status = clGetKernelWorkGroupInfo(m_Kern[FUNC_TALLYLISTS], deviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
 
-	// Number of total work items, calculated here after 1st image is loaded &=> know the size.
-	// NB localSize must be devisor
-	// NB global_work_size must be a whole number of "Preferred work group size multiple" for Nvidia.
-    // 	global_work_size = ceil((float)layerstep/(float)local_work_size) * local_work_size;
-    // 	local_work_size  = 32; // trial for nvidia
-    // 																				if(verbosity>1){
-    // 																					cout<<"\nglobal_work_size="<<global_work_size<<", local_work_size="<<local_work_size<<", deviceId="<<deviceId<<"\n"<<flush;
-    // 																					cout<<"\nlayerstep=width*height="<<layerstep<<",\tsizeof(layerstep)="<< sizeof(layerstep) <<",\tsizeof(int)="<< sizeof(int) <<flush;
-    // 																					cout<<"\n";
-    // 																				}
     																				if(verbosity>0) cout << "FluidSystem::InitializeOpenCL_chk1\n" << flush;
 	cl_int res;
 	m_FParamDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FParams), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -1127,7 +1121,7 @@ std::cout << "\tFluidSystem::Run (),  "<<std::flush;
 
     InsertParticlesCL ( 0x0, 0x0, 0x0 );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertParticlesCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertParticlesCL", mbDebug);
 
 //TransferFromCL ();
 
@@ -1135,7 +1129,7 @@ std::cout << "\n\n Chk2 \n"<<std::flush;
 
     PrefixSumCellsCL ( 1 );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumCellsCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumCellsCL", mbDebug);
 
 //TransferFromCL ();
 
@@ -1143,7 +1137,7 @@ std::cout << "\n\n Chk3 \n"<<std::flush;
 
     CountingSortFullCL ( 0x0 );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortFullCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortFullCL", mbDebug);
 
 //TransferFromCL ();
 
@@ -1153,7 +1147,7 @@ std::cout << "\n\n Chk4 \n"<<std::flush;
 
     ComputePressureCL();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputePressureCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputePressureCL", mbDebug);
 
 //TransferFromCL ();
 
@@ -1165,7 +1159,7 @@ std::cout << "\n\n Chk5 \n"<<std::flush;
 
     ComputeForceCL ();                                // now includes the function of freeze
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeForceCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeForceCL", mbDebug);
 
 
     // TODO compute nerve activation ?
@@ -1182,14 +1176,14 @@ std::cout << "\n\n Chk5 \n"<<std::flush;
 
     ComputeDiffusionCL();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeDiffusionCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeDiffusionCL", mbDebug);
 
 
 //std::cout << "\n\n Chk7 \n"<<std::flush;
 
     ComputeGenesCL();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeGenesCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeGenesCL", mbDebug);
 
 
 
@@ -1197,7 +1191,7 @@ std::cout << "\n\n Chk8 \n"<<std::flush;
 
     ComputeBondChangesCL ();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeBondChangesCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeBondChangesCL", mbDebug);
 
 
 
@@ -1211,14 +1205,14 @@ std::cout << "\n\n Chk8 \n"<<std::flush;
 
     //InsertChangesCL ( ); // done by ComputeBondChanges() above
 
-    //cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertChangesCL", mbDebug);
+    //clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertChangesCL", mbDebug);
 
 
 std::cout << "\n\n Chk9 \n"<<std::flush;
 
     PrefixSumChangesCL ( 1 );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumChangesCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumChangesCL", mbDebug);
 
 
 
@@ -1226,7 +1220,7 @@ std::cout << "\n\n Chk10 \n"<<std::flush;
 
     CountingSortChangesCL (  );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortChangesCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortChangesCL", mbDebug);
 
 
 
@@ -1240,14 +1234,14 @@ std::cout << "\n\n Chk11 \n"<<std::flush;
 
     ComputeParticleChangesCL ();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCL", mbDebug);
 
 
 std::cout << "\n\n Chk12 \n"<<std::flush;
 
     CleanBondsCL ();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CleanBondsCL ", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CleanBondsCL ", mbDebug);
 
 
 
@@ -1255,19 +1249,19 @@ std::cout << "\n\n Chk13 \n"<<std::flush;
 
     TransferPosVelVeval ();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
 
 
 
     AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
 
 
 
     SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SpecialParticlesCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SpecialParticlesCL", mbDebug);
 
 
 
@@ -1284,7 +1278,7 @@ std::cout << "\n\n Chk13 \n"<<std::flush;
 
     AdvanceTime ();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug);
 
 //std::cout << " finished \n";
 
@@ -1297,7 +1291,7 @@ std::cout << "\n\n Chk13 \n"<<std::flush;
 
 if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<frame<<" #########################################################"<<std::flush;
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "begin Run", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "begin Run", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1307,7 +1301,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
     InsertParticlesCL ( 0x0, 0x0, 0x0 );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertParticlesCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After InsertParticlesCL", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1317,7 +1311,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
     PrefixSumCellsCL ( 1 );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumCellsCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumCellsCL", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1327,7 +1321,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
     CountingSortFullCL ( 0x0 );
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortFullCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortFullCL", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1337,7 +1331,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
     ComputePressureCL();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputePressureCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputePressureCL", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1347,7 +1341,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
     ComputeForceCL ();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeForceCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeForceCL", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1361,7 +1355,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
 
     ComputeDiffusionCL();
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeDiffusionCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeDiffusionCL", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1372,21 +1366,21 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
     if(gene_activity){
 
         ComputeGenesCL();     // NB (i)Epigenetic countdown, (ii) GRN gene regulatory network sensitivity to TransciptionFactors (FCONC)
-        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeGenesCL", mbDebug);
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeGenesCL", mbDebug);
 
         if(debug){
             TransferFromCL ();
             SavePointsCSV2 (  relativePath, frame+7 );
             std::cout << "\n\nRun(relativePath,frame) Chk8, saved "<< frame+7 <<".csv  After ComputeGenesCL \n"<<std::flush;
         }
-        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SavePointsCSV2 after ComputeGenesCL", mbDebug); // wipes out FEPIGEN
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SavePointsCSV2 after ComputeGenesCL", mbDebug); // wipes out FEPIGEN
     }
 
     if(remodelling){
 
         AssembleFibresCL ();
 
-        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AssembleFibresCL", mbDebug);
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AssembleFibresCL", mbDebug);
 
         if(debug){
             TransferFromCL ();
@@ -1396,7 +1390,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
         ComputeBondChangesCL ();
 
-        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeBondChangesCL", mbDebug); // wipes out FEPIGEN ////////////////////////////////////
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeBondChangesCL", mbDebug); // wipes out FEPIGEN ////////////////////////////////////
 
         if(debug){
             TransferFromCL ();
@@ -1405,7 +1399,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
         }
 
         PrefixSumChangesCL ( 1 );
-        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumChangesCL", mbDebug); // writes mangled (?original?) data to FEPIGEN - not anymore
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After PrefixSumChangesCL", mbDebug); // writes mangled (?original?) data to FEPIGEN - not anymore
 
         if(debug){
             TransferFromCL ();
@@ -1414,7 +1408,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
         }
 
         CountingSortChangesCL (  );
-        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortChangesCL", mbDebug);
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CountingSortChangesCL", mbDebug);
 
         if(debug){
             TransferFromCL ();
@@ -1424,7 +1418,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
         ComputeParticleChangesCL ();                                     // execute particle changes // _should_ be able to run concurrently => no clFinish(m_queue))
 
-        cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCL", mbDebug);
+        clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After ComputeParticleChangesCL", mbDebug);
 
         if(debug){
             TransferFromCL ();
@@ -1433,13 +1427,13 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
         }
         //CleanBondsCL ();
 
-        //cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CleanBondsCL ", mbDebug);
+        //clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After CleanBondsCL ", mbDebug);
 
     }
 
     TransferPosVelVeval ();
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After TransferPosVelVeval ", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1448,7 +1442,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
     }
 
     AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1457,7 +1451,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
     }
 
     SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]);
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SpecialParticlesCL", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After SpecialParticlesCL", mbDebug);
 
     if(debug){
         TransferFromCL ();
@@ -1467,7 +1461,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
     AdvanceTime ();*/
 /*
 
-    cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug);
+    clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceTime", mbDebug);
 
     if(debug){
 
@@ -1491,7 +1485,7 @@ if (verbosity>1)std::cout << "\n\n###### FluidSystem::Run (.......) frame = "<<f
 
 //     }
 
-    //cuCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
+    //clCheck(clFinish(m_queue)), "Run", "cuCtxSynchronize", "After AdvanceCL", mbDebug);
 
     //EmitParticlesCL ( m_Time, (int) m_Vec[PEMIT_RATE].x );
 

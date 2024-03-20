@@ -274,8 +274,9 @@
 	struct FParams {
 
         uint            debug;
-		int				numItems, numGroups, itemsPerGroup;
-		int				gridThreads, gridBlocks;
+		size_t				numItems, numGroups, itemsPerGroup;
+        size_t          numberOfGroups, numberOfItemsPerGroup;
+ 		size_t				gridThreads, gridBlocks;
 		int				szPnts, szGrid;
 		int				stride, pnum, pnumActive, maxPoints;
         bool            freeze;
