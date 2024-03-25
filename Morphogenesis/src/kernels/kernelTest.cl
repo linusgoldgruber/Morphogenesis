@@ -170,27 +170,50 @@ __kernel void prefixUp(
     if (start < len)					input[start] += aux[get_group_id(0)];
     if (start + SCAN_BLOCKSIZE < len)   input[start + SCAN_BLOCKSIZE] += aux[get_group_id(0)];
 }
-/*
-__kernel void prefixSum(
-    __global uint* input,
-    __global uint* output,
-    __global uint* aux,
-//     int input_offset,
-//     int output_offset,
+
+__kernel void prefixSumChanges(
+
+    __global uint *input,
+    __global uint *output,
+    __global uint *aux,
+    __global uint *addInputOffset,
+    __global uint *addOutputOffset,
     int len,
     int zeroff
-    )
+        ) //, __constant size_t *offset_scan0)
 {
+    // Declares a locally shared, temporary array, with dimemsions 2 x BLOCKSIZE (1024 as of rn)
     __local uint scan_array[SCAN_BLOCKSIZE << 1];
-    int t1 = get_global_id(0) * 2 * SCAN_BLOCKSIZE + input_offset;
-    int t2 = t1 + SCAN_BLOCKSIZE;
 
-    // Pre-load into shared memory
+    //-------------------------------------------------------------------------------------
+    //      Assigning t1 and t2
+    //
+    // t1 represents a position for each work item, so does t2, but with an offset of SCAN_BLOCKSIZE
+    //
+    // Visualisation:
+    //  t2[
+    //      ITEM_1[0*2*BLOCKSIZE+256],
+    //      ITEM_2[1*2*BLOCKSIZE+256],
+    //      ITEM_3[2*2*BLOCKSIZE+256]
+    //      [...]
+    //      [...]...
+    //  ]
+    unsigned int t1 = get_global_id(0) * 2 * SCAN_BLOCKSIZE;
+    unsigned int t2 = t1 + SCAN_BLOCKSIZE;
+
+    //-------------------------------------------------------------------------------------
+    //      Pre-load into shared memory
+    // This also checks, if t1 or t2 exceed len = m_GridTotal (= 10000 as of rn).
+    // If not, it asigns the corresponding element from the input[] array.
+    //
     scan_array[get_local_id(0)] = (t1 < len) ? input[t1] : 0;
     scan_array[get_local_id(0) + SCAN_BLOCKSIZE] = (t2 < len) ? input[t2] : 0;
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    // Reduction
+    //-------------------------------------------------------------------------------------
+    //      Reduction
+    // Each iteration, the first half of the previously calculated threads will be added to the second half
+    //
     int stride;
     for (stride = 1; stride <= SCAN_BLOCKSIZE; stride <<= 1) {
         int index = (get_local_id(0) + 1) * stride * 2 - 1;
@@ -209,14 +232,14 @@ __kernel void prefixSum(
     barrier(CLK_LOCAL_MEM_FENCE);
 
     // Output values & aux
-    if (t1 + output_offset < len)    output[t1 + output_offset] = scan_array[get_local_id(0)];
-    if (t2 + output_offset < len)    output[t2 + output_offset] = (get_local_id(0) == SCAN_BLOCKSIZE - 1 && zeroff) ? 0 : scan_array[get_local_id(0) + SCAN_BLOCKSIZE];
+    if (t1 < len)    output[t1] = scan_array[get_local_id(0)];
+    if (t2 < len)    output[t2] = (get_local_id(0) == SCAN_BLOCKSIZE - 1 && zeroff) ? 0 : scan_array[get_local_id(0) + SCAN_BLOCKSIZE];
     if (get_local_id(0) == 0) {
-        if (zeroff && output_offset == 0) output[0] = 0;
+        if (zeroff) output[0] = 0;
         if (aux) aux[get_group_id(0)] = scan_array[2 * SCAN_BLOCKSIZE - 1];
     }
-}*/
 
+}
 
 __kernel void prefixSum(
 
@@ -285,6 +308,7 @@ __kernel void prefixSum(
     }
 
 }
+
 __kernel void tally_denselist_lengths(
     int num_lists,
     int fdense_list_lengths,
@@ -308,10 +332,10 @@ __kernel void countingSortFull(
     uint icell = bufI(&ftemp, FGCELL)[i];
     if (icell != GRID_UNDEF) {
         uint indx = bufI(&ftemp, FGNDX)[i];
-        int sort_ndx = bufI(&fbuf, FGRIDOFF)[icell] + indx;
+        int sort_ndx = bufI(&fbuf, FBIN_OFFSET)[icell] + indx;
         float3 zero = (float3)(0, 0, 0);
 
-        bufI(&fbuf, FGRID)[sort_ndx] = sort_ndx;
+        bufI(&fbuf, FBIN)[sort_ndx] = sort_ndx;
         bufF3(&fbuf, FPOS)[sort_ndx] = bufF3(&ftemp, FPOS)[i];
         bufF3(&fbuf, FVEL)[sort_ndx] = bufF3(&ftemp, FVEL)[i];
         bufF3(&fbuf, FVEVAL)[sort_ndx] = bufF3(&ftemp, FVEVAL)[i];
@@ -332,8 +356,8 @@ __kernel void countingSortFull(
                 uint jndx = UINT_MAX;
                 if (jcell != GRID_UNDEF) {
                     jndx = bufI(&ftemp, FGNDX)[j];
-                    if ((bufI(&fbuf, FGRIDOFF)[jcell] + jndx) < pnum) {
-                        j_sort_ndx = bufI(&fbuf, FGRIDOFF)[jcell] + jndx;
+                    if ((bufI(&fbuf, FBIN_OFFSET)[jcell] + jndx) < pnum) {
+                        j_sort_ndx = bufI(&fbuf, FBIN_OFFSET)[jcell] + jndx;
                     }
                 }
             }
@@ -362,7 +386,7 @@ __kernel void countingSortFull(
                     kcell = bufI(&ftemp, FGCELL)[k];
                     if (kcell != GRID_UNDEF) {
                         kndx = bufI(&ftemp, FGNDX)[k];
-                        ksort_ndx = bufI(&fbuf, FGRIDOFF)[kcell] + kndx;
+                        ksort_ndx = bufI(&fbuf, FBIN_OFFSET)[kcell] + kndx;
                     }
                 }
                 bufI(&fbuf, FPARTICLEIDX)[sort_ndx * BONDS_PER_PARTICLE * 2 + a * 2] = ksort_ndx;
@@ -384,9 +408,72 @@ __kernel void countingSortFull(
         }
 }
 
-float contributePressure (int i, float3 p, int cell, float *sum_p6k) {
+__kernel void countingSortDenseLists (
+    __global int* pnum
+    )
+{
+    unsigned int bin = get_global_id(0) * SCAN_BLOCKSIZE / 2 + get_group_id(0) * SCAN_BLOCKSIZE / 2;
+    int gridTot = fparam.gridTotal;
 
-    if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return 0.0;                       // If the cell is empty, skip it.
+    if (fparam.debug > 2 && bin == 0) {
+        printf("\n\n######countingSortDenseLists###### bin==0  gridTot=%u, fbuf.bufI (FBIN_OFFSET)[bin]=%u \n", gridTot, bufI(&fbuf, FBIN_OFFSET)[0]);
+    }
+
+    if (bin >= gridTot)
+        return;
+
+    uint count = bufI(&fbuf,FBIN_COUNT)[bin];
+
+    if (count == 0)
+        return;
+
+    uint binoffset = bufI(&fbuf,FBIN_OFFSET)[bin];
+    uint gene_counter[NUM_GENES] = {0};
+
+    __private uint* lists[NUM_GENES];
+    for (int gene = 0; gene < NUM_GENES; gene++) {
+        lists[gene] = bufII(&fbuf,FDENSE_LISTS)[gene];
+    }
+
+    __private uint* offsets[NUM_GENES];
+    for (int gene = 0; gene < NUM_GENES; gene++) {
+        offsets[gene] = &bufI(&fbuf, FBIN_OFFSET_ACTIVE_GENES)[gene * gridTot];
+    }
+
+    if (binoffset + count > *pnum) {
+        printf("\n\n!!Overflow: (binoffset+count > pnum), bin=%u \n", bin);
+        return;
+    }
+
+    for (uint particle = binoffset; particle < binoffset + count; particle++) {
+        if (fparam.debug > 2 && particle >= 22000 && particle < 20030) {
+            printf("\nparticle==%u, ", particle);
+        }
+        for (int gene = 0; gene < NUM_GENES; gene++) {
+            if (bufI(&fbuf, FEPIGEN)[particle + *pnum * gene] > 0) {
+                lists[gene][offsets[gene][bin] + gene_counter[gene]] = particle;
+                gene_counter[gene]++;
+                if (fparam.debug > 2 && gene_counter[gene] > bufI(&fbuf, FBIN_COUNT_ACTIVE_GENES)[gene * gridTot + bin]) {
+                    printf("\n Overflow: particle=,%u, ID=,%u, gene=,%u, bin=,%u, gene_counter[gene]=,%u, bufI (&fbuf, FBIN_COUNT_ACTIVE_GENES)[gene*gridTot +bin]=,%u \t\t",
+                           particle, bufI(&fbuf, FPARTICLE_ID)[particle], gene, bin, gene_counter[gene], bufI(&fbuf, FBIN_COUNT_ACTIVE_GENES)[gene * gridTot + bin]);
+                }
+            } else if (fparam.debug > 2 && gene == 2 && particle % 1000 == 0) {
+                printf("*");
+            }
+        }
+    }
+}
+
+
+float contributePressure (
+    int i,
+    float3 p,
+    int cell,
+    float *sum_p6k
+    )
+{
+
+    if ( bufI(&fbuf, FBIN_COUNT)[cell] == 0 ) return 0.0;                       // If the cell is empty, skip it.
 
     float3 dist;
     float dsq, r, q, b, c, sum = 0.0;
@@ -394,10 +481,10 @@ float contributePressure (int i, float3 p, int cell, float *sum_p6k) {
     float r2 = fparam.r2;
     float sr = fparam.psmoothradius;
 
-    int clast = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];
+    int clast = bufI(&fbuf, FBIN_OFFSET)[cell] + bufI(&fbuf, FBIN_COUNT)[cell];
 
-    for (int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++) {
-        int pndx = bufI(&fbuf, FGRID)[cndx];
+    for (int cndx = bufI(&fbuf, FBIN_OFFSET)[cell]; cndx < clast; cndx++) {
+        int pndx = bufI(&fbuf, FBIN)[cndx];
         dist = p - bufF3(&fbuf, FPOS)[pndx];
         dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
 
@@ -448,16 +535,16 @@ __kernel void computePressure (
 
 float3 contributeForce ( int i, float3 ipos, float3 iveleval, float ipress, float idens, int cell)
 {
-	if ( bufI(&fbuf, FGRIDCNT)[cell] == 0 ) return (float3)(0,0,0);                                        // If the cell is empty, skip it.
+	if ( bufI(&fbuf, FBIN_COUNT)[cell] == 0 ) return (float3)(0,0,0);                                        // If the cell is empty, skip it.
 	float  dsq, sdist, c, r, sr=fparam.psmoothradius;//1.0;//
     float3 pterm= (float3)(0,0,0), sterm= (float3)(0,0,0), vterm= (float3)(0,0,0), forcej= (float3)(0,0,0), delta_v= (float3)(0,0,0);                                                              // pressure, surface tension and viscosity terms.
 	float3 dist     = (float3)(0,0,0),      eterm = (float3)(0,0,0),    force = (float3)(0,0,0);
 	uint   j;
-	int    clast    = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];                                // index of last particle in this cell
+	int    clast    = bufI(&fbuf, FBIN_OFFSET)[cell] + bufI(&fbuf, FBIN_COUNT)[cell];                                // index of last particle in this cell
     uint k =0 ;
-    for (int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++ ) {                                     // For particles in this cell.
+    for (int cndx = bufI(&fbuf, FBIN_OFFSET)[cell]; cndx < clast; cndx++ ) {                                     // For particles in this cell.
         k++;
-		j           = bufI(&fbuf, FGRID)[ cndx ];
+		j           = bufI(&fbuf, FBIN)[ cndx ];
 		dist        = ( ipos - bufF3(&fbuf, FPOS)[ j ] );                                                     // dist in cm (Rama's comment)
 		dsq         = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);                                      // scalar distance squared
 		r           = sqrt(dsq);

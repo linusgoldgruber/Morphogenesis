@@ -70,6 +70,7 @@ int main ( int argc, const char** argv )
 
     // Clear all buffers
     fluid.Initialize();   // where do the buffers for params and genome get allocated when there is no fluid.InitializeOpenCL (); ?
+    fluid.InitializeOpenCL();
 
     fluid.ReadSimParams(paramsPath);
     fluid.ReadGenome(genomePath);

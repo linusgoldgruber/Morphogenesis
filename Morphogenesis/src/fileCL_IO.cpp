@@ -50,8 +50,9 @@ void computeNumBlocks (int numPnts, int minThreads, size_t &numGroups, size_t &n
 
 void FluidSystem::ReadGenome( const char * relativePath){
     // NB currently GPU allocation is by Allocate particles, called by ReadPointsCSV.
-    //const char * genes_file_path = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/genome.csv"; TODO delete
-    const char * genes_file_path =  obj["genome_filepath"].asCString();
+
+    const char * genes_file_path = relativePath;
+    //const char * genes_file_path =  obj["genome_filepath"].asCString();
     /*if (verbosity>1)*/printf("\nReadGenome: opening file %s \n", genes_file_path);
     FILE * genes_file = fopen(genes_file_path, "rb");
     if (genes_file == NULL) {
@@ -136,9 +137,8 @@ void FluidSystem::ReadGenome( const char * relativePath){
 //
 void FluidSystem::WriteGenome( const char * relativePath){
     if (verbosity>1)std::cout << "\n  FluidSystem::WriteGenome( const char * "<<relativePath<<")  started \n" << std::flush;
-    //char buf[256];
-    //sprintf ( buf, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/genome.csv");
-    const char * buf =  obj["genome_filepath"].asCString();
+    char buf[256];
+    sprintf ( buf, "%s/genome.csv", relativePath);
     FILE* fp = fopen ( buf , "w" );
 
     if (fp == NULL) {
@@ -226,16 +226,20 @@ void FluidSystem::WriteGenome( const char * relativePath){
     fclose(fp);
 }
 
-void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame ){
+void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame )
+                /*SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );*/{
     if (verbosity>1) std::cout << "\n  SavePointsCSV2 ( const char * relativePath = "<< relativePath << ", int frame = "<< frame << " );  started \n" << std::flush;
     char buf[256];
     frame += 100000;    // ensures numerical and alphabetic order match
     sprintf ( buf, "%s/particles_pos_vel_color%04d.csv", relativePath, frame );
+
+    cout << "-----------------------------------------------------" << relativePath << flush;
+
     FILE* fp = fopen ( buf, "w" );
 
     /*char buf[256];
     frame += 100000;    // ensures numerical and alphabetic order match
-    sprintf ( buf, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/particles_pos_vel_color%04d.csv", frame );
+    sprintf ( buf, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/out/particles_pos_vel_color%04d.csv", frame );
     FILE* fp = fopen ( buf, "w" );*/
 
     if (fp == NULL) {
@@ -439,20 +443,20 @@ void FluidSystem::ReadPointsCSV2 ( const char * relativePath, int gpu_mode, int 
             exit_(ret);
         }
 
+        if (verbosity > 0) cout <<"\n-----now running AddParticleMorphogenesis2() -----"<<flush;
         AddParticleMorphogenesis2 (&Pos, &Vel, Age, Clr, ElastIdxU, ElastIdxF, Particle_Idx, Particle_ID, Mass_Radius,  NerveIdx, Conc, EpiGen );
     }
     if (verbosity>1) std::cout<<"\n ReadPointsCSV2() finished reading points. i="<<i<<", NumPoints()="<<NumPoints()<<"\n"<<std::flush;
     fclose(points_file);
-    AddNullPoints ();                                   // add null particles up to mMaxPoints // should be redundant here as mMaxPoints = number_of_lines-1
+    //AddNullPoints ();                                   // add null particles up to mMaxPoints // should be redundant here as mMaxPoints = number_of_lines-1
     if (gpu_mode != GPU_OFF) TransferToCL ();         // Initial transfer
-  //if (verbosity>1)printf("\n gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES)=%llu, \t gpuVar(&m_Fluid, FGRIDOFF_CHANGES)=%llu, \t gpuVar(&m_Fluid, FGRIDCNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES), gpuVar(&m_Fluid, FGRIDOFF_CHANGES) , gpuVar(&m_Fluid, FGRIDCNT_CHANGES)   );
+  //if (verbosity>1)printf("\n gpuVar(&m_Fluid, FBIN_OFFSET_ACTIVE_GENES)=%llu, \t gpuVar(&m_Fluid, FBIN_OFFSET_CHANGES)=%llu, \t gpuVar(&m_Fluid, FBIN_COUNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FBIN_OFFSET_ACTIVE_GENES), gpuVar(&m_Fluid, FBIN_OFFSET_CHANGES) , gpuVar(&m_Fluid, FBIN_COUNT_CHANGES)   );
     if (verbosity>1) std::cout<<"\n ReadPointsCSV2() finished extra functions. NumPoints()="<<NumPoints()<<"\n"<<std::flush;
 }
 
 void FluidSystem::ReadSimParams ( const char * relativePath ) { // transcribe SimParams from file to fluid_system object. /home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo
         if (verbosity>1) std::cout<<"\n\n-----FluidSystem::ReadSimParams() started--------"<<std::flush;
-//     const char * SimParams_file_path = relativePath;
-    const char * SimParams_file_path = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/SimParams.txt";
+     const char * SimParams_file_path = relativePath;
     if (verbosity>1)printf ( "\n## opening file %s ", SimParams_file_path );
     FILE * SimParams_file = fopen ( SimParams_file_path, "rb" );
     if ( SimParams_file == NULL ) {
@@ -542,10 +546,10 @@ void FluidSystem::WriteSimParams ( const char * relativePath ){
     if (verbosity>1)std::cout<<"\nWriteSimParams chk1 "<<std::flush;
 
     // open file to write SimParams to
-    //char SimParams_file_path[256];
-    //sprintf ( SimParams_file_path, "%s/SimParams.txt", relativePath );
+    char SimParams_file_path[256];
+    sprintf ( SimParams_file_path, "%s/SimParams.txt", relativePath );
     //sprintf ( SimParams_file_path, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/SimParams.txt" );
-    const char * SimParams_file_path =  obj["SimParams_filepath"].asCString();
+    //const char * SimParams_file_path =  obj["SimParams_filepath"].asCString();
     if (verbosity>0)printf("\n## opening file %s ", SimParams_file_path);
     FILE* SimParams_file = fopen ( SimParams_file_path, "w" );
     if (SimParams_file == NULL) {
@@ -685,7 +689,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     pinit_max.y = std::min(pinit_max.y , m_Vec[PBOUNDMAX].y-1 );
     pinit_max.z = std::min(pinit_max.z , m_Vec[PBOUNDMAX].z-1 );
 
-    if (verbosity>1) {
+    if (verbosity>0) {
     cout<<"\n\nPGRIDSIZE=("<<m_Vec[PGRIDSIZE].x<<","<<m_Vec[PGRIDSIZE].y<<","<<m_Vec[PGRIDSIZE].z
         <<"),  PSIMSCALE=("<<m_Vec[PSIMSCALE].x<<","<<m_Vec[PSIMSCALE].y<<","<<m_Vec[PSIMSCALE].z
         <<"),  m_Param[PGRIDSIZE]="<<m_Param[PGRIDSIZE]<<",  m_Param[PSIMSCALE]="<<m_Param[PSIMSCALE]
@@ -715,7 +719,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
 
     SavePointsCSV2 ( relativePath, 1 ); if (verbosity>1) std::cout << "\n SavePointsCSV ( relativePath, 1 );  completed \n" << std::flush ;
 
-         if (verbosity>1)std::cout<<"\n-----WriteDemoSimParams finished----\n" <<std::flush;
+         if (verbosity>1)std::cout<<"\n--------------------------------------------------------------------WriteDemoSimParams finished---------------------------------------------------------------\n" <<std::flush;
 
 
 }

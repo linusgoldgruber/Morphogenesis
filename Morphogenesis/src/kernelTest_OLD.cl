@@ -240,7 +240,7 @@ __kernel void countingSortFull(
     uint icell = bufI(&ftemp, FGCELL)[i];
     if (icell != GRID_UNDEF) {
         uint indx = bufI(&ftemp, FGNDX)[i];
-        int sort_ndx = bufI(&fbuf, FGRIDOFF)[icell] + indx;
+        int sort_ndx = bufI(&fbuf, FBIN_OFFSET)[icell] + indx;
         float3 zero = (float3)(0, 0, 0);
 
         bufI(&fbuf, FGRID)[sort_ndx] = sort_ndx;
@@ -264,8 +264,8 @@ __kernel void countingSortFull(
                 uint jndx = UINT_MAX;
                 if (jcell != GRID_UNDEF) {
                     jndx = bufI(&ftemp, FGNDX)[j];
-                    if ((bufI(&fbuf, FGRIDOFF)[jcell] + jndx) < pnum) {
-                        j_sort_ndx = bufI(&fbuf, FGRIDOFF)[jcell] + jndx;
+                    if ((bufI(&fbuf, FBIN_OFFSET)[jcell] + jndx) < pnum) {
+                        j_sort_ndx = bufI(&fbuf, FBIN_OFFSET)[jcell] + jndx;
                     }
                 }
             }
@@ -294,7 +294,7 @@ __kernel void countingSortFull(
                     kcell = bufI(&ftemp, FGCELL)[k];
                     if (kcell != GRID_UNDEF) {
                         kndx = bufI(&ftemp, FGNDX)[k];
-                        ksort_ndx = bufI(&fbuf, FGRIDOFF)[kcell] + kndx;
+                        ksort_ndx = bufI(&fbuf, FBIN_OFFSET)[kcell] + kndx;
                     }
                 }
                 bufI(&fbuf, FPARTICLEIDX)[sort_ndx * BONDS_PER_PARTICLE * 2 + a * 2] = ksort_ndx;
@@ -326,9 +326,9 @@ float contributePressure (int i, float3 p, int cell, float *sum_p6k) {
     float r2 = fparam.r2;
     float sr = fparam.psmoothradius;
 
-    int clast = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];
+    int clast = bufI(&fbuf, FBIN_OFFSET)[cell] + bufI(&fbuf, FGRIDCNT)[cell];
 
-    for (int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++) {
+    for (int cndx = bufI(&fbuf, FBIN_OFFSET)[cell]; cndx < clast; cndx++) {
         int pndx = bufI(&fbuf, FGRID)[cndx];
         dist = p - bufF3(&fbuf, FPOS)[pndx];
         dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
@@ -385,9 +385,9 @@ float3 contributeForce ( int i, float3 ipos, float3 iveleval, float ipress, floa
     float3 pterm= (float3)(0,0,0), sterm= (float3)(0,0,0), vterm= (float3)(0,0,0), forcej= (float3)(0,0,0), delta_v= (float3)(0,0,0);                                                              // pressure, surface tension and viscosity terms.
 	float3 dist     = (float3)(0,0,0),      eterm = (float3)(0,0,0),    force = (float3)(0,0,0);
 	uint   j;
-	int    clast    = bufI(&fbuf, FGRIDOFF)[cell] + bufI(&fbuf, FGRIDCNT)[cell];                                // index of last particle in this cell
+	int    clast    = bufI(&fbuf, FBIN_OFFSET)[cell] + bufI(&fbuf, FGRIDCNT)[cell];                                // index of last particle in this cell
     uint k =0 ;
-    for (int cndx = bufI(&fbuf, FGRIDOFF)[cell]; cndx < clast; cndx++ ) {                                     // For particles in this cell.
+    for (int cndx = bufI(&fbuf, FBIN_OFFSET)[cell]; cndx < clast; cndx++ ) {                                     // For particles in this cell.
         k++;
 		j           = bufI(&fbuf, FGRID)[ cndx ];
 		dist        = ( ipos - bufF3(&fbuf, FPOS)[ j ] );                                                     // dist in cm (Rama's comment)

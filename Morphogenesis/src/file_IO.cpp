@@ -846,7 +846,7 @@ if (ret != (9 + BOND_DATA + 4 + BONDS_PER_PARTICLE*2 + NUM_TF + NUM_GENES) ) {  
     fclose(points_file);
     AddNullPoints ();                                   // add null particles up to mMaxPoints // should be redundant here as mMaxPoints = number_of_lines-1
     if (gpu_mode != GPU_OFF) TransferToCL ();         // Initial transfer
-  //if (m_FParams.debug>1)printf("\n gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES)=%llu, \t gpuVar(&m_Fluid, FGRIDOFF_CHANGES)=%llu, \t gpuVar(&m_Fluid, FGRIDCNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FGRIDOFF_ACTIVE_GENES), gpuVar(&m_Fluid, FGRIDOFF_CHANGES) , gpuVar(&m_Fluid, FGRIDCNT_CHANGES)   );
+  //if (m_FParams.debug>1)printf("\n gpuVar(&m_Fluid, FBIN_OFFSET_ACTIVE_GENES)=%llu, \t gpuVar(&m_Fluid, FBIN_OFFSET)=%llu, \t gpuVar(&m_Fluid, FBIN_COUNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FBIN_OFFSET_ACTIVE_GENES), gpuVar(&m_Fluid, FBIN_OFFSET) , gpuVar(&m_Fluid, FBIN_COUNT_CHANGES)   );
     if (m_FParams.debug>1) std::cout<<"\n ReadPointsCSV2() finished extra functions. NumPoints()="<<NumPoints()<<"\n"<<std::flush;
 }
 
@@ -1228,7 +1228,7 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     return;
 }*/
 
-void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ // writes a default version 
+void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ // writes a default version
     char Specification_file_path[256];
     sprintf ( Specification_file_path, "%s/SpecificationFile.txt", relativePath );
     //const char * SimParams_file_path = relativePath;

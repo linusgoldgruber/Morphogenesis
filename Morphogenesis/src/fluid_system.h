@@ -183,7 +183,8 @@
 	#define	FUNC_INITIALIZE_BONDS                    40
 	#define	FUNC_CONTRIBUTE_PRESSURE                    41
 	#define	FUNC_MEMSET32D                    42
-	#define FUNC_MAX			            43
+	#define FUNC_FPREFIXSUMCHANGES			43
+	#define FUNC_MAX			            44
 
 
 using namespace std;
@@ -342,14 +343,13 @@ using namespace std;
 		int					verbosity;
 		std::vector<cl_platform_id> m_platform_ids;
 		cl_context			m_context;
-		cl_device_id		m_device;
+		cl_device_id 		m_device;
 		cl_command_queue	m_queue , uload_queue, dload_queue, track_queue;
 		cl_program			m_program;
 		cl_kernel			m_Kern[FUNC_MAX];
 		cl_mem				m_FParamDevice, m_FluidDevice, m_FluidTempDevice, m_FGenomeDevice, m_FPrefixDevice;		//GPU pointer containers
 		size_t 				num_work_groups, global_work_size, local_work_size;
 		bool 				gpu, amdPlatform;
-		cl_device_id 		deviceId;
 		float 				params[16] = {0};
 		std::map< std::string, std::filesystem::path > paths;
 
@@ -481,10 +481,11 @@ using namespace std;
 // 			m_Kern[FUNC_EMIT] = 							clCreateKernel(m_program, "emitParticles", NULL);
 // 			m_Kern[FUNC_RANDOMIZE] = 						clCreateKernel(m_program, "randomInit", NULL);
  			m_Kern[FUNC_FPREFIXSUM] = 						clCreateKernel(m_program, "prefixSum", &err);
+			m_Kern[FUNC_FPREFIXSUMCHANGES] = 				clCreateKernel(m_program, "prefixSumChanges", &err);
  			m_Kern[FUNC_FPREFIXUP] = 						clCreateKernel(m_program, "prefixUp", &err);
  			m_Kern[FUNC_TALLYLISTS] = 						clCreateKernel(m_program, "tally_denselist_lengths", NULL);
 // 			m_Kern[FUNC_COMPUTE_DIFFUSION] = 				clCreateKernel(m_program, "computeDiffusion", NULL);
-// 			m_Kern[FUNC_COUNT_SORT_LISTS] = 				clCreateKernel(m_program, "countingSortDenseLists", NULL);
+ 			m_Kern[FUNC_COUNT_SORT_LISTS] = 				clCreateKernel(m_program, "countingSortDenseLists", NULL);
 // 			m_Kern[FUNC_COMPUTE_GENE_ACTION] = 				clCreateKernel(m_program, "computeGeneAction", NULL);
 // 			m_Kern[FUNC_TALLY_GENE_ACTION] = 				clCreateKernel(m_program, "tallyGeneAction", NULL);
 // 			m_Kern[FUNC_COMPUTE_BOND_CHANGES] = 			clCreateKernel(m_program, "computeBondChanges", NULL);

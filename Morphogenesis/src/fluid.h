@@ -163,10 +163,10 @@
                                 // NB if data is ordered FEPIGEN[gene][particle], then contiguious read writes by synchronous kernels are favoured. 
     
 // original buffers continued    
-	#define FGRID		                18		//!         uniform acceleration grid : the bin to which a particle belongs
-	#define FGRIDCNT	                19      //!         grid count                : array holding num particles in each bin
-	#define	FGRIDOFF	                20      //!         grid offset               : array holding the offset of each bin
-	#define FGRIDACT	                21      //! ?? not used ??
+	#define FBIN		/*FBIN*/        18		//!         uniform acceleration grid : the bin to which a particle belongs
+	#define FBIN_COUNT	/*FBIN_COUNT*/  19      //!         grid count                : array holding num particles in each bin
+	#define	FBIN_OFFSET /*FGRIDOFF*/    20      //!         grid offset               : array holding the offset of each bin
+	#define FBIN_ACT	                21      //! ?? not used ??
 	#define FSTATE		                22      //# uint
 	//#define FBRICK		            23      //!            #Not used
 	#define FPARAMS		                24		//! fluid parameters
@@ -182,9 +182,9 @@
 	// additional buffers for dense lists
     #define INITIAL_BUFFSIZE_ACTIVE_GENES 1024    // initial buffer size for densely packed lists
                                             // NB NUM_BINS is m_GridTotal computed in FluidSystem::SetupGrid()
-                                            // NB The FGRID* buffers are set up in FluidSystem::AllocateGrid()
-    #define FGRIDCNT_ACTIVE_GENES       32  //# uint[NUM_BINS][NUM_GENES]  for each bin, for each gene, num active particles
-    #define FGRIDOFF_ACTIVE_GENES       33  //# uint[NUM_BINS][NUM_GENES]  For each bin, for each gene, the offset of the bin in the gene's dense array.
+                                            // NB The FBIN* buffers are set up in FluidSystem::AllocateGrid()
+    #define FBIN_COUNT_ACTIVE_GENES       32  //# uint[NUM_BINS][NUM_GENES]  for each bin, for each gene, num active particles
+    #define FBIN_OFFSET_ACTIVE_GENES       33  //# uint[NUM_BINS][NUM_GENES]  For each bin, for each gene, the offset of the bin in the gene's dense array.
     #define FDENSE_LIST_LENGTHS         34  //# uint[NUM_GENES]  for each gene the length of its dense list, i.e. num active particles for that gene.
     #define FDENSE_LISTS                35  //# *uint[NUM_GENES]   where each points to uint[FNUM_ACTIVE_GENES[gene]]
                                             // In AllocateParticles(...) AllocateBuffer initial size 1024 for each gene.
@@ -194,8 +194,8 @@
                                             // VNB need to modify cleanup at exit.
     #define FDENSE_BUF_LENGTHS          36  //# uint[NUM_GENES] holds length of currently allocated buffer.
 	
-    #define FGRIDOFF_CHANGES            37
-    #define FGRIDCNT_CHANGES            38     // for packing lists for particle change kenels
+    #define FBIN_OFFSET_CHANGES            37
+    #define FBIN_COUNT_CHANGES            38     // for packing lists for particle change kenels
     #define FDENSE_LIST_LENGTHS_CHANGES 39
     #define FDENSE_LISTS_CHANGES        40     //# *uint [NUM_CHANGES] holds pointers to change_list buffers [2][list_length] holding : particleIDx and bondIDx TODO edit buffer allocation & use  
     #define FDENSE_BUF_LENGTHS_CHANGES  41

@@ -25,6 +25,9 @@ int main ( int argc, const char** argv )
 {
     char input_folder[256];
     char output_folder[256];
+    char json_folder[256];
+    cout << "argc: " << argc << "\n" << flush;
+
     if ((argc != 4) && (argc !=3)) {
         printf ( "usage: make_demo2 input_folder output_folder.\
         \nNB input_folder must contain \"SpecificationFile.txt\", output will be wrtitten to \"output_folder/out_data_time/\".\
@@ -33,7 +36,10 @@ int main ( int argc, const char** argv )
     } else {
         sprintf ( input_folder, "%s", argv[1] );
         sprintf ( output_folder, "%s", argv[2] );
-        printf ( "input_folder = %s , output_folder = %s\n", input_folder, output_folder );
+        sprintf ( json_folder, "%s", argv[3] );
+
+        printf ( "input_folder = %s , output_folder = %s, \njson_folder = %s\n", input_folder, output_folder, json_folder );
+
     }
 
     // Initialize
@@ -44,6 +50,11 @@ int main ( int argc, const char** argv )
     obj["verbosity"] = 1;
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
+
+//     string line;
+//     while (getline(ifs, line)) {
+//         cout << line << endl;
+//     }
 
     bool b = reader.parse(ifs, obj);
     if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
@@ -63,8 +74,10 @@ int main ( int argc, const char** argv )
     for(int i=0; i<256; i++){fluid.launchParams.paramsPath[i] = input_folder[i];}
     for(int i=0; i<256; i++){fluid.launchParams.pointsPath[i] = input_folder[i];}
     //for(int i=0; i<256; i++){fluid.launchParams.genomePath[i] = input_folder[i];} // obtained from SpecificationFile.txt above.
-    if(argc==3)for(int i=0; i<256; i++){fluid.launchParams.outPath[i] = output_folder[i];}
-
+    if(argc==4 || argc == 3){
+        for(int i=0; i<256; i++) fluid.launchParams.outPath[i] = output_folder[i];
+        cout << "\nfluid.launchParams.outPath: " << fluid.launchParams.outPath << flush;
+    }
     if(mkdir(output_folder, 0755) == -1) cerr << "\nError :  failed to create output_folder.\n" << strerror(errno) << endl;
     else cout << "output_folder created\n"; // NB 0755 = rwx owner, rx for others.
 

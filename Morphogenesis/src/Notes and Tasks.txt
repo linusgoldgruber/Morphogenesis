@@ -54,7 +54,7 @@ Executable:
 /home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/build/createDemo2
 
 Arguments: 
-/home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
+/home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo/check /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo/out /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/opencl_config.json
 
 
 ----

@@ -192,12 +192,12 @@ FluidSystem::FluidSystem(Json::Value obj_)
 
 	cl_context_properties cps[3]={CL_CONTEXT_PLATFORM,(cl_context_properties)platform,0};/*Step 3: Create context.*////////////////////////////////////
 	m_context = clCreateContextFromType( cps, CL_DEVICE_TYPE_GPU, NULL, NULL, &status); if(status!=0) 			{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);}
-	deviceId  = devices[conf_device];													/*Step 4: Create command queue & associate context.*///////////
+	m_device  = devices[conf_device];													/*Step 4: Create command queue & associate context.*///////////
 	cl_command_queue_properties prop[] = { 0 };											//  NB Device (GPU) queues are out-of-order execution -> need synchronization.
-	m_queue =     clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
-	uload_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
-	dload_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
-	track_queue = clCreateCommandQueueWithProperties(m_context, deviceId, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
+	m_queue =     clCreateCommandQueueWithProperties(m_context, m_device, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
+	uload_queue = clCreateCommandQueueWithProperties(m_context, m_device, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
+	dload_queue = clCreateCommandQueueWithProperties(m_context, m_device, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
+	track_queue = clCreateCommandQueueWithProperties(m_context, m_device, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
 																						if(verbosity>1) cout << "FluidSystem_chk 4: \n" << uload_queue << flush;
 
 																						// Multiple queues for latency hiding: Upload, Download, Mapping, Tracking,... autocalibration, SIRFS, SPMP
@@ -223,7 +223,7 @@ FluidSystem::FluidSystem(Json::Value obj_)
 	if (status != CL_SUCCESS){
 		printf("\nclBuildProgram failed: %d\n", status);
 		char buf[0x10000];
-		clGetProgramBuildInfo(m_program, deviceId, CL_PROGRAM_BUILD_LOG, 0x10000, buf, NULL);
+		clGetProgramBuildInfo(m_program, m_device, CL_PROGRAM_BUILD_LOG, 0x10000, buf, NULL);
 		printf("\n%s\n End of clBuildProgram error log..", buf);
 		exit_(status);
 	}
@@ -251,10 +251,11 @@ FluidSystem::~FluidSystem()
 // 	status = clReleaseKernel(m_Kern[FUNC_RANDOMIZE]); 						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_RANDOMIZE status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_SAMPLE]); 							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_SAMPLE status = " << checkerror(status) << "\n" << flush;}
 	status = clReleaseKernel(m_Kern[FUNC_FPREFIXSUM]); 						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXSUM status = " << checkerror(status) << "\n" << flush;}
-	status = clReleaseKernel(m_Kern[FUNC_FPREFIXUP]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXUP status = " << checkerror(status) << "\n" << flush;}
+	status = clReleaseKernel(m_Kern[FUNC_FPREFIXSUMCHANGES]); 			    if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXSUMCHANGES status = " << checkerror(status) << "\n" << flush;}
+	status = clReleaseKernel(m_Kern[FUNC_FPREFIXUP]); 					    if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXUP status = " << checkerror(status) << "\n" << flush;}
 	status = clReleaseKernel(m_Kern[FUNC_TALLYLISTS]);						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_TALLYLISTS status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_DIFFUSION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_DIFFUSION status = " << checkerror(status) << "\n" << flush;}
-// 	status = clReleaseKernel(m_Kern[FUNC_COUNT_SORT_LISTS]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COUNT_SORT_LISTS status = " << checkerror(status) << "\n" << flush;}
+ 	status = clReleaseKernel(m_Kern[FUNC_COUNT_SORT_LISTS]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COUNT_SORT_LISTS status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_GENE_ACTION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_GENE_ACTION status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_TALLY_GENE_ACTION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_TALLY_GENE_ACTION status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_BOND_CHANGES]);			if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_BOND_CHANGES status = " << checkerror(status) << "\n" << flush;}
@@ -463,6 +464,8 @@ FGenome	FluidSystem::GetGenome(){
 }
 
 void FluidSystem::FluidParamCL (float ss, float sr, float pr, float mass, float rest, cl_float3 bmin, cl_float3 bmax, float estiff, float istiff, float visc, float surface_tension, float damp, float fmin, float fmax, float ffreq, float gslope, float gx, float gy, float gz, float al, float vl, float a_f, float a_p ){
+
+    if (verbosity>0) std::cout << "\n-----FluidParamCL() started... -----" << std::flush;
     m_FParams.psimscale = ss;
     m_FParams.psmoothradius = sr;
     m_FParams.pradius = pr;
@@ -533,7 +536,21 @@ void FluidSystem::FluidParamCL (float ss, float sr, float pr, float mass, float 
 
 
     // Transfer sim params to device
-    clCheck ( clEnqueueWriteBuffer(m_queue, m_FParamDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL), "FluidParamCL", "clEnqueueWriteBuffer", "m_FParamDevice", mbDebug);
+    clCheck ( clEnqueueWriteBuffer(
+
+        m_queue,
+        m_FParamDevice,
+        CL_TRUE,
+        0,
+        sizeof(FParams),
+        &m_FParams,
+        0,
+        NULL,
+        NULL),
+    "FluidParamCL", "clEnqueueWriteBuffer", "m_FParamDevice", mbDebug);
+
+    if (verbosity>0) std::cout << "\n-----FluidParamCL() started... -----" << std::flush;
+
 
 }
 
@@ -809,21 +826,21 @@ void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSyst
     int cnt = m_GridTotal;
     m_FParams.szGrid = (m_FParams.gridBlocks * m_FParams.gridThreads);
     if (verbosity>1)cout<<"\nAllocateGrid: m_FParams.szGrid = ("<<m_FParams.gridBlocks<<" * "<<m_FParams.gridThreads<<")"<<std::flush;
-    AllocateBuffer ( FGRID,		sizeof(uint),		mMaxPoints,	m_FParams.szPnts,	gpu_mode, cpu_mode );    // # grid elements = number of points
-    AllocateBuffer ( FGRIDCNT,	sizeof(uint),		cnt,	    m_FParams.szGrid,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FGRIDOFF,	sizeof(uint),		cnt,	    m_FParams.szGrid,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FGRIDACT,	sizeof(uint),		cnt,	    m_FParams.szGrid,	gpu_mode, cpu_mode );      // ?? not used ?? ... active bins i.e. containing particles ?
+    AllocateBuffer ( FBIN,		sizeof(uint),		mMaxPoints,	m_FParams.szPnts,	gpu_mode, cpu_mode );    // # grid elements = number of points
+    AllocateBuffer ( FBIN_COUNT,	sizeof(uint),		cnt,	    m_FParams.szGrid,	gpu_mode, cpu_mode );
+    AllocateBuffer ( FBIN_OFFSET,	sizeof(uint),		cnt,	    m_FParams.szGrid,	gpu_mode, cpu_mode );
+    AllocateBuffer ( FBIN_ACT,	sizeof(uint),		cnt,	    m_FParams.szGrid,	gpu_mode, cpu_mode );      // ?? not used ?? ... active bins i.e. containing particles ?
     // extra buffers for dense lists
-    AllocateBuffer ( FGRIDCNT_ACTIVE_GENES,  sizeof(uint[NUM_GENES]),       cnt,   m_FParams.szGrid,	gpu_mode, cpu_mode );
-    AllocateBuffer ( FGRIDOFF_ACTIVE_GENES,  sizeof(uint[NUM_GENES]),       cnt,   m_FParams.szGrid,	gpu_mode, cpu_mode );
+    AllocateBuffer ( FBIN_COUNT_ACTIVE_GENES,  sizeof(uint[NUM_GENES]),       cnt,   m_FParams.szGrid,	gpu_mode, cpu_mode );
+    AllocateBuffer ( FBIN_OFFSET_ACTIVE_GENES,  sizeof(uint[NUM_GENES]),       cnt,   m_FParams.szGrid,	gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_LIST_LENGTHS,	 sizeof(uint),		      NUM_GENES,   NUM_GENES,	        gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_LISTS,	         sizeof(cl_mem), NUM_GENES,   NUM_GENES,           gpu_mode, cpu_mode );             //was CUdeviceptr, is it = cl_mem?
     AllocateBuffer ( FDENSE_BUF_LENGTHS,	 sizeof(uint),            NUM_GENES,   NUM_GENES,           gpu_mode, cpu_mode );
     //AllocateBuffer ( __________,	         sizeof(uint),		            cnt,   m_FParams.szPnts,	gpu_mode, cpu_mode );                  //Nr.37 Macro missing
 
 
-    AllocateBuffer ( FGRIDCNT_CHANGES,               sizeof(uint[NUM_CHANGES]),          cnt,   m_FParams.szGrid,	    gpu_mode, cpu_mode );
-    AllocateBuffer ( FGRIDOFF_CHANGES,               sizeof(uint[NUM_CHANGES]),          cnt,   m_FParams.szGrid,	    gpu_mode, cpu_mode );
+    AllocateBuffer ( FBIN_COUNT_CHANGES,               sizeof(uint[NUM_CHANGES]),          cnt,   m_FParams.szGrid,	    gpu_mode, cpu_mode );
+    AllocateBuffer ( FBIN_OFFSET_CHANGES,               sizeof(uint[NUM_CHANGES]),          cnt,   m_FParams.szGrid,	    gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_LIST_LENGTHS_CHANGES,	 sizeof(uint),		         NUM_CHANGES,        NUM_CHANGES,	    gpu_mode, cpu_mode );
     AllocateBuffer ( FDENSE_LISTS_CHANGES,	         sizeof(cl_mem),    NUM_CHANGES,        NUM_CHANGES,       gpu_mode, cpu_mode );             //was CUdeviceptr, is it = cl_mem?
     AllocateBuffer ( FDENSE_BUF_LENGTHS_CHANGES,	 sizeof(uint),               NUM_CHANGES,        NUM_CHANGES,       gpu_mode, cpu_mode );
@@ -1022,7 +1039,7 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
                 length = uint(1000 * m_Param [ PSMOOTHRADIUS ]); // m_Param [ PSMOOTHRADIUS ] =	0.015f;	// m // related to spacing, but also max particle range i.e. ....
                 mod_len = ( modulus <<16 | length ); // NB should mask length to prevent it exceeding 16bits, i.e. 255*255
 
-                for (int i = 0; i<BONDS_PER_PARTICLE;i++){
+                for (int j = 0; i<BONDS_PER_PARTICLE;i++){
                     for (int j = 0; j< DATA_PER_BOND; j++){ ElastIdxU[i*DATA_PER_BOND +j] = UINT_MAXSIZE; ElastIdxF[i*DATA_PER_BOND +j] = 0; }
                     ElastIdxU[i*DATA_PER_BOND +8] = 0;
                 }
@@ -1056,23 +1073,23 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
                     if(Pos.z == min.z) EpiGen[0]=fixedActive;                                           // fixed particle
                     EpiGen[2]=1;                                            // living particle NB set gene behaviour
                 }                                                           // => (i) French flag, (ii) polartity, (iii) clock & wave front
-        std::cout << "\n SetupAddVolumeMorphogenesis2 XXXXXXXXXXXXXXXX DEBUG XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \t" << std::flush;
 
-        std::cout << "\n Pos: \t(" << Pos.x << ", " << Pos.y << ", " << Pos.z << ")" << std::flush;
-        std::cout << "\n Pos: \t(" << Vel.x << ", " << Vel.y << ", " << Vel.z << ")" << std::flush;
-        std::cout << "\n Age:  \t" << Age << std::flush;
-        std::cout << "\n Clr:  \t" << Clr << std::flush;
-        std::cout << "\n ElastIdxU:  \t" << *ElastIdxU << std::flush;
-        std::cout << "\n ElastIdxF:  \t" << *ElastIdxF << std::flush;
-        std::cout << "\n Particle_Idx:  \t" << *Particle_Idx << std::flush;
-        std::cout << "\n Particle_ID:  \t" << Particle_ID << std::flush;
-        std::cout << "\n Mass_Radius:  \t" << Mass_Radius << std::flush;
-        std::cout << "\n NerveIdx:  \t" << NerveIdx << std::flush;
-        std::cout << "\n Conc:  \t" << *Conc << std::flush;
-        std::cout << "\n EpiGen:  \t" << *EpiGen << std::flush;
+        if (verbosity > 1) {
+            std::cout << "\n Pos: \t(" << Pos.x << ", " << Pos.y << ", " << Pos.z << ")" << std::flush;
+            std::cout << "\n Vel: \t(" << Vel.x << ", " << Vel.y << ", " << Vel.z << ")" << std::flush;
+            std::cout << "\n Age:  \t" << Age << std::flush;
+            std::cout << "\n Clr:  \t" << Clr << std::flush;
+            std::cout << "\n ElastIdxU:  \t" << *ElastIdxU << std::flush;
+            std::cout << "\n ElastIdxF:  \t" << *ElastIdxF << std::flush;
+            std::cout << "\n Particle_Idx:  \t" << *Particle_Idx << std::flush;
+            std::cout << "\n Particle_ID:  \t" << Particle_ID << std::flush;
+            std::cout << "\n Mass_Radius:  \t" << Mass_Radius << std::flush;
+            std::cout << "\n NerveIdx:  \t" << NerveIdx << std::flush;
+            std::cout << "\n Conc:  \t" << *Conc << std::flush;
+            std::cout << "\n EpiGen:  \t" << *EpiGen << std::flush;
+        }
 
-
-
+        cout << " ----------------------------------------------------------DOING AddParticleMorphogenesis2( " << p+1 << ")\n" << flush;
                 p = AddParticleMorphogenesis2 (
                 /* cl_float3* */ &Pos,
                 /* cl_float3* */ &Vel,
@@ -1089,13 +1106,13 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
                 );
                 if(p==-1){
                     if (verbosity>1){std::cout << "\n SetupAddVolumeMorphogenesis2 exited on p==-1, Pos=("<<Pos.x<<","<<Pos.y<<","<<Pos.z<<"), Particle_ID="<<Particle_ID<<",  EpiGen[0]="<<EpiGen[0]<<" \n " << std::flush ;}
+
                     return;
                 }
      }
-    cout <<"-----AddParticleMorphogenesis2() finished-----";
-    mActivePoints=mNumPoints; // Initial active points, used in make_demo2.cpp, by WriteResultsCSV()
-    AddNullPoints ();            // If spare particles remain, fill with null points. NB these can be used to "create" particles.
-    if (verbosity>1)std::cout << "\n SetupAddVolumeMorphogenesis2 finished \n" << std::flush ;
+                            mActivePoints=mNumPoints; // Initial active points, used in make_demo2.cpp, by WriteResultsCSV()
+                            AddNullPoints();
+                            if (verbosity < 0) {cout << "---------------------------------------------------------------------------------------------- SetupAddVolumeMorphogenesis2 finished ----- "<< flush;}
 }
 
 /*void FluidSystem::Run (){   // deprecated, rather use: Run(const char * relativePath, int frame, bool debug)
@@ -1895,6 +1912,9 @@ void FluidSystem::Run2InnerPhysicalLoop(){ //
     if(launchParams.debug>1){
         TransferFromCL ();
         launchParams.file_increment++;
+        cout << "----------------------------------------------------launchParams.file_num: " << launchParams.file_num << flush;
+        cout << "----------------------------------------------------launchParams.file_increment: " << launchParams.file_increment << flush;
+
         SavePointsCSV2 (  launchParams.outPath, launchParams.file_num+launchParams.file_increment );
         std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< launchParams.file_num+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
     }
