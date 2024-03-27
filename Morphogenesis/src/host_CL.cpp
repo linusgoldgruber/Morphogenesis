@@ -15,20 +15,20 @@
 
 
 cl_int FluidSystem::clMemsetD32(cl_mem buffer, int value, size_t count) {
-    cl_int err;
+    cl_int status;
 
     // Set kernel arguments
 
-    err  = clSetKernelArg(m_Kern[FUNC_MEMSET32D], 0, sizeof(cl_mem), &buffer);
+    status  = clSetKernelArg(m_Kern[FUNC_MEMSET32D], 0, sizeof(cl_mem), &buffer);
     //std::cout << "\nCountingSortFullCL()2: chk -------clMemsetD32: clSetKernelArg 1 done ---------"<< std::flush;
 
-    err |= clSetKernelArg(m_Kern[FUNC_MEMSET32D], 1, sizeof(int), &value);
-    clCheck(err, "clMemsetD32", "clSetKernelArg", NULL, mbDebug);
+    status |= clSetKernelArg(m_Kern[FUNC_MEMSET32D], 1, sizeof(int), &value);
+    clCheck(status, "clMemsetD32", "clSetKernelArg", NULL, mbDebug);
     //std::cout << "\nCountingSortFullCL()2: chk -------clMemsetD32: clSetKernelArg 2 done ---------"<< std::flush;
 
     // Enqueue kernel
-    err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_MEMSET32D], 1, NULL, &count, NULL, 0, NULL, NULL);
-    clCheck(err, "clMemsetD32", "clEnqueueNDRangeKernel", NULL, mbDebug);
+    status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_MEMSET32D], 1, NULL, &count, NULL, 0, NULL, NULL);
+    clCheck(status, "clMemsetD32", "clEnqueueNDRangeKernel", NULL, mbDebug);
     //std::cout << "\nCountingSortFullCL()2: chk -------clMemsetD32: clEnqueueNDRangeKernel done ---------"<< std::flush;
 
     // Ensure all commands have finished
@@ -40,6 +40,8 @@ cl_int FluidSystem::clMemsetD32(cl_mem buffer, int value, size_t count) {
 
 
 void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size, cl_float3 delta, cl_float3 gmin, cl_float3 gmax, int total, int chk ){
+	cl_int status;
+	cl_event writeEvt;
 
     if (verbosity>0) std::cout << "\n-----FluidSetupCL()  started... -----\n" << std::flush;
 
@@ -61,6 +63,48 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size
     m_FParams.gridScanMax.z -= temp.z;
     m_FParams.chk = chk;
 
+    std::cout << "Particle Number (pnum): " << m_FParams.pnum << "\n"
+          << "Maximum Points (maxPoints): " << m_FParams.maxPoints << "\n"
+          << "Freeze: " << m_FParams.freeze << "\n"
+          << "Grid Resolution (gridRes): (" << m_FParams.gridRes.x << ", " << m_FParams.gridRes.y << ", " << m_FParams.gridRes.z << ")\n"
+          << "Grid Size (gridSize): (" << m_FParams.gridSize.x << ", " << m_FParams.gridSize.y << ", " << m_FParams.gridSize.z << ")\n"
+          << "Grid Delta (gridDelta): (" << m_FParams.gridDelta.x << ", " << m_FParams.gridDelta.y << ", " << m_FParams.gridDelta.z << ")\n"
+          << "Grid Min (gridMin): (" << m_FParams.gridMin.x << ", " << m_FParams.gridMin.y << ", " << m_FParams.gridMin.z << ")\n"
+          << "Grid Max (gridMax): (" << m_FParams.gridMax.x << ", " << m_FParams.gridMax.y << ", " << m_FParams.gridMax.z << ")\n"
+          << "Grid Total (gridTotal): " << m_FParams.gridTotal << "\n"
+          << "Grid Search (gridSrch): " << m_FParams.gridSrch << "\n"
+          << "Grid Adjusted Count (gridAdjCnt): " << m_FParams.gridAdjCnt << "\n"
+          << "Grid Scan Max (gridScanMax): (" << m_FParams.gridScanMax.x << ", " << m_FParams.gridScanMax.y << ", " << m_FParams.gridScanMax.z << ")\n"
+          << "Check: " << m_FParams.chk << std::endl;
+
+	status = clEnqueueWriteBuffer(upload_queue, m_FluidTempDevice, 	CL_FALSE, 0, sizeof(m_FluidTemp), 				&m_FluidTemp, 		0, NULL, &writeEvt);      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.5\n" << endl; exit_(status);}
+
+	status = clEnqueueWriteBuffer(upload_queue, m_FGenomeDevice, 	CL_FALSE, 0, sizeof(m_FGenome), 		&m_FGenome, 0, NULL, &writeEvt);	                  if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl; exit_(status);}
+
+    //set m_FParamsDevice and m_FluidDevice(Temp) buffers as arguments to kernels
+
+    status = clSetKernelArg(m_Kern[FUNC_TALLYLISTS], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_TALLYLISTS, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_TALLYLISTS], 1, sizeof(cl_mem),          &m_FluidDevice);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_TALLYLISTS, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COUNTING_SORT, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT], 1, sizeof(cl_mem),          &m_FluidDevice);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COUNTING_SORT, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_COUNT_SORT_LISTS], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COUNT_SORT_LISTS, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_COUNT_SORT_LISTS], 1, sizeof(cl_mem),          &m_FluidDevice);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COUNT_SORT_LISTS, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_COMPUTE_PRESS], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COMPUTE_PRESS, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_COMPUTE_PRESS], 1, sizeof(cl_mem),          &m_FluidDevice);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COMPUTE_PRESS, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COMPUTE_FORCE, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 1, sizeof(cl_mem),          &m_FluidDevice);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COMPUTE_FORCE, 0)\n" << endl; exit_(status);}
+
+
+
     // Build Adjacency Lookup
     int cell = 0;
     for (int y=0; y < gsrch; y++ )
@@ -69,7 +113,6 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size
                 m_FParams.gridAdj [ cell++]  = ( y * m_FParams.gridRes.z+ z )*m_FParams.gridRes.x +  x ;
 
     //Calculate the work group sizes
-    cl_int status;
     status = clGetKernelWorkGroupInfo(m_Kern[FUNC_INSERT], m_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL); 	if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; exit_(status);}
     cout << "\nclGetKernelWorkGroupInfo: CL_KERNEL_WORK_GROUP_SIZE = " << &local_work_size << "\n\n" << flush;
 
@@ -138,10 +181,10 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size
 }
 
 void FluidSystem::TransferToTempCL ( int buf_id, int sz ){
-    cl_int err;
-    m_FluidTemp.mgpu[buf_id] = clCreateBuffer(m_context, CL_MEM_READ_WRITE, sz, NULL, &err);
+    cl_int status;
+    m_FluidTemp.mgpu[buf_id] = clCreateBuffer(m_context, CL_MEM_READ_WRITE, sz, NULL, &status);
 
-        if(err!=CL_SUCCESS)	{cout<<"\nTransferToTempCL: clCreateBuffer status="<<checkerror(err)<<"\n"<<flush;exit_(err);}
+        if(status!=CL_SUCCESS)	{cout<<"\nTransferToTempCL: clCreateBuffer status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 
 //     cout << "\nX X X X X X X X X 'sz' input value: " << sz << flush;
 //     cout << "\nX X X X X X X X X buf_id value: " << buf_id << flush;
@@ -169,15 +212,15 @@ void FluidSystem::TransferFromTempCL ( int buf_id, int sz ){
 }
 
 void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin sorting
-    cl_int err;
+    cl_int status;
 
     if (verbosity>1) printf("\n-----InsertParticles() started... -----");
 
         printf("\nm_GridTotal = %d\n", m_GridTotal);
 
-    m_Fluid.mgpu[FBIN_COUNT] = clCreateBuffer(m_context, CL_MEM_READ_WRITE, m_GridTotal * sizeof(int),NULL, &err);
+    m_Fluid.mgpu[FBIN_COUNT] = clCreateBuffer(m_context, CL_MEM_READ_WRITE, m_GridTotal * sizeof(int),NULL, &status);
 
-    if(err!=CL_SUCCESS)	{cout<<"\nclCreateBuffer status="<<checkerror(err)<<"\n"<<flush;exit_(err);}
+    if(status!=CL_SUCCESS)	{cout<<"\nclCreateBuffer status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 
     printf("\nMemory address of buffer: %p\n", (void*)&m_Fluid.mgpu[FBIN_COUNT]);
 
@@ -204,7 +247,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
     if (offset + fillSize > bufferSize) {
          printf("\n--------------------------BUFFER TOO SMALL!-------------------------------------------");
-         exit_(err);
+         exit_(status);
     }
     /*DEBUGGING: else {
         // Perform the fill operation
@@ -242,7 +285,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     int t_numElem2 = int ((*allElements) / (*blockSize)) + 1;
     size_t sizeValue2 = static_cast<size_t>(t_numElem2);
     const size_t* numItemsPerGroup = &sizeValue2;
-    cout << "\nnumElem2/numItemsPerGroup = " << *numItemsPerGroup << flush;          //numItemsPerGroup = 20
+    cout << "\nnumElem2/numItemsPerGroup = " << *numItemsPerGroup << flush;          //numItemsPerGroup =
 
 
 
@@ -250,10 +293,24 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     cout << "\n+++++++++++++++++++++++++++ mMaxPoints: " << mMaxPoints << " +++++++++++++++++++++++\n\n" << flush;
     // set arguments and launch kernel "InsertParticles"
 
+    cl_event writeEvt;
+
+    cout << "\n++++++++++++++++++++++++++ FPOS of m_Fluid =" << *m_Fluid.mcpu << "\n\n" << flush;
+ 	status = clEnqueueWriteBuffer(upload_queue, m_FParamsDevice, 		CL_FALSE, 0, sizeof(m_FParams), 		&m_FParams, 			0, NULL, &writeEvt);	  if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl; exit_(status);}
+
+	status = clEnqueueWriteBuffer(upload_queue, m_FluidDevice, 		CL_FALSE, 0, sizeof(m_Fluid.mcpu), 		&m_Fluid.mcpu, 			0, NULL, &writeEvt);	              if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4\n" << endl; exit_(status);}
+
+    clWaitForEvents(1, &writeEvt);
+	clFinish(upload_queue);
     //void* args[1] = {&mMaxPoints}; //&mNumPoints
-    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(int),          &mMaxPoints);
-    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(cl_mem),       &m_Fluid.mgpu[FBIN_COUNT]); //volatile global int* fgridcnt
-    err  = clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(cl_mem),       &m_Fluid.mgpu[FBIN_COUNT_ACTIVE_GENES]); //volatile global int* fgridcnt_active_genes
+
+    status = clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 0)\n" << endl; exit_(status);}
+
+    status = clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(cl_mem),          &m_FluidDevice);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 1)\n" << endl; exit_(status);}
+
+    status  = clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(int),          &mMaxPoints);
+    status  = clSetKernelArg(m_Kern[FUNC_INSERT], 3, sizeof(cl_mem),       &m_Fluid.mgpu[FBIN_COUNT]); //volatile global int* fgridcnt
+    status  = clSetKernelArg(m_Kern[FUNC_INSERT], 4, sizeof(cl_mem),       &m_Fluid.mgpu[FBIN_COUNT_ACTIVE_GENES]); //volatile global int* fgridcnt_active_genes
 
     //Running kernel
     cl_event func_insert_event;
@@ -277,8 +334,6 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 //     int TESTTESTTEST3;
     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FBIN_COUNT), CL_TRUE, (m_GridTotal-1)*sizeof(int), sizeof(int), &TESTTESTTEST2, 0, NULL, NULL),
     cout << "\n############################################################################################### FBIN_COUNT Insert Particles(): " << TESTTESTTEST2 << "\n" << flush;
-//     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FBIN_OFFSET), CL_TRUE, (m_GridTotal-1)*sizeof(int), sizeof(int), &TESTTESTTEST, 0, NULL, NULL),
-//     cout << "\n###############################################################################################output: " << TESTTESTTEST << "\n" << flush;
 
 
     clFlush(m_queue);
@@ -290,7 +345,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
     // Transfer data back if requested (for validation)
     if (gcell != 0x0) {
-        err = clEnqueueReadBuffer(m_queue,
+        status = clEnqueueReadBuffer(m_queue,
                                   gpuVar(&m_Fluid, FGCELL),
                                   CL_TRUE,
                                   0,
@@ -299,7 +354,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
                                   0,
                                   NULL,
                                   NULL);
-        err = clEnqueueReadBuffer(m_queue,
+        status = clEnqueueReadBuffer(m_queue,
                                   gpuVar(&m_Fluid, FGNDX),
                                   CL_TRUE,
                                   0,
@@ -308,7 +363,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
                                   0,
                                   NULL,
                                   NULL);
-        err = clEnqueueReadBuffer(m_queue,
+        status = clEnqueueReadBuffer(m_queue,
                                   gpuVar(&m_Fluid, FBIN_COUNT),
                                   CL_TRUE,
                                   0,
@@ -321,10 +376,10 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
         //clean up TODO is something missing?
         clReleaseMemObject(m_Fluid.mgpu[FBIN_COUNT]);
     }
-    if (m_debug > 4) {
+    if (verbosity > 0) {
         if (verbosity > 1)
             cout << "\nSaving (FGCELL) InsertParticlesCL: (particleIdx, cell) , mMaxPoints=" << mMaxPoints << "\t" << std::flush;
-        err = clEnqueueReadBuffer(m_queue,
+        status = clEnqueueReadBuffer(m_queue,
                                   gpuVar(&m_Fluid, FGCELL),
                                   CL_TRUE,
                                   0,
@@ -922,7 +977,7 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){ //CUCLCUCL
     //clCheck ( cuMemcpyHtoD ( clFParams,	&m_FParams, sizeof(FParams) ), "CountingSortFullCL3", "cuMemcpyHtoD", "clFParams", mbDebug); // seems the safest way to update fparam.pnumActive on device.
     //std::cout << "\nCountingSortFullCL()1: chk ----> 4"<< std::flush;
 
-    clCheck( clEnqueueWriteBuffer(m_queue, m_FParamDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL), "CountingSortFullCL3", "clEnqueueWriteBuffer", "clFParams", mbDebug);
+    clCheck( clEnqueueWriteBuffer(m_queue, m_FParamsDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL), "CountingSortFullCL3", "clEnqueueWriteBuffer", "clFParams", mbDebug);
 
 
     // Transfer particle data to temp buffers
@@ -983,13 +1038,13 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){ //CUCLCUCL
     clFinish (m_queue);    // needed to prevent colision with previous operations
     //std::cout << "\nCountingSortFullCL()2: chk ----> 5"<< std::flush;
 
-    cl_int err;
+    cl_int status;
 
     // Reset grid cell IDs
     // clCheck(clMemsetD32(gpu(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "clMemsetD32(Sort)");
 
     //void* args[1] = { &mMaxPoints };
-    err  = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT], 0, sizeof(int), &mMaxPoints);
+    status  = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT], 0, sizeof(int), &mMaxPoints);
 
     clCheck ( clEnqueueNDRangeKernel(
 
@@ -1161,7 +1216,7 @@ void FluidSystem::CountingSortChangesCL ( ){
         if (verbosity>1)printf("\nCountingSortChangesCL1: change_list=%u,  densebuff_len[change_list]=%u, denselist_len[change_list]=%u ,",change_list, densebuff_len[change_list], denselist_len[change_list] );
     }
     *//////////
-    cl_int err;
+    cl_int status;
     int blockSize = SCAN_BLOCKSIZE/2 << 1;
 
     int t_numElem1 = m_GridTotal;
@@ -1179,10 +1234,10 @@ void FluidSystem::CountingSortChangesCL ( ){
     const size_t* threads = &sizeValue4;
     //void* args[1] = { &mActivePoints };
 
-    err  = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_CHANGES], 0, sizeof(int), &mActivePoints);
+    status  = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_CHANGES], 0, sizeof(int), &mActivePoints);
 
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNTING_SORT_CHANGES], numElem2, 1, 1, threads , 1, 1, 0, NULL, args, NULL), "CountingSortChangesCL", "cuLaunch", "FUNC_COUNTING_SORT_CHANGES", mbDebug );
-    err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COUNTING_SORT_CHANGES], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COUNTING_SORT_CHANGES], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 
 
      /////////
@@ -1218,7 +1273,7 @@ void FluidSystem::CountingSortChangesCL ( ){
     for (int change_list = 0; change_list < NUM_CHANGES; change_list++) {                    // Note this calculation could be done by a kernel,
         // Note: In OpenCL, you should use cl_mem objects instead of bufI and bufC functions
         // to access memory buffers.
-        cl_int err;
+        cl_int status;
         uint densebuff_len = bufI(&m_Fluid, FDENSE_BUF_LENGTHS_CHANGES)[change_list];        // and only bufI(&m_Fluid, FDENSE_LIST_LENGTHS); copied to host.
         uint denselist_len = bufI(&m_Fluid, FDENSE_LIST_LENGTHS_CHANGES)[change_list];       // For each change_list allocate intial buffer,
 
@@ -1234,7 +1289,7 @@ void FluidSystem::CountingSortChangesCL ( ){
 
             // Map the buffer to read data from it.
             cl_event map_event;
-            uint *mapped_ptr = (uint *)clEnqueueMapBuffer(m_queue, list2buffer, CL_TRUE, CL_MAP_READ, 0, 2 * sizeof(uint) * densebuff_len, 0, NULL, &map_event, &err);
+            uint *mapped_ptr = (uint *)clEnqueueMapBuffer(m_queue, list2buffer, CL_TRUE, CL_MAP_READ, 0, 2 * sizeof(uint) * densebuff_len, 0, NULL, &map_event, &status);
 
             // Copy data to the host buffer.
             clCheck(clEnqueueReadBuffer(m_queue, list2buffer, CL_TRUE, 0, 2 * sizeof(uint) * densebuff_len, fDenseList2, 0, NULL, NULL), "CountingSortChangesCL", "clEnqueueReadBuffer", "FBIN_COUNT", mbDebug);
@@ -1255,23 +1310,23 @@ void FluidSystem::CountingSortChangesCL ( ){
 }
 
 void FluidSystem::CreateFluidBuffers() {
-    cl_int err;
+    cl_int status;
 
-    m_Fluid.mgpu[FPOS] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &err);
-    m_Fluid.mgpu[FVEL] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &err);
-    m_Fluid.mgpu[FVEVAL] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &err);
-    m_Fluid.mgpu[FFORCE] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &err);
-    m_Fluid.mgpu[FPRESS] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float),                    NULL, &err);
-    m_Fluid.mgpu[FDENSITY] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float),                    NULL, &err);
-    m_Fluid.mgpu[FCLR] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 3,                 NULL, &err); //TODO maybe need to adapt all of them to be "*4", as cl_cloat3 is actually = cl_float4
+    m_Fluid.mgpu[FPOS] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &status);
+    m_Fluid.mgpu[FVEL] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &status);
+    m_Fluid.mgpu[FVEVAL] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &status);
+    m_Fluid.mgpu[FFORCE] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &status);
+    m_Fluid.mgpu[FPRESS] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float),                    NULL, &status);
+    m_Fluid.mgpu[FDENSITY] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float),                    NULL, &status);
+    m_Fluid.mgpu[FCLR] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 3,                 NULL, &status); //TODO maybe need to adapt all of them to be "*4", as cl_cloat3 is actually = cl_float4
 
-    m_Fluid.mgpu[FELASTIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint[BOND_DATA]),            NULL, &err);
-    m_Fluid.mgpu[FPARTICLEIDX] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint[BONDS_PER_PARTICLE*2]), NULL, &err);
-    m_Fluid.mgpu[FPARTICLE_ID] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 3,                 NULL, &err);
-    m_Fluid.mgpu[FMASS_RADIUS] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 3,                 NULL, &err);
-    m_Fluid.mgpu[FNERVEIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint),                       NULL, &err);
-    m_Fluid.mgpu[FCONC] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(float[NUM_TF]),              NULL, &err);
-    m_Fluid.mgpu[FEPIGEN] =         clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint[NUM_GENES]),            NULL, &err);
+    m_Fluid.mgpu[FELASTIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint[BOND_DATA]),            NULL, &status);
+    m_Fluid.mgpu[FPARTICLEIDX] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint[BONDS_PER_PARTICLE*2]), NULL, &status);
+    m_Fluid.mgpu[FPARTICLE_ID] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 3,                 NULL, &status);
+    m_Fluid.mgpu[FMASS_RADIUS] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 3,                 NULL, &status);
+    m_Fluid.mgpu[FNERVEIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint),                       NULL, &status);
+    m_Fluid.mgpu[FCONC] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(float[NUM_TF]),              NULL, &status);
+    m_Fluid.mgpu[FEPIGEN] =         clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint[NUM_GENES]),            NULL, &status);
 
 }
 
@@ -1353,8 +1408,8 @@ void FluidSystem::TransferFromCL() {
 
 void FluidSystem::Init_CLRand (){
 
-                                                                                                                                                        if(verbosity>0) cout << "-----Init_CLRand() started... -----\n\n" << flush;
-                                                                                                                                                        if(verbosity>1) cout << "nNumPoints = " << mNumPoints << "\n\n";
+                                                                                                                                                        if(verbosity>2) cout << "-----Init_CLRand() started... -----\n\n" << flush;
+                                                                                                                                                        if(verbosity>2) cout << "nNumPoints = " << mNumPoints << "\n\n";
     cl_int status;
 
     // Initialize RNG
@@ -1363,8 +1418,8 @@ void FluidSystem::Init_CLRand (){
     for (unsigned int i = 0; i < mNumPoints; ++i) {
         seeds[i] = rand(); // Replace with your preferred method of generating seeds
     }
-    cout << "\nmNumPoints = " << mNumPoints << "\n" << flush;
-    cout << "\nsizeof(unsigned long long) = " << sizeof(unsigned long long) << "\n" << flush;
+    if(verbosity>2) cout << "\nmNumPoints = " << mNumPoints << "\n" << flush;
+    if(verbosity>2) cout << "\nsizeof(unsigned long long) = " << sizeof(unsigned long long) << "\n" << flush;
 
     // Create buffers
     cl_mem seed_buf =   clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(unsigned long long) * mNumPoints, seeds, &status);   if(status!=CL_SUCCESS){cout<<"\nres1 = "<<checkerror(status)<<"\n"<<flush;exit_(status);}
@@ -1718,15 +1773,15 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 //
 void FluidSystem::InitializeBondsCL (){
 
-    cl_int err;
+    cl_int status;
     if (verbosity>1)cout << "\n\nInitializeBondsCL ()\n"<<std::flush;
     uint gene           = 1;                                                            // solid  (has springs)
     uint list_length    = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
     //void* args[3]       = { &m_FParams.pnumActive, &list_length, &gene};                //initialize_bonds (int ActivePoints, uint list_length, uint gene)
 
-    err = clSetKernelArg(m_Kern[FUNC_INITIALIZE_BONDS], 0, sizeof(int), &m_FParams.pnumActive);
-    err = clSetKernelArg(m_Kern[FUNC_INITIALIZE_BONDS], 1, sizeof(uint), &list_length);
-    err = clSetKernelArg(m_Kern[FUNC_INITIALIZE_BONDS], 2, sizeof(uint), &gene);
+    status = clSetKernelArg(m_Kern[FUNC_INITIALIZE_BONDS], 0, sizeof(int), &m_FParams.pnumActive);
+    status = clSetKernelArg(m_Kern[FUNC_INITIALIZE_BONDS], 1, sizeof(uint), &list_length);
+    status = clSetKernelArg(m_Kern[FUNC_INITIALIZE_BONDS], 2, sizeof(uint), &gene);
 
 
     if (verbosity>1)cout << "\nInitializeBondsCL (): list_length="<<list_length<<", m_FParams.itemsPerGroup="<<m_FParams.itemsPerGroup<<", numGroups="<<m_FParams.numGroups<<", numItems="<<m_FParams.numItems<<" \t args{m_FParams.pnumActive="<<m_FParams.pnumActive<<", list_length="<<list_length<<", gene="<<gene<<"}"<<std::flush;
@@ -1738,68 +1793,68 @@ void FluidSystem::InitializeBondsCL (){
     size_t local_work_size = numItems;
 
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_INITIALIZE_BONDS],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "ComputePressureCL", "cuLaunch", "FUNC_COMPUTE_PRESS", mbDebug);
-    err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_INITIALIZE_BONDS], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_INITIALIZE_BONDS], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 }
 
 void FluidSystem::ComputePressureCL (){
-    cl_int err;
+    cl_int status;
     //void* args[1] = { &mActivePoints };
-    err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_PRESS], 0, sizeof(int), &mActivePoints);
+    status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_PRESS], 0, sizeof(int), &mActivePoints);
 
     size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
     size_t local_work_size = m_FParams.numItems;
 
     //cout<<"\nComputePressureCL: mActivePoints="<<mActivePoints<<std::flush;
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_PRESS],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "ComputePressureCL", "cuLaunch", "FUNC_COMPUTE_PRESS", mbDebug);
-    err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_PRESS], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_PRESS], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 }
 
 void FluidSystem::ComputeDiffusionCL(){
     //if (verbosity>1) std::cout << "\n\nRunning ComputeDiffusionCL()" << std::endl;
-    cl_int err;
+    cl_int status;
     //void* args[1] = { &mActivePoints };
-    err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_DIFFUSION], 0, sizeof(int), &mActivePoints);
+    status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_DIFFUSION], 0, sizeof(int), &mActivePoints);
 
     size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
     size_t local_work_size = m_FParams.numItems;
 
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_DIFFUSION],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "ComputeDiffusionCL", "cuLaunch", "FUNC_COMPUTE_DIFFUSION", mbDebug);
-    err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_DIFFUSION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_DIFFUSION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 
 }
 
 void FluidSystem::ComputeForceCL (){
     //if (verbosity>1)printf("\n\nFluidSystem::ComputeForceCL (),  m_FParams.freeze=%s",(m_FParams.freeze==true) ? "true" : "false");
-    cl_int err;
+    cl_int status;
     //void* args[3] = { &m_FParams.pnumActive ,  &m_FParams.freeze, &m_FParams.frame};
-    err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 0, sizeof(int), &mActivePoints);
-    err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 1, sizeof(bool), &mActivePoints);
-    err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 2, sizeof(uint), &mActivePoints);
+    status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 0, sizeof(int), &mActivePoints);
+    status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 1, sizeof(bool), &mActivePoints);
+    status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 2, sizeof(uint), &mActivePoints);
 
     size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
     size_t local_work_size = m_FParams.numItems;
 
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_FORCE],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "ComputeForceCL", "cuLaunch", "FUNC_COMPUTE_FORCE", mbDebug);
-    err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_FORCE], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_FORCE], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 }
 
 void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the dese list for that gene
     // NB Must zero ftemp.bufI(FEPIGEN) and ftemp.bufI(FCONC) before calling kernel. ftemp is used to collect changes before FUNC_TALLY_GENE_ACTION.
-    cl_int err;
+    cl_int status;
 
     //clCheck ( cuMemsetD8 ( gpuVar(&m_FluidTemp, FCONC),   0,	m_FParams.szPnts *sizeof(float[NUM_TF])   ), "ComputeGenesCL", "cuMemsetD8", "gpuVar(&m_FluidTemp, FCONC)",   mbDebug );
-    err = clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FCONC), 0, sizeof(float[NUM_TF]), 0, m_GridTotal * sizeof(float[NUM_TF]), 0, NULL, NULL);
+    status = clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FCONC), 0, sizeof(float[NUM_TF]), 0, m_GridTotal * sizeof(float[NUM_TF]), 0, NULL, NULL);
 
     //clCheck ( cuMemsetD8 ( gpuVar(&m_FluidTemp, FEPIGEN), 0,	m_FParams.szPnts *sizeof(uint[NUM_GENES]) ), "ComputeGenesCL", "cuMemsetD8", "gpuVar(&m_FluidTemp, FEPIGEN)", mbDebug );
-    err = clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FEPIGEN), 0, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]), 0, NULL, NULL);
+    status = clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FEPIGEN), 0, sizeof(uint[NUM_GENES]), 0, m_GridTotal * sizeof(uint[NUM_GENES]), 0, NULL, NULL);
 
     for (int gene=0;gene<NUM_GENES;gene++) {
         uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
 
         void* args[3] = { &m_FParams.pnumActive, &gene, &list_length };
-        err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_GENE_ACTION], 0, sizeof(int), &m_FParams.pnumActive);
-        err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_GENE_ACTION], 1, sizeof(int), &gene);
-        err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_GENE_ACTION], 2, sizeof(uint), &list_length);
+        status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_GENE_ACTION], 0, sizeof(int), &m_FParams.pnumActive);
+        status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_GENE_ACTION], 1, sizeof(int), &gene);
+        status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_GENE_ACTION], 2, sizeof(uint), &list_length);
 
         size_t numGroups, numItems;
         computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
@@ -1813,16 +1868,16 @@ void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the de
         if( numGroups>0 && numItems>0){
             //std::cout<<"\nCalling m_Kern[FUNC_COMPUTE_GENE_ACTION], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
             //clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_GENE_ACTION],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_COMPUTE_GENE_ACTION", mbDebug);
-            err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_GENE_ACTION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+            status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_GENE_ACTION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
         }
     }
     clCheck(clFinish(m_queue), "ComputeGenesCL", "clFinish", "After FUNC_COMPUTE_GENE_ACTION & before FUNC_TALLY_GENE_ACTION", mbDebug);
     for (int gene=0;gene<NUM_GENES;gene++) {
         uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
         void* args[3] = { &m_FParams.pnumActive, &gene, &list_length };
-        err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 0, sizeof(int), &m_FParams.pnumActive);
-        err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 1, sizeof(int), &gene);
-        err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 2, sizeof(uint), &list_length);
+        status  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 0, sizeof(int), &m_FParams.pnumActive);
+        status  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 1, sizeof(int), &gene);
+        status  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 2, sizeof(uint), &list_length);
 
         size_t numGroups, numItems;
         computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
@@ -1833,7 +1888,7 @@ void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the de
         if( numGroups>0 && numItems>0){
             if (verbosity>1) std::cout<<"\nCalling m_Kern[FUNC_TALLY_GENE_ACTION], gene="<<gene<<", list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
             //clCheck ( cuLaunchKernel ( m_Kern[FUNC_TALLY_GENE_ACTION],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "ComputeGenesCL", "cuLaunch", "FUNC_TALLY_GENE_ACTION", mbDebug);
-            err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_TALLY_GENE_ACTION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+            status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_TALLY_GENE_ACTION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 
         }
     }
@@ -1841,13 +1896,13 @@ void FluidSystem::ComputeGenesCL (){  // for each gene, call a kernel wih the de
 
 void FluidSystem::AssembleFibresCL (){  //kernel: void assembleMuscleFibres ( int pnum, uint list, uint list_length )
     if (verbosity>1)cout << "\n\nAssembleFibresCL ()\n"<<std::flush;
-    cl_int err;
+    cl_int status;
     uint gene = 7; // muscle
     uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
     void* args[3] = { &m_FParams.pnumActive, &gene, &list_length };
-    err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 0, sizeof(int), &m_FParams.pnumActive);
-    err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 1, sizeof(int), &gene);
-    err  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 2, sizeof(uint), &list_length);
+    status  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 0, sizeof(int), &m_FParams.pnumActive);
+    status  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 1, sizeof(int), &gene);
+    status  = clSetKernelArg(m_Kern[FDENSE_LIST_LENGTHS], 2, sizeof(uint), &list_length);
     size_t numGroups, numItems;
     computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
 
@@ -1877,18 +1932,18 @@ void FluidSystem::AssembleFibresCL (){  //kernel: void assembleMuscleFibres ( in
 
 void FluidSystem::ComputeBondChangesCL (uint steps_per_InnerPhysicalLoop){// Given the action of the genes, compute the changes to particle properties & splitting/combining  NB also "inserts changes"
 //  if (verbosity>1)printf("\n gpuVar(&m_Fluid, FBIN_OFFSET_CHANGES)=%llu   ,\t gpuVar(&m_Fluid, FBIN_COUNT_CHANGES)=%llu   \n",gpuVar(&m_Fluid, FBIN_OFFSET_CHANGES) , gpuVar(&m_Fluid, FBIN_COUNT_CHANGES)   );
-    cl_int err;
+    cl_int status;
     //clCheck ( cuMemsetD8 ( gpuVar(&m_Fluid, FBIN_OFFSET_CHANGES), 0,	m_GridTotal *sizeof(uint[NUM_CHANGES]) ), "ComputeBondChangesCL", "cuMemsetD8", "FBIN_OFFSET", mbDebug );
-    err = clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FBIN_OFFSET_CHANGES), 0, sizeof(uint[NUM_CHANGES]), 0, m_GridTotal * sizeof(uint[NUM_CHANGES]), 0, NULL, NULL);
+    status = clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FBIN_OFFSET_CHANGES), 0, sizeof(uint[NUM_CHANGES]), 0, m_GridTotal * sizeof(uint[NUM_CHANGES]), 0, NULL, NULL);
                                             //NB list for all living cells. (non senescent) = FEPIGEN[2]
     //clCheck ( cuMemsetD8 ( gpuVar(&m_Fluid, FBIN_COUNT_CHANGES), 0,	m_GridTotal *sizeof(uint[NUM_CHANGES]) ), "ComputeBondChangesCL", "cuMemsetD8", "FBIN_COUNT", mbDebug );
-    err = clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FBIN_COUNT_CHANGES), 0, sizeof(uint[NUM_CHANGES]), 0, m_GridTotal * sizeof(uint[NUM_CHANGES]), 0, NULL, NULL);
+    status = clEnqueueFillBuffer(m_queue, gpuVar(&m_Fluid, FBIN_COUNT_CHANGES), 0, sizeof(uint[NUM_CHANGES]), 0, m_GridTotal * sizeof(uint[NUM_CHANGES]), 0, NULL, NULL);
 
     uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[2];    // call for dense list of living cells (gene'2'living/telomere (has genes))
     void* args[3] = { &mActivePoints, &list_length, &steps_per_InnerPhysicalLoop};
-    err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_BOND_CHANGES], 0, sizeof(int), &mActivePoints);
-    err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_BOND_CHANGES], 1, sizeof(int), &list_length);
-    err  = clSetKernelArg(m_Kern[FUNC_COMPUTE_BOND_CHANGES], 2, sizeof(uint), &steps_per_InnerPhysicalLoop);
+    status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_BOND_CHANGES], 0, sizeof(int), &mActivePoints);
+    status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_BOND_CHANGES], 1, sizeof(int), &list_length);
+    status  = clSetKernelArg(m_Kern[FUNC_COMPUTE_BOND_CHANGES], 2, sizeof(uint), &steps_per_InnerPhysicalLoop);
 
     size_t numGroups, numItems;
     computeNumBlocks (list_length, local_work_size, numGroups, numItems);
@@ -1902,12 +1957,12 @@ void FluidSystem::ComputeBondChangesCL (uint steps_per_InnerPhysicalLoop){// Giv
 
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_COMPUTE_BOND_CHANGES],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "computeBondChanges", "cuLaunch", "FUNC_COMPUTE_BOND_CHANGES", mbDebug);
 
-    err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_BOND_CHANGES], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_COMPUTE_BOND_CHANGES], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 
 }
 
 void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to execute particle changes. NB Must run concurrently without interfering => no clFinish()
-    cl_int err;
+    cl_int status;
     uint startNewPoints = mActivePoints + 1;
     if (verbosity>2)printf("\n");
     for (int change_list = 0; change_list<NUM_CHANGES;change_list++){
@@ -1923,16 +1978,16 @@ void FluidSystem::ComputeParticleChangesCL (){// Call each for dense list to exe
             printf("\n\n### Run out of spare particles. startNewPoints=%u, change_list=%u, list_length=%u, mMaxPoints=%u ###\n",
             startNewPoints, change_list, list_length, mMaxPoints);
             list_length = mMaxPoints - startNewPoints;
-            exit_(err);
+            exit_(status);
         }//
 
         void* args[5] = {&mActivePoints, &list_length, &change_list, &startNewPoints, &mMaxPoints};
 
-        err  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 0, sizeof(int), &mActivePoints);
-        err  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 1, sizeof(uint), &list_length);
-        err  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 2, sizeof(int), &change_list);
-        err  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 3, sizeof(uint), &startNewPoints);
-        err  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 4, sizeof(int), &mMaxPoints);
+        status  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 0, sizeof(int), &mActivePoints);
+        status  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 1, sizeof(uint), &list_length);
+        status  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 2, sizeof(int), &change_list);
+        status  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 3, sizeof(uint), &startNewPoints);
+        status  = clSetKernelArg(m_Kern[FUNC_HEAL+change_list], 4, sizeof(int), &mMaxPoints);
 
         size_t numItems, numGroups;
 
@@ -2018,34 +2073,34 @@ void FluidSystem::ZeroVelCL (){                                       // Used to
 
 void FluidSystem::AdvanceCL ( float tm, float dt, float ss ){
 
-    cl_int err;
+    cl_int status;
     //void* args[4] = { &tm, &dt, &ss, &m_FParams.pnumActive };
-    err  = clSetKernelArg(m_Kern[FUNC_ADVANCE], 0, sizeof(float), &tm);
-    err  = clSetKernelArg(m_Kern[FUNC_ADVANCE], 1, sizeof(float), &dt);
-    err  = clSetKernelArg(m_Kern[FUNC_ADVANCE], 2, sizeof(float), &ss);
-    err  = clSetKernelArg(m_Kern[FUNC_ADVANCE], 3, sizeof(int), &m_FParams.pnumActive);
+    status  = clSetKernelArg(m_Kern[FUNC_ADVANCE], 0, sizeof(float), &tm);
+    status  = clSetKernelArg(m_Kern[FUNC_ADVANCE], 1, sizeof(float), &dt);
+    status  = clSetKernelArg(m_Kern[FUNC_ADVANCE], 2, sizeof(float), &ss);
+    status  = clSetKernelArg(m_Kern[FUNC_ADVANCE], 3, sizeof(int), &m_FParams.pnumActive);
     //cout<<"\nAdvanceCL: m_FParams.pnumActive="<<m_FParams.pnumActive<<std::flush;
 
     size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
     size_t local_work_size = m_FParams.numItems;
 
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_ADVANCE],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "AdvanceCL", "cuLaunch", "FUNC_ADVANCE", mbDebug);
-    err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_ADVANCE], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_ADVANCE], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 
 
 }
 
 void FluidSystem::SpecialParticlesCL (float tm, float dt, float ss){   // For interaction.Using dense lists for gene 1 & 0.
 
-    cl_int err;
+    cl_int status;
     int gene = 12;                                                           // 'externally actuated' particles
     uint list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
     //void* args[5] = {&list_length, &tm, &dt, &ss, &m_FParams.pnumActive};         // void externalActuation (uint list_len,  float time, float dt, float ss, int numPnts )
-    err  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 0, sizeof(uint),     &list_length);
-    err  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 1, sizeof(float),    &tm);
-    err  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 2, sizeof(float),    &dt);
-    err  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 3, sizeof(float),    &ss);
-    err  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 4, sizeof(int),      &m_FParams.pnumActive);
+    status  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 0, sizeof(uint),     &list_length);
+    status  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 1, sizeof(float),    &tm);
+    status  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 2, sizeof(float),    &dt);
+    status  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 3, sizeof(float),    &ss);
+    status  = clSetKernelArg(m_Kern[FUNC_EXTERNAL_ACTUATION], 4, sizeof(int),      &m_FParams.pnumActive);
 
     size_t numGroups, numItems;
     computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
@@ -2059,7 +2114,7 @@ void FluidSystem::SpecialParticlesCL (float tm, float dt, float ss){   // For in
         if (verbosity>1) std::cout<<"\nCalling m_Kern[FUNC_EXTERNAL_ACTUATION], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
         //clCheck ( cuLaunchKernel ( m_Kern[FUNC_EXTERNAL_ACTUATION],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "SpecialParticlesCL", "cuLaunch", "FUNC_EXTERNAL_ACTUATION", mbDebug);
 
-        err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_EXTERNAL_ACTUATION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+        status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_EXTERNAL_ACTUATION], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 
     }
 
@@ -2069,8 +2124,8 @@ void FluidSystem::SpecialParticlesCL (float tm, float dt, float ss){   // For in
     list_length = bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[gene];
     //args[0] = &list_length;                                                 // void fixedParticles (uint list_len, int numPnts )
     //args[1] = &m_FParams.pnum;
-    err  = clSetKernelArg(m_Kern[FUNC_FIXED], 0, sizeof(uint),  &list_length);
-    err  = clSetKernelArg(m_Kern[FUNC_FIXED], 1, sizeof(int),   &m_FParams.pnum);
+    status  = clSetKernelArg(m_Kern[FUNC_FIXED], 0, sizeof(uint),  &list_length);
+    status  = clSetKernelArg(m_Kern[FUNC_FIXED], 1, sizeof(int),   &m_FParams.pnum);
 
     computeNumBlocks ( list_length , local_work_size, numGroups, numItems);
 
@@ -2079,18 +2134,18 @@ void FluidSystem::SpecialParticlesCL (float tm, float dt, float ss){   // For in
     if( numGroups>0 && numItems>0){
         if (verbosity>1) std::cout<<"\nCalling m_Kern[FUNC_FIXED], list_length="<<list_length<<", numGroups="<<numGroups<<", numItems="<<numItems<<"\n"<<std::flush;
         //clCheck ( cuLaunchKernel ( m_Kern[FUNC_FIXED],  numGroups, 1, 1, numItems, 1, 1, 0, NULL, args, NULL), "SpecialParticlesCL", "cuLaunch", "FUNC_FIXED", mbDebug);
-        err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FIXED], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+        status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_FIXED], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     }
 }
 
 void FluidSystem::EmitParticlesCL ( float tm, int cnt ){
-    cl_int err;
+    cl_int status;
 
     //void* args[3] = { &tm, &cnt, &m_FParams.pnum };
 
-    err  = clSetKernelArg(m_Kern[FUNC_EMIT], 0, sizeof(float),  &tm);
-    err  = clSetKernelArg(m_Kern[FUNC_EMIT], 1, sizeof(int),    &cnt);
-    err  = clSetKernelArg(m_Kern[FUNC_EMIT], 2, sizeof(int),    &m_FParams.pnum);
+    status  = clSetKernelArg(m_Kern[FUNC_EMIT], 0, sizeof(float),  &tm);
+    status  = clSetKernelArg(m_Kern[FUNC_EMIT], 1, sizeof(int),    &cnt);
+    status  = clSetKernelArg(m_Kern[FUNC_EMIT], 2, sizeof(int),    &m_FParams.pnum);
 
 
     size_t global_work_size = m_FParams.numGroups * m_FParams.numItems;
@@ -2098,7 +2153,7 @@ void FluidSystem::EmitParticlesCL ( float tm, int cnt ){
 
     //clCheck ( cuLaunchKernel ( m_Kern[FUNC_EMIT],  m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL), "EmitParticlesCL", "cuLaunch", "FUNC_EMIT", mbDebug);
 
-    err = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_EMIT], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    status = clEnqueueNDRangeKernel(m_queue, m_Kern[FUNC_EMIT], 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
 
 }
 

@@ -344,10 +344,10 @@ using namespace std;
 		std::vector<cl_platform_id> m_platform_ids;
 		cl_context			m_context;
 		cl_device_id 		m_device;
-		cl_command_queue	m_queue , uload_queue, dload_queue, track_queue;
+		cl_command_queue	m_queue , upload_queue, dload_queue, track_queue;
 		cl_program			m_program;
 		cl_kernel			m_Kern[FUNC_MAX];
-		cl_mem				m_FParamDevice, m_FluidDevice, m_FluidTempDevice, m_FGenomeDevice, m_FPrefixDevice;		//GPU pointer containers
+		cl_mem				m_FParamsDevice, m_FluidDevice, m_FluidTempDevice, m_FGenomeDevice, m_FPrefixDevice;		//GPU pointer containers
 		size_t 				num_work_groups, global_work_size, local_work_size;
 		bool 				gpu, amdPlatform;
 		float 				params[16] = {0};
@@ -467,22 +467,23 @@ using namespace std;
 
 		void InitializeKernels(cl_program m_program) {
 		// Setup the array of kernels
-			cl_int err;
-			m_Kern[FUNC_INSERT] = 							clCreateKernel(m_program, "insertParticlesCL", &err);
-			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;
-			m_Kern[FUNC_COUNTING_SORT] = 					clCreateKernel(m_program, "countingSortFull", &err);
-			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;
+			cout << "\n----- InitializeKernels() started... -----\n" << flush;
+			cl_int status;
+			m_Kern[FUNC_INSERT] = 							clCreateKernel(m_program, "insertParticlesCL", &status);
+			if(verbosity>0 && status!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(status) << "\n" << flush;
+			m_Kern[FUNC_COUNTING_SORT] = 					clCreateKernel(m_program, "countingSortFull", &status);
+			if(verbosity>0 && status!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(status) << "\n" << flush;
 			/*m_Kern[FUNC_QUERY] = 							clCreateKernel(m_program, "computeQuery", &err);
 			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;*/
-			m_Kern[FUNC_COMPUTE_PRESS] = 					clCreateKernel(m_program, "computePressure", &err);
-			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;
-			m_Kern[FUNC_COMPUTE_FORCE] = 					clCreateKernel(m_program, "computeForce", &err);
+			m_Kern[FUNC_COMPUTE_PRESS] = 					clCreateKernel(m_program, "computePressure", &status);
+			if(verbosity>0 && status!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(status) << "\n" << flush;
+			m_Kern[FUNC_COMPUTE_FORCE] = 					clCreateKernel(m_program, "computeForce", &status);
 // 			m_Kern[FUNC_ADVANCE] = 							clCreateKernel(m_program, "advanceParticles", NULL);
 // 			m_Kern[FUNC_EMIT] = 							clCreateKernel(m_program, "emitParticles", NULL);
 // 			m_Kern[FUNC_RANDOMIZE] = 						clCreateKernel(m_program, "randomInit", NULL);
- 			m_Kern[FUNC_FPREFIXSUM] = 						clCreateKernel(m_program, "prefixSum", &err);
-			m_Kern[FUNC_FPREFIXSUMCHANGES] = 				clCreateKernel(m_program, "prefixSumChanges", &err);
- 			m_Kern[FUNC_FPREFIXUP] = 						clCreateKernel(m_program, "prefixUp", &err);
+ 			m_Kern[FUNC_FPREFIXSUM] = 						clCreateKernel(m_program, "prefixSum", &status);
+			m_Kern[FUNC_FPREFIXSUMCHANGES] = 				clCreateKernel(m_program, "prefixSumChanges", &status);
+ 			m_Kern[FUNC_FPREFIXUP] = 						clCreateKernel(m_program, "prefixUp", &status);
  			m_Kern[FUNC_TALLYLISTS] = 						clCreateKernel(m_program, "tally_denselist_lengths", NULL);
 // 			m_Kern[FUNC_COMPUTE_DIFFUSION] = 				clCreateKernel(m_program, "computeDiffusion", NULL);
  			m_Kern[FUNC_COUNT_SORT_LISTS] = 				clCreateKernel(m_program, "countingSortDenseLists", NULL);
@@ -504,12 +505,12 @@ using namespace std;
 // 			m_Kern[FUNC_WEAKEN_TISSUE] = 					clCreateKernel(m_program, "weaken_tissue", NULL);
 // 			m_Kern[FUNC_EXTERNAL_ACTUATION] = 				clCreateKernel(m_program, "externalActuation", NULL);
 // 			m_Kern[FUNC_FIXED] = 							clCreateKernel(m_program, "fixedParticles", NULL);
- 			m_Kern[FUNC_INIT_RANDOMCL] = 					clCreateKernel(m_program, "init_RandCL", &err);
+ 			m_Kern[FUNC_INIT_RANDOMCL] = 					clCreateKernel(m_program, "init_RandCL", &status);
 // 			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_OUTGOING] = 	clCreateKernel(m_program, "assembleMuscleFibresOutGoing", NULL);
 // 			m_Kern[FUNC_ASSEMBLE_MUSCLE_FIBRES_INCOMING] = 	clCreateKernel(m_program, "assembleMuscleFibresInComing", NULL);
 // 			m_Kern[FUNC_INITIALIZE_BONDS] = 				clCreateKernel(m_program, "initialize_bonds", NULL);
  			m_Kern[FUNC_MEMSET32D] = 						clCreateKernel(m_program, "memset32d_kernel", NULL);
-			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;
+			if(verbosity>0 && status!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(status) << "\n" << flush;
 
 		}
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

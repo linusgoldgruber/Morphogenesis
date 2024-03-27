@@ -222,11 +222,12 @@
         } FBufs;
 
             //cl_float3* bufV3(FBufs* fb, int n) { return (cl_float3*) fb->mgpu[n]; }
-            float3* bufF3(__constant FBufs* fb, int n) { return (float3*) fb->mgpu[n]; }
-            float*  bufF (__constant FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
-            uint*   bufI (__constant FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
-            char*   bufC (__constant FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
-            uint**  bufII (__constant FBufs* fb, int n) { return (uint**)  fb->mgpu[n]; }
+            float3* bufF3   (__global FBufs* fb, int n) { return (float3*) fb->mgpu[n]; }
+            float*  bufF    (__global FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
+            uint*   bufI    (__global FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
+            char*   bufC    (__global FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
+            uint**  bufII   (__global FBufs* fb, int n) { return (uint**)  fb->mgpu[n]; }
+
             well512_state*  bufWell512State(__constant FBufs* fb, int n) { return (well512_state*) fb->mgpu[n]; }
             unsigned long long*  bufULL(__constant FBufs* fb, int n) { return (unsigned long long*) fb->mgpu[n]; }
 

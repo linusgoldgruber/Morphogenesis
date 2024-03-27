@@ -16,7 +16,7 @@
 #include "fluid_system.h"
 #include <thread>
 
-#define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
+#define CHECK_ERROR(status) if (status != CL_SUCCESS) { printf("Error: %d\n", status); exit(1); }
 #define SDK_SUCCESS 0
 #define SDK_FAILURE 1
 #define UINT_MAXSIZE 65535
@@ -195,10 +195,10 @@ FluidSystem::FluidSystem(Json::Value obj_)
 	m_device  = devices[conf_device];													/*Step 4: Create command queue & associate context.*///////////
 	cl_command_queue_properties prop[] = { 0 };											//  NB Device (GPU) queues are out-of-order execution -> need synchronization.
 	m_queue =     clCreateCommandQueueWithProperties(m_context, m_device, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
-	uload_queue = clCreateCommandQueueWithProperties(m_context, m_device, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
+	upload_queue = clCreateCommandQueueWithProperties(m_context, m_device, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
 	dload_queue = clCreateCommandQueueWithProperties(m_context, m_device, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
 	track_queue = clCreateCommandQueueWithProperties(m_context, m_device, prop, &status);	if(status!=CL_SUCCESS)	{cout<<"\nstatus="<<checkerror(status)<<"\n"<<flush;exit_(status);};
-																						if(verbosity>1) cout << "FluidSystem_chk 4: \n" << uload_queue << flush;
+																						if(verbosity>1) cout << "FluidSystem_chk 4: \n" << upload_queue << flush;
 
 																						// Multiple queues for latency hiding: Upload, Download, Mapping, Tracking,... autocalibration, SIRFS, SPMP
 																						// NB Might want to create command queues on multiple platforms & devices.
@@ -233,7 +233,7 @@ FluidSystem::FluidSystem(Json::Value obj_)
 
     //initializeFBufs(&m_Fluid);
 
-	m_FParamDevice=m_FluidDevice=m_FluidTempDevice=m_FGenomeDevice=0;		// set device pointers to zero
+	m_FParamsDevice=m_FluidDevice=m_FluidTempDevice=m_FGenomeDevice=0;		// set device pointers to zero
 																						if(verbosity>0) cout << "\n-----FluidSystem::FluidSystem finished-----\n\n" << flush;
 }
 
@@ -252,7 +252,7 @@ FluidSystem::~FluidSystem()
 // 	status = clReleaseKernel(m_Kern[FUNC_SAMPLE]); 							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_SAMPLE status = " << checkerror(status) << "\n" << flush;}
 	status = clReleaseKernel(m_Kern[FUNC_FPREFIXSUM]); 						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXSUM status = " << checkerror(status) << "\n" << flush;}
 	status = clReleaseKernel(m_Kern[FUNC_FPREFIXSUMCHANGES]); 			    if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXSUMCHANGES status = " << checkerror(status) << "\n" << flush;}
-	status = clReleaseKernel(m_Kern[FUNC_FPREFIXUP]); 					    if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXUP status = " << checkerror(status) << "\n" << flush;}
+	status = clReleaseKernel(m_Kern[FUNC_FPREFIXUP]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXUP status = " << checkerror(status) << "\n" << flush;}
 	status = clReleaseKernel(m_Kern[FUNC_TALLYLISTS]);						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_TALLYLISTS status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_DIFFUSION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_DIFFUSION status = " << checkerror(status) << "\n" << flush;}
  	status = clReleaseKernel(m_Kern[FUNC_COUNT_SORT_LISTS]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COUNT_SORT_LISTS status = " << checkerror(status) << "\n" << flush;}
@@ -282,7 +282,7 @@ FluidSystem::~FluidSystem()
 
 	status = clReleaseProgram(m_program);			if (status != CL_SUCCESS)	{ cout << "\nRelease Program status = " << checkerror(status) <<"\n"<<flush; }
 	status = clReleaseCommandQueue(m_queue);		if (status != CL_SUCCESS)	{ cout << "\nRelease CQ1 status = " << checkerror(status) <<"\n"<<flush; }
-	status = clReleaseCommandQueue(uload_queue);	if (status != CL_SUCCESS)	{ cout << "\nRelease CQ2 status = " << checkerror(status) <<"\n"<<flush; }
+	status = clReleaseCommandQueue(upload_queue);	if (status != CL_SUCCESS)	{ cout << "\nRelease CQ2 status = " << checkerror(status) <<"\n"<<flush; }
 	status = clReleaseCommandQueue(dload_queue);	if (status != CL_SUCCESS)	{ cout << "\nRelease CQ3 status = " << checkerror(status) <<"\n"<<flush; }
 	status = clReleaseCommandQueue(track_queue);	if (status != CL_SUCCESS)	{ cout << "\nRelease CQ4 status = " << checkerror(status) <<"\n"<<flush; }
 	status = clReleaseContext(m_context);			if (status != CL_SUCCESS)	{ cout << "\nRelease Context status = " << checkerror(status) <<"\n"<<flush; }
@@ -300,15 +300,15 @@ void FluidSystem::InitializeOpenCL()
 
     																				if(verbosity>0) cout << "FluidSystem::InitializeOpenCL_chk1\n" << flush;
 	cl_int res;
-	m_FParamDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FParams), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	m_FluidDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_Fluid), 0, &res);	    if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	m_FParamsDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FParams), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	m_FluidDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_Fluid.mgpu), 0, &res);	    if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	m_FluidTempDevice	= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FluidTemp), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	m_FGenomeDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FGenome), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
     m_FPrefixDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(FPrefix), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 
 
 																				if(verbosity>1) {
-																					cout << "m_FParamDevice = " 	<< m_FParamDevice << endl;
+																					cout << "m_FParamDevice = " 	<< m_FParamsDevice << endl;
 																					cout << "m_FluidDevice = " 		<< m_FluidDevice << endl;
 																					cout << "m_FluidTempDevice = " 	<< m_FluidTempDevice << endl;
 																					cout << "m_FGenomeDevice = " 	<< m_FGenomeDevice << endl;
@@ -316,11 +316,6 @@ void FluidSystem::InitializeOpenCL()
 
     																				if(verbosity>0) cout << "FluidSystem::InitializeOpenCL_chk3\n" << flush;
 
-
- 	status = clEnqueueWriteBuffer(uload_queue, m_FParamDevice, 		CL_FALSE, 0, sizeof(m_FParams), 		&m_FParams, 			0, NULL, &writeEvt);	  if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl; exit_(status);}
-	status = clEnqueueWriteBuffer(uload_queue, m_FluidDevice, 		CL_FALSE, 0, sizeof(m_Fluid), 		&m_Fluid, 			0, NULL, &writeEvt);	          if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4\n" << endl; exit_(status);}
-	status = clEnqueueWriteBuffer(uload_queue, m_FluidTempDevice, 	CL_FALSE, 0, sizeof(m_FluidTemp), 				&m_FluidTemp, 		0, NULL, &writeEvt);  if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.5\n" << endl; exit_(status);}
-	status = clEnqueueWriteBuffer(uload_queue, m_FGenomeDevice, 	CL_FALSE, 0, sizeof(m_FGenome), 		&m_FGenome, 0, NULL, &writeEvt);	          if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.6\n" << endl; exit_(status);}
 
 // 	cl_event readEvt;
 //
@@ -539,7 +534,7 @@ void FluidSystem::FluidParamCL (float ss, float sr, float pr, float mass, float 
     clCheck ( clEnqueueWriteBuffer(
 
         m_queue,
-        m_FParamDevice,
+        m_FParamsDevice,
         CL_TRUE,
         0,
         sizeof(FParams),
@@ -606,7 +601,7 @@ void FluidSystem::Exit_no_CL (){
 
 void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode) {
     bool rtn = true;
-    cl_int err;
+    cl_int status;
     if (verbosity > 0) {
         std::cout << "\nAllocateBuffer ( int buf_id=" << buf_id << ", int stride=" << stride << ", int cpucnt=" << cpucnt
                   << ", int gpucnt=" << gpucnt << ", int " << gpumode << ", int " << cpumode << " )\t" << std::flush;
@@ -665,11 +660,11 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
                 clCheck(clReleaseMemObject(*gpuptr(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject SINGLE/DUAL", "gpuVar", mbDebug);
 
-                cl_mem buf_loc = clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err);
+                cl_mem buf_loc = clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &status);
 
 
 
-                                                                                            if(verbosity>0 && err!=CL_SUCCESS) cout << checkerror(err)  << "\nstride*gpucnt: " << stride*gpucnt << "\n" << flush;
+                                                                                            if(verbosity>0 && status!=CL_SUCCESS) cout << checkerror(status)  << "\nstride*gpucnt: " << stride*gpucnt << "\n" << flush;
 
                                                                                             if (verbosity > 1) { std::cout << "\t\t gpuptr(&m_Fluid, " << buf_id << ")'" << gpuptr(&m_Fluid, buf_id) << ",   gpu(&m_Fluid, " << buf_id << ")=" << gpuVar(&m_Fluid, buf_id) << "\n" << std::flush;}
 
@@ -679,11 +674,11 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
             }else{
 
-                cl_mem buf_loc = clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err);
+                cl_mem buf_loc = clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &status);
 
 
 
-                                                                                            if(verbosity>0 && err!=CL_SUCCESS) cout << checkerror(err)  << "\nstride*gpucnt: " << stride*gpucnt << "\n" << flush;
+                                                                                            if(verbosity>0 && status!=CL_SUCCESS) cout << checkerror(status)  << "\nstride*gpucnt: " << stride*gpucnt << "\n" << flush;
 
                                                                                             if (verbosity > 1) { std::cout << "\t\t gpuptr(&m_Fluid, " << buf_id << ")'" << gpuptr(&m_Fluid, buf_id) << ",   gpu(&m_Fluid, " << buf_id << ")=" << gpuVar(&m_Fluid, buf_id) << "\n" << std::flush;}
 
@@ -706,10 +701,10 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
                 clCheck(clReleaseMemObject(*gpuptr(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject TEMP/DUAL", "gpuVar", mbDebug);
             }
 
-            setGpuBuf(&m_FluidTemp, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err));
-                                                                                            if(verbosity>0) cout << checkerror(err)  << stride*gpucnt << "\n" << flush;
+            setGpuBuf(&m_FluidTemp, buf_id, clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &status));
+                                                                                            if(verbosity>0) cout << checkerror(status)  << stride*gpucnt << "\n" << flush;
 
-            if (err != CL_SUCCESS) {_exit(err);}
+            if (status != CL_SUCCESS) {_exit(status);}
         }
         //cout << "-----------------clFinish()-----------------\n" << flush;
 
@@ -771,7 +766,7 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
 
         clCheck( clEnqueueWriteBuffer(m_queue, m_FluidDevice, CL_TRUE, 0, sizeof(FBufs), &m_Fluid, 0, NULL, NULL), "AllocateParticles", "clEnqueueWriteBuffer", "m_FluidDevice", mbDebug);
         clCheck( clEnqueueWriteBuffer(m_queue, m_FluidTempDevice, CL_TRUE, 0, sizeof(FBufs), &m_FluidTemp, 0, NULL, NULL),	"AllocateParticles", "clEnqueueWriteBuffer", "m_FluidTempDevice", mbDebug);
-        clCheck( clEnqueueWriteBuffer(m_queue, m_FParamDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL),  "AllocateParticles", "clEnqueueWriteBuffer", "m_FParamDevice", mbDebug);
+        clCheck( clEnqueueWriteBuffer(m_queue, m_FParamsDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL),  "AllocateParticles", "clEnqueueWriteBuffer", "m_FParamDevice", mbDebug);
         clCheck( clEnqueueWriteBuffer(m_queue, m_FGenomeDevice, CL_TRUE, 0, sizeof(FGenome), &m_FGenome, 0, NULL, NULL),  "AllocateParticles", "clEnqueueWriteBuffer", "m_FGenomeDevice", mbDebug);
 
         clCheck(clFinish(m_queue), "AllocateParticles", "clFinish", "", mbDebug );
@@ -811,9 +806,9 @@ void FluidSystem::AllocateBufferDenseLists(int buf_id, int stride, int gpucnt, i
 
     if (*listpointer != NULL) clCheck(clReleaseMemObject(*listpointer), "AllocateBufferDenseLists1", "clReleaseMemObject", "*listpointer", mbDebug);
 
-    cl_int err;
-    *listpointer = clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &err);
-    bool result = clCheck(err, "AllocateBufferDenseLists2", "clCreateBuffer", "listpointer", mbDebug);
+    cl_int status;
+    *listpointer = clCreateBuffer(m_context, CL_MEM_READ_WRITE, stride * gpucnt, NULL, &status);
+    bool result = clCheck(status, "AllocateBufferDenseLists2", "clCreateBuffer", "listpointer", mbDebug);
 
     clCheck(clFinish(m_queue), "AllocateBufferDenseLists ", "clFinish", "after allocation", mbDebug);
     if (result == false) _exit(result);
@@ -884,6 +879,7 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
 
     int n = mNumPoints;
     Set(bufV3(&m_Fluid, FPOS) + n, Pos->x,Pos->y,Pos->z );
+    printf("\n--->Assigned values at index %d: x=%f, y=%f, z=%f<---\n", n, Pos->x, Pos->y, Pos->z);
     Set(bufV3(&m_Fluid, FVEL) + n, Vel->x,Vel->y,Vel->z );
     Set(bufV3(&m_Fluid, FVEVAL) + n, 0,0,0 );
     Set(bufV3(&m_Fluid, FFORCE) + n, 0,0,0 );
@@ -1089,7 +1085,7 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
             std::cout << "\n EpiGen:  \t" << *EpiGen << std::flush;
         }
 
-        cout << " ----------------------------------------------------------DOING AddParticleMorphogenesis2( " << p+1 << ")\n" << flush;
+        cout << "\nAddParticleMorphogenesis2(" << p+1 << ") running----------------------------------------------------------" << flush;
                 p = AddParticleMorphogenesis2 (
                 /* cl_float3* */ &Pos,
                 /* cl_float3* */ &Vel,
@@ -1967,7 +1963,7 @@ void FluidSystem::setFreeze(bool freeze){
             m_FParams.freezeBoolToInt = 0;
     }
     //clCheck ( cuMemcpyHtoD ( clFParams,	&m_FParams,		sizeof(FParams) ), "FluidParamCL", "cuMemcpyHtoD", "clFParams", mbDebug);
-    clCheck ( clEnqueueWriteBuffer(m_queue, m_FParamDevice, CL_TRUE, 0 , sizeof(FParams), &m_FParams, 0, NULL, NULL ), "FluidParamCL", "cuMemcpyHtoD", "clFParams", mbDebug);
+    clCheck ( clEnqueueWriteBuffer(m_queue, m_FParamsDevice, CL_TRUE, 0 , sizeof(FParams), &m_FParams, 0, NULL, NULL ), "FluidParamCL", "cuMemcpyHtoD", "clFParams", mbDebug);
     std::cout<<"\n-------setFreeze() finished.-------"<<std::flush;
 
 

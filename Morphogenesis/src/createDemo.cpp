@@ -14,7 +14,7 @@
 #include <math.h>
 #include <regex>
 #include <jsoncpp/json/json.h>
-#define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
+#define CHECK_ERROR(status) if (status != CL_SUCCESS) { printf("Error: %d\n", status); exit(1); }
 #include "fluid.h"
 #include "fluid_system.h"
 #include "host_CL.cpp"

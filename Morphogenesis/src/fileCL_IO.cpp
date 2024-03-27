@@ -1135,9 +1135,12 @@ void FluidSystem::WriteResultsCSV ( const char * input_folder, const char * outp
 }
 
 void FluidSystem::SaveUintArray( uint* array, int numElem1, const char * relativePath ){ /// Used to save an array to .csv for debugging.
-   FILE* fp = fopen ( relativePath, "w" );
+    char buf[256]; //TODO make relative
+    sprintf ( buf, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/%s", relativePath);
+    FILE* fp = fopen ( buf , "w" );
+
     if (fp == NULL) {
-        if (verbosity>1) std::cout << "\nvoid FluidSystem::SaveUintArray ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
+        if (verbosity>0) std::cout << "\n+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++void FluidSystem::SaveUintArray ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
         assert(0);
     }
     for(uint i=0; i<numElem1; i+=100){
