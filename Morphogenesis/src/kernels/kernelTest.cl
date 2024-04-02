@@ -180,10 +180,10 @@ __kernel void insertParticlesCL(
     int pnum,
     volatile __global float4* fpos,
     volatile __global uint* fgcell,
-//     volatile __global uint* fgndx
-//      volatile __global uint* fepigen
-//     volatile __global int* fgridcnt,
-     volatile __global int* fgridcnt_active_genes
+    volatile __global uint* fgndx,
+    volatile __global uint* fepigen,
+    volatile __global int* fgridcnt,
+    volatile __global int* fgridcnt_active_genes
     )
 {
     uint i = get_global_id(0);
