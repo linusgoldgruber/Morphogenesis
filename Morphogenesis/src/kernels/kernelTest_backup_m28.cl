@@ -50,6 +50,7 @@
 #include "../randCL_well512.cl"
 
 
+
 // __constant struct FParams	fparam  = {
 //         .debug = 2,
 // 		.numItems = 0, .numGroups = 0, .itemsPerGroup = 0,
@@ -111,14 +112,11 @@ __kernel void memset32d_kernel(
     int gid = get_global_id(0);
     buffer[gid] = value;
 }
-/*
+
 __kernel void insertParticlesCL(
     __global struct FParams* m_FParamsDevice,
+    __global struct FBufs* m_Fluid,
     int pnum,
-    volatile __global float4* fpos,
-    volatile __global uint* fgcell,
-    volatile __global uint* fgndx,
-    volatile __global uint* fepigen,
     volatile __global int* fgridcnt,
     volatile __global int* fgridcnt_active_genes
     )
@@ -126,73 +124,60 @@ __kernel void insertParticlesCL(
     uint i = get_global_id(0);
     if ( i >= pnum ) return;
 
-    float4  gridMin     =  m_FParamsDevice->gridMin;
-    float4  gridDelta   =  m_FParamsDevice->gridDelta;
-    int4    gridRes     =  m_FParamsDevice->gridRes;
-    int4    gridScan    =  m_FParamsDevice->gridScanMax;
+    float3  gridMin     =  m_FParamsDevice->gridMin;
+    float3  gridDelta   =  m_FParamsDevice->gridDelta;
+    int3    gridRes     =  m_FParamsDevice->gridRes;
+    int3    gridScan    =  m_FParamsDevice->gridScanMax;
     int     gridTot     =  m_FParamsDevice->gridTotal;
 
-    float4 gcf = (fpos[i] - gridMin) * gridDelta;
+    int     gs;
+    float3  gcf;
+    int3    gc;
 
-    printf("GCF after Calculation: Thread ID: %u, gcf: (%f, %f, %f), gridDelta: (%f, %f, %f)\n",
-        i, gcf.x, gcf.y, gcf.z, gridDelta.x, gridDelta.y, gridDelta.z);
-    int4 gc  = (int4)(gcf.x, gcf.y, gcf.z, gcf.w);
-    int gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
+    // Accessing the particle positions using bufF3 function
+    float3* fpos = bufF3(m_Fluid, FPOS); // Assuming FPOS is the index for particle positions
+    float3 pos = fpos[i];
 
-//     printf("Thread ID: %u, m_FParamsDevice->gridDelta: (%f, %f, %f)\n",
-//         i, m_FParamsDevice->gridDelta.x, m_FParamsDevice->gridDelta.y, m_FParamsDevice->gridDelta.z);
+    gcf = (pos - gridMin) * gridDelta;
+    gc  = (int3)(gcf.x, gcf.y, gcf.z);
+    gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
 
-    printf("Thread ID: %u, float3 fpos[%u]: (%v4hlf)\n",
-        i, i, fpos[i]);
+printf("Thread ID: %u, m_FParamsDevice->gridDelta: (%f, %f, %f)\n",
+       i, m_FParamsDevice->gridDelta.x, m_FParamsDevice->gridDelta.y, m_FParamsDevice->gridDelta.z);
+printf("Thread ID: %u, float3 gridDelta: (%f, %f, %f)\n",
+       i, gridDelta.x, gridDelta.y, gridDelta.z);
+printf("Thread ID: %u, float3 pos: (%f, %f, %f)\n",
+       i, pos.x, pos.y, pos.z);
 
 // printf("Thread ID: %u, m_FParamsDevice->gridTotal: (%u)\n",
 //        i, m_FParamsDevice->gridTotal);
 
     if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
 
-		fgcell[i] = gs;                                    // Grid cell insert.
-		printf("InsideLoop: Thread ID: %u, fgcell: (%u)\n",             // all zero (0)
-        i, fgcell[i]);
-        fgndx[i] = atomic_add(&fgridcnt[gs], 1);          // Grid counts.
+		bufI(m_Fluid, FGCELL)[i] = gs;                                    // Grid cell insert.
+        bufI(m_Fluid, FGNDX)[i] = atomic_add(&fgridcnt[gs], 1);          // Grid counts.
                                                                                                   //  ## add counters for dense lists. ##############
         // for each gene, if active, then atomicAdd bin count for gene
         for(int gene=0; gene<NUM_GENES; gene++){ // NB data ordered FEPIGEN[gene][particle] AND +ve int values -> active genes.
             //if(m_FParamsDevice->debug>2 && i==0)printf("\n");
-            if (fepigen[i + gene * m_FParamsDevice->maxPoints] > 0) {  // "if((int)bufI(m_FluidDevice, FEPIGEN)" may clash with INT_MAX
+            if (bufI(m_Fluid, FEPIGEN)[i + gene * m_FParamsDevice->maxPoints] > 0) {  // "if((int)bufI(m_FluidDevice, FEPIGEN)" may clash with INT_MAX
                 atomic_add( &fgridcnt_active_genes[gene*gridTot +gs], 1 );
             }
         }
     } else {
-        fgcell[i] = GRID_UNDEF;
+        bufI(m_Fluid, FGCELL)[i] = GRID_UNDEF;
         printf("Thread ID: %u, GRID_UNDEF\n",i);
 
     }
 
-    printf("Thread ID: %u, gc: (%d, %d, %d), Grid Cell: %d\n",
+    printf("Thread ID: %u, gc: (%d, %d, %d), Grid Index: %d\n",
         i, gc.x, gc.y, gc.z, gs);
 
-//     printf("Thread ID: %u, fgcell: (%u)\n",
-//         i, fgcell[i]);
-}*/
+    printf("Thread ID: %u, gcf: (%f, %f, %f), gridDelta: (%f, %f, %f)\n",
+        i, gcf.x, gcf.y, gcf.z, gridDelta.x, gridDelta.y, gridDelta.z);
 
-
-__kernel void insertParticlesCL(
-    int pnum,
-    volatile __global float4* fpos,
-    volatile __global uint* fgcell,
-//     volatile __global uint* fgndx
-//      volatile __global uint* fepigen
-//     volatile __global int* fgridcnt,
-     volatile __global int* fgridcnt_active_genes
-    )
-{
-    uint i = get_global_id(0);
-    if ( i >= pnum ) return;
-
-    printf("Thread ID: %u, float3 fpos[%u]: (%v4hlf)\n",
-        i, i, fpos[i]);
-
-
+    printf("Thread ID: %u, gridMin: (%f, %f, %f)\n",
+        i, gridMin.x, gridMin.y, gridMin.z);
 }
 
 __kernel void prefixUp(
@@ -216,8 +201,8 @@ __kernel void prefixSumChanges(
     __global uint *aux,
     __global uint *addInputOffset,
     __global uint *addOutputOffset,
-              int  len,
-              int  zeroff
+    int len,
+    int zeroff
         ) //, __constant size_t *offset_scan0)
 {
     // Declares a locally shared, temporary array, with dimemsions 2 x BLOCKSIZE (1024 as of rn)
@@ -284,8 +269,8 @@ __kernel void prefixSum(
     __global uint *input,
     __global uint *output,
     __global uint *aux,
-              int  len,
-              int  zeroff
+    int len,
+    int zeroff
         ) //, __constant size_t *offset_scan0)
 {
     // Declares a locally shared, temporary array, with dimemsions 2 x BLOCKSIZE (1024 as of rn)
@@ -349,24 +334,24 @@ __kernel void prefixSum(
 
 __kernel void tally_denselist_lengths(
     __global struct FParams* m_FParamsDevice,
-    __global struct FBufs* m_Fluid,
-                int num_lists,
-                int fdense_list_lengths,
-                int fgridcnt,
-                int fgridoff
+    __global struct FBufs* m_FluidDevice,
+    int num_lists,
+    int fdense_list_lengths,
+    int fgridcnt,
+    int fgridoff
     )
 {
     uint list = get_group_id(0) * get_local_size(0) + get_local_id(0);
     if ( list >= num_lists ) return;
     int gridTot = m_FParamsDevice->gridTotal;
-    bufI(m_Fluid, fdense_list_lengths)[list] = bufI(m_Fluid, fgridcnt)[(list+1)*gridTot -1] + bufI(m_Fluid, fgridoff)[(list+1)*gridTot -1];
+    bufI(m_FluidDevice, fdense_list_lengths)[list] = bufI(m_FluidDevice, fgridcnt)[(list+1)*gridTot -1] + bufI(m_FluidDevice, fgridoff)[(list+1)*gridTot -1];
 }
 
 __kernel void countingSortFull(
-    __global struct FParams*    m_FParamsDevice,
-    __global struct FBufs*      m_FluidDevice,
-    __global struct FBufs*      m_FluidTempDevice,
-                int pnum
+    __global struct FParams* m_FParamsDevice,
+    __global struct FBufs* m_FluidDevice,
+    __global struct FBufs* m_FluidTempDevice,
+    int pnum
     )
 {
     uint i = get_global_id(0);

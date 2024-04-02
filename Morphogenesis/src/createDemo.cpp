@@ -112,6 +112,8 @@ int main ( int argc, const char** argv )
 
     // Clear all buffers
     fluid.Initialize();
+    int output_folder_bool;
+//     output_folder_bool = fluid.mk_subdir(&output_folder);
 
     uint debug =2;
 

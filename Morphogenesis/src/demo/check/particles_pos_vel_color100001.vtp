@@ -1,30 +1,30 @@
 <?xml version="1.0"?>
 <VTKFile type="PolyData" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
   <PolyData>
-    <Piece NumberOfPoints="18" NumberOfVerts="0" NumberOfLines="72" NumberOfStrips="0" NumberOfPolys="0">
+    <Piece NumberOfPoints="16" NumberOfVerts="0" NumberOfLines="60" NumberOfStrips="0" NumberOfPolys="0">
       <PointData>
         <DataArray type="UInt32" Name="FAGE" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FCLR" format="ascii" RangeMin="0" RangeMax="4278203136">
           4278203136 4278203136 4278203136 4278203136 4278203136 4278203136
-          4278203136 4278203136 4278203136 4278203136 0 0
-          0 0 0 0 0 0
+          4278203136 4278203136 0 0 0 0
+          0 0 0 0
         </DataArray>
-        <DataArray type="UInt32" Name="FPARTICLE_ID" format="ascii" RangeMin="0" RangeMax="10">
+        <DataArray type="UInt32" Name="FPARTICLE_ID" format="ascii" RangeMin="0" RangeMax="8">
           1 2 3 4 5 6
-          7 8 9 10 0 0
-          0 0 0 0 0 0
+          7 8 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FMASS_RADIUS" NumberOfComponents="2" format="ascii" RangeMin="0" RangeMax="65025.00129950018">
           65025 13 65025 13 65025 13
           65025 13 65025 13 65025 13
-          65025 13 65025 13 65025 13
-          65025 13 0 0 0 0
+          65025 13 65025 13 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
+          0 0
           <InformationKey name="L2_NORM_RANGE" location="vtkDataArray" length="2">
             <Value index="0">
               0
@@ -34,13 +34,12 @@
             </Value>
           </InformationKey>
         </DataArray>
-        <DataArray type="UInt32" Name="FNERVEIDX" format="ascii" RangeMin="0" RangeMax="1">
+        <DataArray type="UInt32" Name="FNERVEIDX" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
-          0 0 0 1 0 0
           0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FVEL" NumberOfComponents="3" format="ascii" RangeMin="0" RangeMax="0">
-          0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
@@ -67,7 +66,6 @@
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
           <InformationKey name="L2_NORM_RANGE" location="vtkDataArray" length="2">
             <Value index="0">
               0
@@ -78,7 +76,6 @@
           </InformationKey>
         </DataArray>
         <DataArray type="Float32" Name="FFORCE" NumberOfComponents="3" format="ascii" RangeMin="0" RangeMax="0">
-          0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
@@ -99,7 +96,7 @@
         <DataArray type="Float32" Name="FPRESS" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FDENSITY,(1/density,density)" NumberOfComponents="2" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
@@ -107,7 +104,7 @@
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0
           <InformationKey name="L2_NORM_RANGE" location="vtkDataArray" length="2">
             <Value index="0">
               0
@@ -120,171 +117,171 @@
         <DataArray type="Float32" Name="FCONC_0" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_1" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_2" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_3" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_4" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_5" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_6" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_7" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_8" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_9" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_10" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_11" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_12" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_13" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_14" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="FCONC_15" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_0" format="ascii" RangeMin="0" RangeMax="2147483647">
           2147483647 2147483647 2147483647 2147483647 2147483647 2147483647
-          2147483647 2147483647 2147483647 2147483647 0 0
-          0 0 0 0 0 0
+          2147483647 2147483647 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_1" format="ascii" RangeMin="0" RangeMax="2147483647">
           2147483647 2147483647 2147483647 2147483647 2147483647 2147483647
-          2147483647 2147483647 2147483647 2147483647 0 0
-          0 0 0 0 0 0
+          2147483647 2147483647 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_2" format="ascii" RangeMin="0" RangeMax="2147483647">
           2147483647 2147483647 2147483647 2147483647 2147483647 2147483647
-          2147483647 2147483647 2147483647 2147483647 0 0
-          0 0 0 0 0 0
+          2147483647 2147483647 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_3" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_4" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_5" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_6" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_7" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_8" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_9" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_10" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_11" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_12" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_13" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_14" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="FEPIGEN_15" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
         <DataArray type="UInt32" Name="F_TISSUE_TYPE" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
+          0 0 0 0
         </DataArray>
       </PointData>
       <CellData>
-        <DataArray type="UInt32" Name="parent_idx, parent_ID, curr_idx, particle ID, bond index" NumberOfComponents="6" format="ascii" RangeMin="0" RangeMax="92680.48692146584">
+        <DataArray type="UInt32" Name="parent_idx, parent_ID, curr_idx, particle ID, bond index" NumberOfComponents="6" format="ascii" RangeMin="0" RangeMax="92680.48655461408">
           0 1 65535 65535 0 0
           0 1 65535 65535 1 0
           0 1 65535 65535 2 0
@@ -333,18 +330,6 @@
           7 8 65535 65535 3 0
           7 8 65535 65535 4 0
           7 8 65535 65535 5 0
-          8 9 65535 65535 0 0
-          8 9 65535 65535 1 0
-          8 9 65535 65535 2 0
-          8 9 65535 65535 3 0
-          8 9 65535 65535 4 0
-          8 9 65535 65535 5 0
-          9 10 65535 65535 0 0
-          9 10 65535 65535 1 0
-          9 10 65535 65535 2 0
-          9 10 65535 65535 3 0
-          9 10 65535 65535 4 0
-          9 10 65535 65535 5 0
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
@@ -398,13 +383,11 @@
               0
             </Value>
             <Value index="1">
-              92680.486921
+              92680.486555
             </Value>
           </InformationKey>
         </DataArray>
         <DataArray type="Float32" Name="elastic_limit" format="ascii" RangeMin="0" RangeMax="0">
-          0 0 0 0 0 0
-          0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
@@ -439,12 +422,8 @@
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
-          0 0 0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="modulus" format="ascii" RangeMin="0" RangeMax="0">
-          0 0 0 0 0 0
-          0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
@@ -479,8 +458,6 @@
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
-          0 0 0 0 0 0
         </DataArray>
         <DataArray type="Float32" Name="strain_integrator" format="ascii" RangeMin="0" RangeMax="0">
           0 0 0 0 0 0
@@ -499,20 +476,16 @@
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
-          0 0 0 0 0 0
-          0 0 0 0 0 0
         </DataArray>
-        <DataArray type="Float32" Name="strain_sq_integrator" format="ascii" RangeMin="0" RangeMax="92358632800256">
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
-          92358630000000 4.5876e-41 3.4e-44 0 0 4.5876e-41
+        <DataArray type="Float32" Name="strain_sq_integrator" format="ascii" RangeMin="0" RangeMax="1.97905136722909e-9">
+          1.9790514e-9 4.565e-41 3.4e-44 0 0 4.565e-41
+          1.9790514e-9 4.565e-41 3.4e-44 0 0 4.565e-41
+          1.9790514e-9 4.565e-41 3.4e-44 0 0 4.565e-41
+          1.9790514e-9 4.565e-41 3.4e-44 0 0 4.565e-41
+          1.9790514e-9 4.565e-41 3.4e-44 0 0 4.565e-41
+          1.9790514e-9 4.565e-41 3.4e-44 0 0 4.565e-41
+          1.9790514e-9 4.565e-41 3.4e-44 0 0 4.565e-41
+          1.9790514e-9 4.565e-41 3.4e-44 0 0 4.565e-41
           0 0 0 0 0 0
           0 0 0 0 0 0
           0 0 0 0 0 0
@@ -525,11 +498,10 @@
       </CellData>
       <Points>
         <DataArray type="Float32" Name="Points" NumberOfComponents="3" format="ascii" RangeMin="0" RangeMax="54.772255750516614">
-          6.863281 4.809595 4.534837 3.348738 6.484459 6.380697
-          3.483454 8.051215 8.571099 3.598272 7.707123 5.632267
-          4.997093 6.754953 4.312733 5.784079 3.887778 7.65887
-          3.717611 5.007751 7.272223 5.988088 5.518062 8.031822
-          5.804327 3.66666 7.235978 5.688664 4.716675 8.551842
+          6.022581 4.978202 7.357107 6.85509 3.157562 5.677112
+          5.816386 7.759186 4.014555 4.75293 8.330038 4.40995
+          4.404434 8.29628 5.658683 5.615335 5.052775 7.384103
+          5.017328 6.03477 7.344814 4.741961 7.723941 8.5509
           0 0 0 10 0 0
           0 20 0 10 20 0
           0 0 50 10 0 50
@@ -551,7 +523,7 @@
         </DataArray>
       </Verts>
       <Lines>
-        <DataArray type="Int64" Name="connectivity" format="ascii" RangeMin="0" RangeMax="17">
+        <DataArray type="Int64" Name="connectivity" format="ascii" RangeMin="0" RangeMax="15">
           0 0 0 0 0 0
           0 0 0 0 0 0
           1 1 1 1 1 1
@@ -568,16 +540,12 @@
           6 6 6 6 6 6
           7 7 7 7 7 7
           7 7 7 7 7 7
-          8 8 8 8 8 8
-          8 8 8 8 8 8
-          9 9 9 9 9 9
-          9 9 9 9 9 9
-          11 10 12 10 13 12
-          13 11 14 10 15 14
-          15 11 16 14 16 12
-          17 16 17 15 17 13
+          9 8 10 8 11 10
+          11 9 12 8 13 12
+          13 9 14 12 14 10
+          15 14 15 13 15 11
         </DataArray>
-        <DataArray type="Int64" Name="offsets" format="ascii" RangeMin="2" RangeMax="144">
+        <DataArray type="Int64" Name="offsets" format="ascii" RangeMin="2" RangeMax="120">
           2 4 6 8 10 12
           14 16 18 20 22 24
           26 28 30 32 34 36
@@ -588,8 +556,6 @@
           86 88 90 92 94 96
           98 100 102 104 106 108
           110 112 114 116 118 120
-          122 124 126 128 130 132
-          134 136 138 140 142 144
         </DataArray>
       </Lines>
       <Strips>

@@ -652,6 +652,7 @@ using namespace std;
         // Genome for Morphogenesis
         void UpdateGenome ();
         void SetGenome ( FGenome newGenome ){m_FGenome=newGenome;}
+		int  mk_subdir(char* path);
         void ReadGenome( const char * relativePath);
         void Set_genome_tanh_param();
         void WriteGenome( const char * relativePath);

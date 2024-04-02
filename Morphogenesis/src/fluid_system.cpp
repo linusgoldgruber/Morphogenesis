@@ -301,7 +301,7 @@ void FluidSystem::InitializeOpenCL()
     																				if(verbosity>0) cout << "FluidSystem::InitializeOpenCL_chk1\n" << flush;
 	cl_int res;
 	m_FParamsDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FParams), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	m_FluidDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_Fluid.mgpu), 0, &res);	    if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	m_FluidDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_Fluid), 0, &res);	    if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	m_FluidTempDevice	= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FluidTemp), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	m_FGenomeDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FGenome), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
     m_FPrefixDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(FPrefix), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
@@ -603,8 +603,9 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
     bool rtn = true;
     cl_int status;
     if (verbosity > 0) {
-        std::cout << "\nAllocateBuffer ( int buf_id=" << buf_id << ", int stride=" << stride << ", int cpucnt=" << cpucnt
-                  << ", int gpucnt=" << gpucnt << ", int " << gpumode << ", int " << cpumode << " )\t" << std::flush;
+        std::cout << "\nAllocateBuffer ( int buf_id=" << buf_id <<  ", int stride=" << stride <<
+                                      ", int cpucnt=" << cpucnt <<  ", int gpucnt=" << gpucnt <<
+                                      ", int "        << gpumode << ", int "        << cpumode << " )\t" << std::flush;
     }
 
     // Initialize the mcpu array for buffer buf_id
@@ -630,15 +631,7 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
         char* src_buf = bufC(&m_Fluid, buf_id);
         char* dest_buf = (char*)malloc(cpucnt * stride);
-        /*
-        if (src_buf != nullptr) {
-            //cout << "\n-----memcpy() src_buf to dest_buf-----" << flush;
-            memcpy(dest_buf, src_buf, cpucnt * stride);
-            //isBufferAllZeros(dest_buf, cpucnt, stride);
-            cout << "\n-> src_buf NOT a nullpointer!" << flush;
 
-            free(src_buf);
-        }*/
         if (src_buf == nullptr) {cout << "\n-----src_buf is a nullpointer!-----" << flush;}
 
         m_Fluid.mcpu[buf_id] = dest_buf;
@@ -656,6 +649,7 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
         if (gpumode == GPU_SINGLE || gpumode == GPU_DUAL) {
 
+            //this if-statement ensure that the clReleaseMemObject() function only runs once at the beginning of the program.
             if (bufferAllocated[buf_id]) {
 
                 clCheck(clReleaseMemObject(*gpuptr(&m_Fluid, buf_id)), "AllocateBuffer", "clReleaseMemObject SINGLE/DUAL", "gpuVar", mbDebug);
@@ -692,7 +686,6 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
 
         }
-        //cout << "-----------------end of if\{}-----------------\n" << flush;
 
         if (gpumode == GPU_TEMP || gpumode == GPU_DUAL) {
             cout << "gpuptr(&m_FluidTemp, buf_id)= " << gpuVar(&m_FluidTemp, buf_id) << "\n" << flush;
@@ -706,12 +699,8 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
             if (status != CL_SUCCESS) {_exit(status);}
         }
-        //cout << "-----------------clFinish()-----------------\n" << flush;
 
         clFinish(m_queue);  // Ensure any new OpenCL operations are completed
-
-        //cout << "-----------------clGetDeviceInfo()-----------------\n" << flush;
-
         clGetDeviceInfo(m_device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(total), &total, NULL);
     }
 }
@@ -1011,7 +1000,8 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
     srand((unsigned int)time(NULL));
     if (verbosity>1)cout<<"\nSetupAddVolumeMorphogenesis2: num_particles_to_make= "<<num_particles_to_make<<",   min=("<<min.x<<","<<min.y<<","<<min.z<<"), max=("<<max.x<<","<<max.y<<","<<max.z<<") "<<std::flush;
     for (int i=0; i<num_particles_to_make; i++){
-        cout << "\n\n\n\nParticle " << i << ",\n mMaxPoints: " << mMaxPoints << ",\n mNumPoints: " << mNumPoints << "\n\n\n" << flush;
+        cout << "\n\nAddParticleMorphogenesis2(" << p+1 << ") running----------------------------------------------------------" << flush;
+        cout << "\nParticle " << i << ",\n mMaxPoints: " << mMaxPoints << ",\n mNumPoints: " << mNumPoints << "\n\n\n" << flush;
         Pos.x =  min.x + (float(rand())/float((RAND_MAX)) * dx) ;
         Pos.y =  min.y + (float(rand())/float((RAND_MAX)) * dy) ;
         Pos.z =  min.z + (float(rand())/float((RAND_MAX)) * dz) ;
@@ -1085,7 +1075,6 @@ void FluidSystem::SetupAddVolumeMorphogenesis2(cl_float3 min, cl_float3 max, flo
             std::cout << "\n EpiGen:  \t" << *EpiGen << std::flush;
         }
 
-        cout << "\nAddParticleMorphogenesis2(" << p+1 << ") running----------------------------------------------------------" << flush;
                 p = AddParticleMorphogenesis2 (
                 /* cl_float3* */ &Pos,
                 /* cl_float3* */ &Vel,
@@ -2466,12 +2455,13 @@ void FluidSystem::SetupSpacing (){
 
 void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * relativePath, int gpu_mode, int cpu_mode
      // Allocate buffers for points
-    std::cout<<"\nSetupSimulation chk1 // verbosity="<<verbosity<< " // launchParams.num_particles= " << launchParams.num_particles << std::flush;
-    cout << " BEFORE SETUP SIMULATION: launchParams.num_particles = " << launchParams.num_particles << "<----------------------------------------------------------------------------" << flush;
+    if (verbosity>1) std::cout<<"\n----- SetupSimulation() started,,, -----\n" << std::flush;
+    if (verbosity>1) std::cout<<"\nSetupSimulation chk1 // verbosity="<<verbosity<< " // launchParams.num_particles= " << launchParams.num_particles << std::flush;
 
     if (launchParams.num_particles > 0) {m_Param[PNUM] = launchParams.num_particles;}                             // TODO changed this to an if-statement, is this correct?
 
     mMaxPoints = m_Param[PNUM];
+    std::cout<<"\nX X X X X X X X X X X X X X X m_Param [PNUM] = " << m_Param [PNUM] <<std::flush; //TODO Remove this debug line
 
     m_Param [PGRIDSIZE] = 2*m_Param[PSMOOTHRADIUS] / m_Param[PGRID_DENSITY];
     //std::cout<<"\nX X X X X X X X X m_Param [PGRIDSIZE] = " << m_Param [PGRIDSIZE] <<std::flush; //TODO Remove this debug line
@@ -2493,18 +2483,20 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
 
     if (gpu_mode != GPU_OFF) {     // create CL instance etc..
         cout << "+OpenCL+ Setup started ...." << flush;
+        cout << "\n\n\n\nRUNNING FLUIDSETUPCL() WITH mMaxPoints SET TO: " << mMaxPoints << ".\n\n\n\n" << flush;
         FluidSetupCL ( mMaxPoints, m_GridSrch, *(cl_int3*)& m_GridRes, *(cl_float3*)& m_GridSize, *(cl_float3*)& m_GridDelta, *(cl_float3*)& m_GridMin, *(cl_float3*)& m_GridMax, m_GridTotal, 0 );
         UpdateParams();            //  sends simulation params to device.
         UpdateGenome();            //  sends genome to device.              // NB need to initialize genome from file, or something.
         cout << "+OpenCL+ Setup finished." << flush;
     }
     if (verbosity>1)std::cout<<"\nSetupSimulation chk4, mMaxPoints="<<mMaxPoints<<", gpu_mode="<<gpu_mode<<", cpu_mode="<<cpu_mode<<", verbosity="<<verbosity<<std::flush;
-
+    cout << "\n\n\n\nRUNNING ALLOCATEPARTICLES() WITH mMaxPoints SET TO: " << mMaxPoints << ".\n\n\n\n" << flush;
     AllocateParticles ( mMaxPoints, gpu_mode, cpu_mode );  // allocates only cpu buffer for particles
     if (verbosity>1)std::cout<<"\nSetupSimulation chk5 "<<std::flush;
 
     AllocateGrid(gpu_mode, cpu_mode);
-    if (verbosity>1)std::cout<<"\nSetupSimulation chk6 "<<std::flush;
+    if (verbosity>1) std::cout<<"\n----- SetupSimulation() finished, -----\n" << std::flush;
+
 
 }
 

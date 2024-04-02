@@ -300,22 +300,22 @@
         float           actuation_period;
 
         #ifndef CL_KERNEL
-		cl_float3			pboundmin, pboundmax, pgravity;
-		cl_float3			gridSize, gridDelta, gridMin, gridMax;
-        cl_float3*			mpos;			// particle buffers
-		cl_float3*			mvel;
-		cl_float3*			mveleval;
-		cl_float3*			mforce;
-		cl_int3			    gridRes, gridScanMax;
+		cl_float4			pboundmin, pboundmax, pgravity;
+		cl_float4			gridSize, gridDelta, gridMin, gridMax;
+        cl_float4*			mpos;			// particle buffers
+		cl_float4*			mvel;
+		cl_float4*			mveleval;
+		cl_float4*			mforce;
+		cl_int4			    gridRes, gridScanMax;
 
         #else
-        float3			pboundmin, pboundmax, pgravity;
-		float3			gridSize, gridDelta, gridMin, gridMax;
-        float3*			mpos;			// particle buffers
-		float3*			mvel;
-		float3*			mveleval;
-		float3*			mforce;
-		int3			gridRes, gridScanMax;
+        float4			pboundmin, pboundmax, pgravity;
+		float4			gridSize, gridDelta, gridMin, gridMax;
+        float4*			mpos;			// particle buffers
+		float4*			mvel;
+		float4*			mveleval;
+		float4*			mforce;
+		int4			gridRes, gridScanMax;
 
         #endif
 

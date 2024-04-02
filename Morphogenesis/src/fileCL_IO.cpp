@@ -13,21 +13,41 @@
 #include <vtkPointData.h>
 #include <vtkXMLPolyDataWriter.h>
 
-template <typename T>
-
-void printParam(const char* paramName, T paramValue) {
-    const char* formatSpecifier = "%p";
-
-    if (std::is_same<T, int>::value || std::is_same<T, unsigned int>::value || std::is_same<T, char>::value || std::is_same<T, char*>::value) {
-        formatSpecifier = "%s";
-    } else if (std::is_same<T, float>::value) {
-        formatSpecifier = "%f";
+// template <typename T>
+/*
+int FluidSystem::mk_subdir(char* path){
+    std::cout<<"\nmk_subdir: chk 0 path="<<path<<"\n"<<std::flush;
+    struct stat st;
+    if((stat(path,&st) == 0) && ((st.st_mode & S_IFDIR) != 0)  ){
+        std::cout<<"\tmk_subdir: chk 1  directory \""<<path<<"\" exists.\n"<<std::flush;
+    }else if((stat(path,&st) == 0) && ((st.st_mode & S_IFDIR) == 0) ){
+        std::cout<<"\tmk_subdir: chk 1  cannot create directory \""<<path<<"\", file exists.\n"<<std::flush;
+        return 1;
+    }else{
+        std::cout<<"\tmk_subdir: chk 1  creating directory \""<<path<<"\".\n"<<std::flush;
+        int check = mkdir(path,0777);
+        if (chetemplate <typename T>ck ){
+            printf("\nUnable to create sub-directory: %s\n", path);
+            return 1;
+        }
     }
+    std::cout<<"\tmk_subdir: chk 2 success\n"<<std::flush;
+    return 0;
+}*/
 
-    printf("%s = ", paramName);
-    printf(formatSpecifier, paramValue);
-    printf("\n");
-}
+// void printParam(const char* paramName, T paramValue) {
+//     const char* formatSpecifier = "%p";
+//
+//     if (std::is_same<T, int>::value || std::is_same<T, unsigned int>::value || std::is_same<T, char>::value || std::is_same<T, char*>::value) {
+//         formatSpecifier = "%s";
+//     } else if (std::is_same<T, float>::value) {
+//         formatSpecifier = "%f";
+//     }
+//
+//     printf("%s = ", paramName);
+//     printf(formatSpecifier, paramValue);
+//     printf("\n");
+// }
 
 int iDivUp (int a, int b) {
     return (a % b != 0) ? (a / b + 1) : (a / b);
@@ -632,7 +652,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     m_Param[PEXAMPLE] = simSpace;          // simSpace==2 : wave pool example.
     m_Param[PGRID_DENSITY] = 2.0;   // gives gridsize = 2*smoothradius/griddensity = smoothradius.
     m_Param[PNUM] = num_particles;  // 1000000;    //1000 = minimal simulation, 1000000 = large simulation
-    //cout << "\n++++++++++++++++m_Param[PNUM]= " << m_Param[PNUM] << "\n" << flush; TODO remove this debug line
+        cout << "\n\n\n\nRUNNING ALLOCATEBUFFER() WITH m_Param[PNUM] SET TO: " << m_Param[PNUM] << ".\n\n\n\n" << flush;
     AllocateBuffer ( FPARAMS, sizeof(FParams), 1,1, GPU_OFF, CPU_YES );
     m_Time = 0;
     mNumPoints = 0;			        // reset count TODO still hardcoded to 125, can it be set to 0?
