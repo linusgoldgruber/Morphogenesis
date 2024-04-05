@@ -880,7 +880,7 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
     *(bufF(&m_Fluid, FSTATE) + n ) = (float) rand();
     *(bufI(&m_Fluid, FAGE) + n) = Age;
     *(bufI(&m_Fluid, FCLR) + n) = Clr;
-  if (verbosity>1)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
+  if (verbosity>0)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
 
         //std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 2 XXXXXXXXXXXXXXXXX \t" << flush; //TODO remove
     uint* ElastIdx = (bufI(&m_Fluid, FELASTIDX) + n * BOND_DATA );

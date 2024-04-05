@@ -291,33 +291,28 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     cout << "\n+++++++++++++++++++++++++++ mMaxPoints: " << mMaxPoints << " +++++++++++++++++++++++\n\n" << flush;
     // set arguments and launch kernel "InsertParticles"
 
+
     cl_event writeEvt;
 
-    //cout << "\n++++++++++++++++++++++++++ FPOS of m_Fluid =" << *m_Fluid.mgpu[FPOS] << "\n\n" << flush;
+    cout << "\n++++++++++++++++++++++++++ FPOS of m_Fluid =" << *m_Fluid.mcpu << "\n\n" << flush;
  	status = clEnqueueWriteBuffer(upload_queue, m_FParamsDevice, 		CL_FALSE, 0, sizeof(m_FParams), 		&m_FParams, 			0, NULL, &writeEvt);	  if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.3\n" << endl; exit_(status);}
-
-	status = clEnqueueWriteBuffer(upload_queue, m_FluidDevice, 		CL_FALSE, 0, sizeof(m_Fluid), 		&m_Fluid, 			0, NULL, &writeEvt);	              if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4\n" << endl; exit_(status);}
 
     clWaitForEvents(1, &writeEvt);
 	clFinish(upload_queue);
     //void* args[1] = {&mMaxPoints}; //&mNumPoints
 
-//     status = clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 0)\n" << endl; exit_(status);}
+    status = clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 0)\n" << endl; exit_(status);}
+    status  = clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(int),          &mMaxPoints);
+    if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 2)\n" << endl; exit_(status);}
+    status = clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(cl_mem),          &m_Fluid.mgpu[FPOS]);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 5)\n" << endl; exit_(status);}
+    status = clSetKernelArg(m_Kern[FUNC_INSERT], 3, sizeof(cl_mem),          &m_Fluid.mgpu[FGCELL]);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 3)\n" << endl; exit_(status);}
+    status = clSetKernelArg(m_Kern[FUNC_INSERT], 4, sizeof(cl_mem),          &m_Fluid.mgpu[FGNDX]);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 2)\n" << endl; exit_(status);}
+    status = clSetKernelArg(m_Kern[FUNC_INSERT], 5, sizeof(cl_mem),          &m_Fluid.mgpu[FEPIGEN]);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 4)\n" << endl; exit_(status);}
 
-    status  = clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(int),          &mMaxPoints); if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 7)\n" << endl; exit_(status);}
-
-    status = clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(cl_mem),          &m_Fluid.mgpu[FPOS]);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 1)\n" << endl; exit_(status);}
-
-    status = clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(cl_mem),          &m_Fluid.mgpu[FGCELL]);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 2)\n" << endl; exit_(status);}
-
-    status = clSetKernelArg(m_Kern[FUNC_INSERT], 3, sizeof(cl_mem),          &m_Fluid.mgpu[FGNDX]);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 3)\n" << endl; exit_(status);}
-
-    status = clSetKernelArg(m_Kern[FUNC_INSERT], 4, sizeof(cl_mem),          &m_Fluid.mgpu[FEPIGEN]);                                                                      if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 4)\n" << endl; exit_(status);}
-
-    status  = clSetKernelArg(m_Kern[FUNC_INSERT], 5, sizeof(cl_mem),       &m_Fluid.mgpu[FBIN_COUNT]);if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 5)\n" << endl; exit_(status);}
-
-    status  = clSetKernelArg(m_Kern[FUNC_INSERT], 6, sizeof(cl_mem), &m_Fluid.mgpu[FBIN_COUNT_ACTIVE_GENES]);if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 6)\n" << endl; exit_(status);}
-    clFinish(upload_queue);
+    status  = clSetKernelArg(m_Kern[FUNC_INSERT], 6, sizeof(cl_mem),       &m_Fluid.mgpu[FBIN_COUNT]); //volatile global int* fgridcnt
+    if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 6)\n" << endl; exit_(status);}
+    status  = clSetKernelArg(m_Kern[FUNC_INSERT], 7, sizeof(cl_mem),       &m_Fluid.mgpu[FBIN_COUNT_ACTIVE_GENES]); //volatile global int* fgridcnt_active_genes
+    if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 7)\n" << endl; exit_(status);}
 
     //Running kernel
     cl_event func_insert_event;
@@ -337,10 +332,8 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
 
 
     int TESTTESTTEST;
-    int TESTTESTTEST2;
-//     int TESTTESTTEST3;
-    clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FBIN_COUNT), CL_TRUE, (m_GridTotal-1)*sizeof(int), sizeof(int), &TESTTESTTEST2, 0, NULL, NULL),
-    cout << "\n############################################################################################### FBIN_COUNT Insert Particles(): " << TESTTESTTEST2 << "\n" << flush;
+    clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FBIN_COUNT), CL_TRUE, (m_GridTotal-1)*sizeof(int), sizeof(int), &TESTTESTTEST, 0, NULL, NULL),
+    cout << "\n############################################################################################### FBIN_COUNT Insert Particles(): " << TESTTESTTEST << "\n" << flush;
 
 
     clFlush(m_queue);

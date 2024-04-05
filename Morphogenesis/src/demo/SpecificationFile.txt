@@ -1,4 +1,4 @@
-num_particles = 8
+num_particles = 30
  demoType = 0
  simSpace = 7
  

@@ -177,6 +177,8 @@ __kernel void insertParticlesCL(
 
 
 __kernel void insertParticlesCL(
+    __global struct FParams* m_FParamsDevice,
+//     __global struct FBufs* m_FluidDevice,
     int pnum,
     volatile __global float4* fpos,
     volatile __global uint* fgcell,
@@ -186,13 +188,56 @@ __kernel void insertParticlesCL(
     volatile __global int* fgridcnt_active_genes
     )
 {
-    uint i = get_global_id(0);
+uint i = get_global_id(0);
     if ( i >= pnum ) return;
+
+    float4  gridMin     =  m_FParamsDevice->gridMin;
+    float4  gridDelta   =  m_FParamsDevice->gridDelta;
+    int4    gridRes     =  m_FParamsDevice->gridRes;
+    int4    gridScan    =  m_FParamsDevice->gridScanMax;
+    int     gridTot     =  m_FParamsDevice->gridTotal;
+
+    float4 gcf = (fpos[i] - gridMin) * gridDelta;
+
+    printf("GCF after Calculation: Thread ID: %u, gcf: (%f, %f, %f), gridDelta: (%f, %f, %f)\n",
+        i, gcf.x, gcf.y, gcf.z, gridDelta.x, gridDelta.y, gridDelta.z);
+    int4 gc  = (int4)(gcf.x, gcf.y, gcf.z, gcf.w);
+    int gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
+
+//     printf("Thread ID: %u, m_FParamsDevice->gridDelta: (%f, %f, %f)\n",
+//         i, m_FParamsDevice->gridDelta.x, m_FParamsDevice->gridDelta.y, m_FParamsDevice->gridDelta.z);
 
     printf("Thread ID: %u, float3 fpos[%u]: (%v4hlf)\n",
         i, i, fpos[i]);
 
+// printf("Thread ID: %u, m_FParamsDevice->gridTotal: (%u)\n",
+//        i, m_FParamsDevice->gridTotal);
 
+    if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
+
+		fgcell[i] = gs;                                    // Grid cell insert.
+		printf("InsideLoop: Thread ID: %u, fgcell: (%u)\n",             // all zero (0)
+        i, fgcell[i]);
+        fgndx[i] = atomic_add(&fgridcnt[gs], 1);          // Grid counts.
+                                                                                                  //  ## add counters for dense lists. ##############
+        // for each gene, if active, then atomicAdd bin count for gene
+        for(int gene=0; gene<NUM_GENES; gene++){ // NB data ordered FEPIGEN[gene][particle] AND +ve int values -> active genes.
+            //if(m_FParamsDevice->debug>2 && i==0)printf("\n");
+            if (fepigen[i + gene * m_FParamsDevice->maxPoints] > 0) {  // "if((int)bufI(m_FluidDevice, FEPIGEN)" may clash with INT_MAX
+                atomic_add( &fgridcnt_active_genes[gene*gridTot +gs], 1 );
+            }
+        }
+    } else {
+        fgcell[i] = GRID_UNDEF;
+        printf("Thread ID: %u, GRID_UNDEF\n",i);
+
+    }
+
+    printf("Thread ID: %u, gc: (%d, %d, %d), Grid Cell: %d\n",
+        i, gc.x, gc.y, gc.z, gs);
+
+//     printf("Thread ID: %u, fgcell: (%u)\n",
+//         i, fgcell[i]);
 }
 
 __kernel void prefixUp(
