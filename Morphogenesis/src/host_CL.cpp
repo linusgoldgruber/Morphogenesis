@@ -184,28 +184,12 @@ void FluidSystem::TransferToTempCL ( int buf_id, int sz ){
 
         if(status!=CL_SUCCESS)	{cout<<"\nTransferToTempCL: clCreateBuffer status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
 
-//     cout << "\nX X X X X X X X X 'sz' input value: " << sz << flush;
-//     cout << "\nX X X X X X X X X buf_id value: " << buf_id << flush;
-//     cout << "\nX X X X X X X X X mMaxPoints * sizeof(float) * 3 value: " << mMaxPoints * sizeof(float) * 3 << flush;
-//     cout << "\nX X X X X X X X X mMaxPoints * sizeof(cl_float3) value: " << mMaxPoints * sizeof(cl_float3) << flush;
-//     cout << "\nX X X X X X X X X sizeof(float) value: " << sizeof(float) << flush;
-//     cout << "\nX X X X X X X X X sizeof(cl_float3) value: " << sizeof(cl_float3) << flush;
-// Call gpuVar to get the cl_mem object
-//     cl_mem buffer = gpuVar(&m_FluidTemp, buf_id);
-//     cl_mem buffer2 = gpuVar(&m_Fluid, buf_id);
-//
-//     // Query the size of the buffer
-//     size_t buffer_size;
-//     clGetMemObjectInfo(buffer, CL_MEM_SIZE, sizeof(size_t), &buffer_size, nullptr);
-//     std::cout << "\nFluidTemp Size: " << buffer_size << " bytes" << std::endl;
-//     clGetMemObjectInfo(buffer2, CL_MEM_SIZE, sizeof(size_t), &buffer_size, nullptr);
-//     std::cout << "\nFluid Size: " << buffer_size << " bytes\n" << std::endl;
 
-    clCheck ( clEnqueueCopyBuffer(m_queue, gpuVar(&m_Fluid, buf_id), gpuVar(&m_FluidTemp, buf_id), 0, 0, sz, 0, NULL, NULL), "TransferToTempCL", "clEnqueueCopyBuffer", "m_FluidTemp", mbDebug);
+    clCheck ( clEnqueueCopyBuffer(m_queue, gpuVar(&m_Fluid, buf_id), gpuVar(&m_FluidTemp, buf_id), 0, 0, sz, 0, NULL, NULL), "TransferToTempCL", "clEnqueueCopyBuffer", "m_FluidTempDevice", mbDebug);
 }
 
 void FluidSystem::TransferFromTempCL ( int buf_id, int sz ){
-    //clCheck ( cuMemcpyDtoD ( gpuVar(&m_Fluid, buf_id), gpuVar(&m_FluidTemp, buf_id), sz ), "TransferFromTempCL", "cuMemcpyDtoD", "m_Fluid", mbDebug);
+
     clCheck ( clEnqueueCopyBuffer(m_queue, gpuVar(&m_FluidTemp, buf_id), gpuVar(&m_Fluid, buf_id), 0, 0, sz, 0, NULL, NULL), "TransferFromTempCL", "clEnqueueCopyBuffer", "m_Fluid", mbDebug);
 }
 
@@ -331,9 +315,13 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     clWaitForEvents(1, &func_insert_event);
 
 
-    int TESTTESTTEST;
+    clFlush(m_queue);
+    clFinish(m_queue);
+
+
+    int TESTTESTTEST[3000];
     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FBIN_COUNT), CL_TRUE, (m_GridTotal-1)*sizeof(int), sizeof(int), &TESTTESTTEST, 0, NULL, NULL),
-    cout << "\n############################################################################################### FBIN_COUNT Insert Particles(): " << TESTTESTTEST << "\n" << flush;
+    cout << "\n############################################################################################### FBIN_COUNT Insert Particles(): " << TESTTESTTEST[2044] << "\n" << flush;
 
 
     clFlush(m_queue);
@@ -941,7 +929,7 @@ void FluidSystem::PrefixSumChangesCL ( int zero_offsets ){
 }
 
 void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){ //CUCLCUCL
-    if (verbosity>1) std::cout << "\nCountingSortFullCL()1: mMaxPoints="<<mMaxPoints<<", mNumPoints="<<mNumPoints<<",\nmActivePoints="<<mActivePoints<<".\n"<<std::flush;
+    if (verbosity>1) std::cout << "\n-----CountingSortFullCL() started... -----\nCountingSortFullCL()1: mMaxPoints="<<mMaxPoints<<", mNumPoints="<<mNumPoints<<",\nmActivePoints="<<mActivePoints<<".\n"<<std::flush;
 
     // get number of active particles & set short lists for later kernels
     int grid_ScanMax = (m_FParams.gridScanMax.y * m_FParams.gridRes.z + m_FParams.gridScanMax.z) * m_FParams.gridRes.x + m_FParams.gridScanMax.x;
@@ -1200,6 +1188,8 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){ //CUCLCUCL
        // cl_device_idptr*  _list2pointer = (cl_device_idptr*) &bufC(&m_Fluid, FDENSE_LISTS)[2 * sizeof(cl_device_idptr)];
        // clCheck( cuMemcpyDtoH ( fDenseList2, *_list2pointer,	sizeof(uint[ bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[2] ])/*sizeof(uint[2000])*/ ), "CountingSortFullCL11", "cuMemcpyDtoH", "FBIN_COUNT", mbDebug);
        // SaveUintArray( fDenseList2, bufI(&m_Fluid, FDENSE_LIST_LENGTHS)[2], "CountingSortFullCL__m_Fluid.bufII(FDENSE_LISTS)[2].csv" );
+
+        if (verbosity>1) std::cout << "\n-----CountingSortFullCL() finished. -----\n" <<std::flush;
     }
 }
 
@@ -1406,7 +1396,7 @@ void FluidSystem::TransferFromCL() {
     clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid, FCONC), CL_TRUE ,0 ,              mMaxPoints*sizeof(float[NUM_TF]) ,                bufC(&m_Fluid,FCONC) ,0,NULL,NULL),             "TransferFromCL","clEnqueueReadBuffer","FCONC",mbDebug);
     clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FEPIGEN), CL_TRUE ,0,        mMaxPoints*sizeof(uint[NUM_GENES]),                 bufC(&m_Fluid,FEPIGEN),0,NULL,NULL),       "TransferFromCL","clEnqueueReadBuffer","FEPIGEN",mbDebug);
 
-    if (verbosity>0) std::cout<<"----- TransferFromCL ()  finished -----\n"<<std::flush;
+    if (verbosity>0) std::cout<<"----- TransferFromCL () finished. -----\n"<<std::flush;
 
 
 }

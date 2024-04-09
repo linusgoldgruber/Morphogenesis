@@ -300,9 +300,14 @@ void FluidSystem::InitializeOpenCL()
 
     																				if(verbosity>0) cout << "FluidSystem::InitializeOpenCL_chk1\n" << flush;
 	cl_int res;
+    /*    cl_int status;
+    m_FluidTemp.mgpu[buf_id] = clCreateBuffer(m_context, CL_MEM_READ_WRITE, sz, NULL, &status);
+
+        if(status!=CL_SUCCESS)	{cout<<"\nTransferToTempCL: clCreateBuffer status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
+*/
 	m_FParamsDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FParams), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	m_FluidDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_Fluid), 0, &res);	    if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
-	m_FluidTempDevice	= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FluidTemp), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	m_FluidDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(FBufs), 0, &res);	    if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
+	m_FluidTempDevice	= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(FBufs), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 	m_FGenomeDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(m_FGenome), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
     m_FPrefixDevice		= clCreateBuffer(m_context, CL_MEM_READ_WRITE , sizeof(FPrefix), 0, &res);	if(res!=CL_SUCCESS){cout<<"\nres = "<<checkerror(res)<<"\n"<<flush;exit_(res);}
 

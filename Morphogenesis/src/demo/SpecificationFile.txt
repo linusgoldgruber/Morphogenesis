@@ -1,4 +1,4 @@
-num_particles = 30
+num_particles = 20
  demoType = 0
  simSpace = 7
  
@@ -31,9 +31,9 @@ force_min = 0.000000
  force_max = 0.000000
  force_freq = 16.000000
  
-x_dim = 6.000000
- y_dim = 6.000000
- z_dim = 6.000000
+x_dim = 2.000000
+ y_dim = 2.000000
+ z_dim = 2.000000
  
 pos_x = 0.000000
  pos_y = 0.000000

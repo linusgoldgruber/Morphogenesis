@@ -214,6 +214,11 @@ using namespace std;
 		return fb->mgpu[n];
 	}
 
+// 	// Overloaded gpuVar function for cl_mem
+// 	cl_mem gpuVar(cl_mem* mgpu, int n) {
+// 		return mgpu[n];
+// 	}
+
 	cl_mem* gpuptr(FBufs *fb, int n) {
 		return &fb->mgpu[n];
 
@@ -722,7 +727,7 @@ using namespace std;
 		FParams					m_FParams;				// Fluid parameters struct - that apply to all particles 
 		FGenome					m_FGenome;				// Genome struct of arrays for genne params
 /*
-		cl_mem				clFBuf;					// GPU pointer containers, DEFINED IN RunCL.h!
+		cl_mem				clFBuf;					// GPU pointer containers
 		cl_mem				clFTemp;
 		cl_mem				clFParams;
 		cl_mem				clFGenome;
