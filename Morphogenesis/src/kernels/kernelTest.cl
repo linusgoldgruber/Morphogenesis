@@ -27,7 +27,7 @@
 //----------------------------------------------------------------------------------
 
 #define CL_KERNEL
-#define SCAN_BLOCKSIZE		256
+#define SCAN_BLOCKSIZE		128
 #define GRID_UNDEF			4294967295
 //#define FLT_MIN  0.000000001              // set here as 2^(-30) //REDEFINED
 //#define UINT_MAX 65535    //REDEFINED
@@ -199,16 +199,16 @@ uint i = get_global_id(0);
 
     float4 gcf = (fpos[i] - gridMin) * gridDelta;
 
-    printf("GCF after Calculation: Thread ID: %u, gcf: (%f, %f, %f), gridDelta: (%f, %f, %f)\n",
-        i, gcf.x, gcf.y, gcf.z, gridDelta.x, gridDelta.y, gridDelta.z);
+//     printf("GCF after Calculation: Thread ID: %u, gcf: (%f, %f, %f), gridDelta: (%f, %f, %f)\n",
+//         i, gcf.x, gcf.y, gcf.z, gridDelta.x, gridDelta.y, gridDelta.z);
     int4 gc  = (int4)(gcf.x, gcf.y, gcf.z, gcf.w);
     int gs  = (gc.y * gridRes.z + gc.z) * gridRes.x + gc.x;
 
 //     printf("Thread ID: %u, m_FParamsDevice->gridDelta: (%f, %f, %f)\n",
 //         i, m_FParamsDevice->gridDelta.x, m_FParamsDevice->gridDelta.y, m_FParamsDevice->gridDelta.z);
 
-    printf("Thread ID: %u, float4 fpos[%u]: (%v4hlf)\n",
-        i, i, fpos[i]);
+//     printf("Thread ID: %u, float4 fpos[%u]: (%v4hlf)\n",
+//         i, i, fpos[i]);
 
 // printf("Thread ID: %u, m_FParamsDevice->gridTotal: (%u)\n",
 //        i, m_FParamsDevice->gridTotal);
@@ -216,12 +216,12 @@ uint i = get_global_id(0);
     if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
 
 		fgcell[i] = gs;                                    // Grid cell insert.
-		printf("InsideLoop: Thread ID: %u, fgcell: %u\n",             // all zero (0)
-        i, fgcell[i]);
-        printf("Thread ID: %u, fgridcnt[%d] before atomic_add: %d\n", i, gs, fgridcnt[gs]);
+// 		printf("InsideLoop: Thread ID: %u, fgcell: %u\n",             // all zero (0)
+//         i, fgcell[i]);
+//         printf("Thread ID: %u, fgridcnt[%d] before atomic_add: %d\n", i, gs, fgridcnt[gs]);
         fgndx[i] = atomic_add(&fgridcnt[gs], 1);          // Grid counts.
-        printf("Thread ID: %u, fgridcnt[%d] after atomic_add: %d\n", i, gs, fgridcnt[gs]);
-        printf("Thread ID: %u, fgndx[%d]: %u\n", i, i, fgndx[i]);
+//         printf("Thread ID: %u, fgridcnt[%d] after atomic_add: %d\n", i, gs, fgridcnt[gs]);
+//         printf("Thread ID: %u, fgndx[%d]: %u\n", i, i, fgndx[i]);
         //  ## add counters for dense lists. ##############
         // for each gene, if active, then atomicAdd bin count for gene
         for(int gene=0; gene<NUM_GENES; gene++){ // NB data ordered FEPIGEN[gene][particle] AND +ve int values -> active genes.
@@ -236,7 +236,7 @@ uint i = get_global_id(0);
         }
     } else {
         fgcell[i] = GRID_UNDEF;
-        printf("Thread ID: %u, GRID_UNDEF\n",i);
+//         printf("Thread ID: %u, GRID_UNDEF\n",i);
 
     }
 
@@ -330,13 +330,19 @@ __kernel void prefixSumChanges(
 
 __kernel void prefixSum(
 
-    __global uint *input,
+    __global uint *input,       //STILL ALL ZERO
     __global uint *output,
     __global uint *aux,
               int  len,
               int  zeroff
-        ) //, __constant size_t *offset_scan0)
+        )
+
 {
+
+    uint i = get_global_id(0);
+    uint l = get_local_id(0);
+    uint g = get_group_id(0);
+
     // Declares a locally shared, temporary array, with dimemsions 2 x BLOCKSIZE (1024 as of rn)
     __local uint scan_array[SCAN_BLOCKSIZE << 1];
 
@@ -353,15 +359,28 @@ __kernel void prefixSum(
     //      [...]
     //      [...]...
     //  ]
-    unsigned int t1 = get_global_id(0) * 2 * SCAN_BLOCKSIZE;
-    unsigned int t2 = t1 + SCAN_BLOCKSIZE;
+    uint t1 = get_local_id(0) + 2 * get_group_id(0) * SCAN_BLOCKSIZE;
+    uint t2 = t1 + SCAN_BLOCKSIZE;
 
     //-------------------------------------------------------------------------------------
     //      Pre-load into shared memory
     // This also checks, if t1 or t2 exceed len = m_GridTotal (= 10000 as of rn).
     // If not, it asigns the corresponding element from the input[] array.
-    //
-    scan_array[get_local_id(0)] = (t1 < len) ? input[t1] : 0;
+    if (input[i] != 0) printf("INPUT ARRAY Thread %u: [%u]\n", i, input[i]);
+
+
+    scan_array[get_local_id(0)] = (t1 < len) ? input[get_local_id(0)] : 0;
+
+    // Print out non-zero elements of scan_array
+    for (int j = 0; j < 2 * SCAN_BLOCKSIZE; ++j) {
+        if (scan_array[j] != 0) {
+                                                                        printf("--------- NON ZERO Thread %lu: SCAN_ARRAY[%d] = %u\n", get_global_id(0), j, scan_array[j]);
+        }
+    }
+
+    scan_array[get_local_id(0)] = (t1 < len) ? printf("Thread %d,   Local ID: %u, Group ID: %u, len = %d, t1 %u: YESSSS\n", i, l,g, len, t1)
+ : printf("Thread %d,   Local ID: %u, Group ID: %u, len = %d, t1 %u: NOOOO\n", i, l,g, len, t1);
+
     scan_array[get_local_id(0) + SCAN_BLOCKSIZE] = (t2 < len) ? input[t2] : 0;
     barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -372,8 +391,10 @@ __kernel void prefixSum(
     int stride;
     for (stride = 1; stride <= SCAN_BLOCKSIZE; stride <<= 1) {
         int index = (get_local_id(0) + 1) * stride * 2 - 1;
+
         if (index < 2 * SCAN_BLOCKSIZE)
             scan_array[index] += scan_array[index - stride];
+                                                                        //printf("Thread %lu: SCAN_ARRAY[%d] = %u\n", get_global_id(0), index, scan_array[index]);
         barrier(CLK_LOCAL_MEM_FENCE);
     }
 
@@ -383,6 +404,8 @@ __kernel void prefixSum(
         if (index + stride < 2 * SCAN_BLOCKSIZE)
             scan_array[index + stride] += scan_array[index];
         barrier(CLK_LOCAL_MEM_FENCE);
+
+        // Buffer out (if thread < 16, print thread num and the data)
     }
     barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -393,6 +416,14 @@ __kernel void prefixSum(
         if (zeroff) output[0] = 0;
         if (aux) aux[get_group_id(0)] = scan_array[2 * SCAN_BLOCKSIZE - 1];
     }
+//     printf("Thread %d: len = %d\n", i, len);
+//     printf("Thread %d: SCAN_BLOCKSIZE = %d\n", i, SCAN_BLOCKSIZE);
+//     printf("Thread %d: zeroff = %d\n", i, zeroff);
+//     printf("Thread %d: t1 = %u, t2 = %u\n", i, t1, t2);
+//     printf("Thread %d: scan_array[%lu] = %u\n", i, get_local_id(0), scan_array[get_local_id(0)]);
+//     printf("Thread %d: scan_array[%lu] = %u\n", i, get_local_id(0) + SCAN_BLOCKSIZE, scan_array[get_local_id(0) + SCAN_BLOCKSIZE]);
+//     printf("Thread %d: output[%d] = %u\n", i, t1, output[t1]);
+
 
 }
 

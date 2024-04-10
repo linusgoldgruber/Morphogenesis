@@ -64,7 +64,7 @@
 	extern bool gProfileRend;
 
     #define EPSILON			0.00001f			// for collision detection
-    #define SCAN_BLOCKSIZE		256				// must match value in fluid_system_cuda.cu
+    #define SCAN_BLOCKSIZE		128				// must match value in fluid_system_cuda.cu
 
 	#define MAX_PARAM			50             // used for m_Param[], m_Vec[], m_Toggle[]
 	#define GRID_UCHAR			0xFF           // used in void FluidSystem::InsertParticles (){.. memset(..); ...}
