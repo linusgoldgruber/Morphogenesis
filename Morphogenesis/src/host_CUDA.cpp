@@ -540,7 +540,7 @@ void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
     //SaveUintArray_2D( bufI(&m_Fluid, FEPIGEN), mMaxPoints, NUM_GENES, "CountingSortFullCL__m_FluidTemp.bufI(FEPIGEN)2.csv" );
     
     // reset bonds and forces in fbuf FELASTIDX, FPARTICLEIDX and FFORCE, required to prevent interference between time steps, 
-    // because these are not necessarily overwritten by the FUNC_COUNTING_SORT kernel.
+    // because these are not necessarily overwritten by the FUNC_COUNTING_SORT_FULL kernel.
     clFinish ();    // needed to prevent colision with previous operations
     
     float max_pos = max(max(m_Vec[PVOLMAX].x, m_Vec[PVOLMAX].y), m_Vec[PVOLMAX].z);
@@ -561,7 +561,7 @@ void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
     // Reset grid cell IDs
     // clCheck(clMemsetD32(gpuVar(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "clMemsetD32(Sort)");
     void* args[1] = { &mMaxPoints };
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNTING_SORT], m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL),
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNTING_SORT_FULL], m_FParams.numGroups, 1, 1, m_FParams.numItems, 1, 1, 0, NULL, args, NULL),
               "CountingSortFullCL5", "cuLaunch", "FUNC_COUNTING_SORT", mbDebug );
 
     // Having sorted the particle data, we can start using a shortened list of particles.
@@ -575,7 +575,7 @@ void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
     int numElem2 = 2*  int( numElem1 / blockSize ) + 1;  
     int threads = SCAN_BLOCKSIZE/2;
     clFinish ();
-    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNT_SORT_LISTS], /*m_FParams.numGroups*/ numElem2, 1, 1, /*m_FParams.numItems/2*/ threads , 1, 1, 0, NULL, args, NULL),
+    clCheck ( cuLaunchKernel ( m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], /*m_FParams.numGroups*/ numElem2, 1, 1, /*m_FParams.numItems/2*/ threads , 1, 1, 0, NULL, args, NULL),
               "CountingSortFullCL7", "cuLaunch", "FUNC_COUNT_SORT_LISTS", mbDebug );                                   // NB threads/2 required on GTX970m
     clFinish ();
     

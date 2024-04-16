@@ -135,7 +135,7 @@
 	#define SCALE_EAUX		14
 
 	#define FUNC_INSERT			0
-	#define	FUNC_COUNTING_SORT	1
+	#define	FUNC_COUNTING_SORT_FULL	1
 	#define FUNC_QUERY			2
 	#define FUNC_COMPUTE_PRESS	3
 	#define FUNC_COMPUTE_FORCE	4
@@ -147,7 +147,7 @@
 	#define FUNC_FPREFIXUP	10
 	#define FUNC_TALLYLISTS     11
 	#define FUNC_COMPUTE_DIFFUSION          12
-	#define FUNC_COUNT_SORT_LISTS           13
+	#define FUNC_COUNT_SORT_DENSE_LISTS           13
 	#define FUNC_COMPUTE_GENE_ACTION        14
 	#define FUNC_TALLY_GENE_ACTION        35
 	#define FUNC_COMPUTE_BOND_CHANGES       15
@@ -476,7 +476,7 @@ using namespace std;
 			cl_int status;
 			m_Kern[FUNC_INSERT] = 							clCreateKernel(m_program, "insertParticlesCL", &status);
 			if(verbosity>0 && status!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(status) << "\n" << flush;
-			m_Kern[FUNC_COUNTING_SORT] = 					clCreateKernel(m_program, "countingSortFull", &status);
+			m_Kern[FUNC_COUNTING_SORT_FULL] = 					clCreateKernel(m_program, "countingSortFull", &status);
 			if(verbosity>0 && status!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(status) << "\n" << flush;
 			/*m_Kern[FUNC_QUERY] = 							clCreateKernel(m_program, "computeQuery", &err);
 			if(verbosity>0 && err!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(err) << "\n" << flush;*/
@@ -491,7 +491,7 @@ using namespace std;
  			m_Kern[FUNC_FPREFIXUP] = 						clCreateKernel(m_program, "prefixUp", &status);
  			m_Kern[FUNC_TALLYLISTS] = 						clCreateKernel(m_program, "tally_denselist_lengths", NULL);
 // 			m_Kern[FUNC_COMPUTE_DIFFUSION] = 				clCreateKernel(m_program, "computeDiffusion", NULL);
- 			m_Kern[FUNC_COUNT_SORT_LISTS] = 				clCreateKernel(m_program, "countingSortDenseLists", NULL);
+ 			m_Kern[FUNC_COUNT_SORT_DENSE_LISTS] = 				clCreateKernel(m_program, "countingSortDenseLists", NULL);
 // 			m_Kern[FUNC_COMPUTE_GENE_ACTION] = 				clCreateKernel(m_program, "computeGeneAction", NULL);
 // 			m_Kern[FUNC_TALLY_GENE_ACTION] = 				clCreateKernel(m_program, "tallyGeneAction", NULL);
 // 			m_Kern[FUNC_COMPUTE_BOND_CHANGES] = 			clCreateKernel(m_program, "computeBondChanges", NULL);

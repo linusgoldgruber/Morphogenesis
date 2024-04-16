@@ -242,7 +242,7 @@ FluidSystem::~FluidSystem()
 	cl_int status;
 
 	status = clReleaseKernel(m_Kern[FUNC_INSERT]); 							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_INSERT status = " << checkerror(status) << "\n" << flush;}
-	status = clReleaseKernel(m_Kern[FUNC_COUNTING_SORT]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COUNTING_SORT status = " << checkerror(status) << "\n" << flush;}
+	status = clReleaseKernel(m_Kern[FUNC_COUNTING_SORT_FULL]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COUNTING_SORT_FULL status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_QUERY]); 							if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_QUERY status = " << checkerror(status) << "\n" << flush;}
  	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_PRESS]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_PRESS status = " << checkerror(status) << "\n" << flush;}
  	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_FORCE]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_FORCE status = " << checkerror(status) << "\n" << flush;}
@@ -255,7 +255,7 @@ FluidSystem::~FluidSystem()
 	status = clReleaseKernel(m_Kern[FUNC_FPREFIXUP]); 					if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_FPREFIXUP status = " << checkerror(status) << "\n" << flush;}
 	status = clReleaseKernel(m_Kern[FUNC_TALLYLISTS]);						if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_TALLYLISTS status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_DIFFUSION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_DIFFUSION status = " << checkerror(status) << "\n" << flush;}
- 	status = clReleaseKernel(m_Kern[FUNC_COUNT_SORT_LISTS]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COUNT_SORT_LISTS status = " << checkerror(status) << "\n" << flush;}
+ 	status = clReleaseKernel(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COUNT_SORT_LISTS status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_GENE_ACTION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_GENE_ACTION status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_TALLY_GENE_ACTION]);				if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_TALLY_GENE_ACTION status = " << checkerror(status) << "\n" << flush;}
 // 	status = clReleaseKernel(m_Kern[FUNC_COMPUTE_BOND_CHANGES]);			if (status != CL_SUCCESS) {cout << "\nRelease Kernel FUNC_COMPUTE_BOND_CHANGES status = " << checkerror(status) << "\n" << flush;}
@@ -1888,10 +1888,10 @@ void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting 
 
 void FluidSystem::Run2InnerPhysicalLoop(){ //
     if(verbosity>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()start";
-    if(m_FParams.freeze==true){
-        InitializeBondsCL ();
-        clCheck(clFinish(m_queue), "Run", "clFinish", "After InitializeBondsCL ", mbDebug);
-    }
+//     if(m_FParams.freeze==true){
+//         InitializeBondsCL ();
+//         clCheck(clFinish(m_queue), "Run", "clFinish", "After InitializeBondsCL ", mbDebug);
+//     }
 
     ComputePressureCL();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After ComputePressureCL", mbDebug);
@@ -1899,37 +1899,37 @@ void FluidSystem::Run2InnerPhysicalLoop(){ //
     ComputeForceCL ();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After ComputeForceCL", mbDebug);
 
-    if(launchParams.debug>1){
-        TransferFromCL ();
-        launchParams.file_increment++;
-        cout << "----------------------------------------------------launchParams.file_num: " << launchParams.file_num << flush;
-        cout << "----------------------------------------------------launchParams.file_increment: " << launchParams.file_increment << flush;
+//     if(launchParams.debug>1){
+//         TransferFromCL ();
+//         launchParams.file_increment++;
+//         cout << "----------------------------------------------------launchParams.file_num: " << launchParams.file_num << flush;
+//         cout << "----------------------------------------------------launchParams.file_increment: " << launchParams.file_increment << flush;
+//
+//         SavePointsCSV2 (  launchParams.outPath, launchParams.file_num+launchParams.file_increment );
+//         std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< launchParams.file_num+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
+//     }
+//
+//     TransferPosVelVeval ();
+//     clFinish(m_queue);
 
-        SavePointsCSV2 (  launchParams.outPath, launchParams.file_num+launchParams.file_increment );
-        std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< launchParams.file_num+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
-    }
+//     AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+//     clFinish(m_queue);
+//
+//     SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]);
+//     clFinish(m_queue);
 
-    TransferPosVelVeval ();
-    clCheck(clFinish(m_queue), "Run", "clFinish", "After TransferPosVelVeval ", mbDebug);
-
-    AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
-    clCheck(clFinish(m_queue), "Run", "clFinish", "After AdvanceCL", mbDebug);
-
-    SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]);
-    clCheck(clFinish(m_queue), "Run", "clFinish", "After SpecialParticlesCL", mbDebug);
-
-    TransferPosVelVevalFromTemp ();
-
-     if(launchParams.debug>0){
-        TransferFromCL ();
-        m_Debug_file++;
-        SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-        std::cout << "\n\nRun2InnerPhysicalLoop() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  TransferPosVelVevalFromTemp ();\n"<<std::flush;
-        //TransferFromTempCL(int buf_id, int sz );
-    }
-
-    AdvanceTime ();
-    if(verbosity>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()end";
+//     TransferPosVelVevalFromTemp ();
+//
+//      if(launchParams.debug>0){
+//         TransferFromCL ();
+//         m_Debug_file++;
+//         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
+//         std::cout << "\n\nRun2InnerPhysicalLoop() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  TransferPosVelVevalFromTemp ();\n"<<std::flush;
+//         //TransferFromTempCL(int buf_id, int sz );
+//     }
+//
+//     AdvanceTime ();
+//     if(verbosity>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()end";
 }
 
 void FluidSystem::Run2GeneAction(){//NB gene sorting occurs within Run2PhysicalSort()
@@ -1999,24 +1999,40 @@ void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
     if(verbosity>1)std::cout<<"\n####\nRun2Remodelling()end";
 }
 
-void FluidSystem::SetupGrid ( cl_float3 min, cl_float3 max, float sim_scale, float cell_size){
-    if (verbosity > 0)  std::cout<<"\n-------SetupGrid() started... -------"<<std::flush;
+void FluidSystem::SetupGrid(cl_float3 min, cl_float3 max, float sim_scale, float cell_size) {
+    if (verbosity > 0) {
+        std::cout << "\n-------SetupGrid(min(" << min.x << "," << min.y << "," << min.z << "), "
+                  <<                    "max(" << max.x << "," << max.y << "," << max.z << "), "
+                  <<              "sim_scale " << sim_scale << ", "
+                  <<              "cell_size " << cell_size << ") started... -------" << std::flush;
+    }
 
     float world_cellsize = cell_size / sim_scale;
-    m_GridMin = min;
-    m_GridMax = max;
-    m_GridSize = m_GridMax;
-    m_GridSize = cl_float3_subtract_cl_float3(&m_GridSize,&m_GridMin);
-    //m_GridSize -= m_GridMin;
-    m_GridRes.x = (int) ceil ( m_GridSize.x / world_cellsize );		// Determine grid resolution
-    m_GridRes.y = (int) ceil ( m_GridSize.y / world_cellsize );
-    m_GridRes.z = (int) ceil ( m_GridSize.z / world_cellsize );
-    m_GridSize.x = m_GridRes.x * cell_size / sim_scale;				// Adjust grid size to multiple of cell size
-    m_GridSize.y = m_GridRes.y * cell_size / sim_scale;
-    m_GridSize.z = m_GridRes.z * cell_size / sim_scale;
-    m_GridDelta = *cl_float3_operator_equal_cl_int3(&m_GridDelta, &m_GridRes);		// delta = translate from world space to cell #
-    m_GridDelta = cl_float3_devide_cl_float3(&m_GridDelta, &m_GridSize);
-    m_GridTotal = (int)(m_GridRes.x * m_GridRes.y * m_GridRes.z);
+m_GridMin = min;
+cout << "m_GridMin: (" << m_GridMin.x << ", " << m_GridMin.y << ", " << m_GridMin.z << ")" << endl;
+
+m_GridMax = max;
+cout << "m_GridMin: (" << m_GridMax.x << ", " << m_GridMax.y << ", " << m_GridMax.z << ")" << endl;
+m_GridSize = m_GridMax;
+cout << "m_GridSize: (" << m_GridSize.x << ", " << m_GridSize.y << ", " << m_GridSize.z << ")" << endl;
+
+m_GridSize = cl_float3_subtract_cl_float3(&m_GridSize,&m_GridMin);
+cout << "m_GridSize after subtraction: (" << m_GridSize.x << ", " << m_GridSize.y << ", " << m_GridSize.z << ")" << endl;
+m_GridRes.x = (int) ceil ( m_GridSize.x / world_cellsize );       // Determine grid resolution
+m_GridRes.y = (int) ceil ( m_GridSize.y / world_cellsize );
+m_GridRes.z = (int) ceil ( m_GridSize.z / world_cellsize );
+cout << "m_GridRes: (" << m_GridRes.x << ", " << m_GridRes.y << ", " << m_GridRes.z << ")" << endl;
+m_GridSize.x = m_GridRes.x * cell_size / sim_scale;               // Adjust grid size to multiple of cell size
+m_GridSize.y = m_GridRes.y * cell_size / sim_scale;
+m_GridSize.z = m_GridRes.z * cell_size / sim_scale;
+cout << "m_GridSize after adjustment: (" << m_GridSize.x << ", " << m_GridSize.y << ", " << m_GridSize.z << ")" << endl;
+m_GridDelta = *cl_float3_operator_equal_cl_int3(&m_GridDelta, &m_GridRes);       // delta = translate from world space to cell #
+m_GridDelta = cl_float3_devide_cl_float3(&m_GridDelta, &m_GridSize);
+cout << "m_GridDelta: (" << m_GridDelta.x << ", " << m_GridDelta.y << ", " << m_GridDelta.z << ")" << endl;
+
+m_GridTotal = (int)(m_GridRes.x * m_GridRes.y * m_GridRes.z);
+cout << "m_GridTotal: " << m_GridTotal << endl;
+
     cout << "\n m_GridTotal: " << m_GridTotal << flush;
 
     // Number of cells to search:
@@ -2515,7 +2531,7 @@ void FluidSystem::Run2Simulation(){
     m_Debug_file=0;
     if (verbosity>0)std::cout<<"\n\nFreeze()"<<-1<<"\n"<<std::flush;
     Run2PhysicalSort();
-    InitializeBondsCL();
+//     InitializeBondsCL();
 
     if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
     clCheck(clFinish(m_queue), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);

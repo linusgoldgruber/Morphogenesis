@@ -96,6 +96,6 @@ int main ( int argc, const char** argv )
     //std::cout<<"\n\nmake_demo2 chk3 "<<std::flush;
     fluid.WriteResultsCSV(input_folder, output_folder, num_particles_start);// NB post-slurm script to (i) cat results.csv files, (ii)tar-gzip and ftp folders to recipient.
 
-    printf ( "\nClosed make_demo2.\n" );
+    printf ( "\nClosed createDemo2.\n" );
     return 0;
 }

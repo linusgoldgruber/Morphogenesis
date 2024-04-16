@@ -330,7 +330,7 @@ __kernel void prefixSumChanges(
 
 __kernel void prefixSum(
 
-    __global uint *input,       //STILL ALL ZERO
+    __global uint *input,
     __global uint *output,
     __global uint *aux,
               int  len,
@@ -338,63 +338,74 @@ __kernel void prefixSum(
         )
 
 {
-
     uint i = get_global_id(0);
     uint l = get_local_id(0);
     uint g = get_group_id(0);
 
-    // Declares a locally shared, temporary array, with dimemsions 2 x BLOCKSIZE (1024 as of rn)
+    // Declares a locally shared, temporary array, with dimemsions 2 x BLOCKSIZE (256 as of rn)
     __local uint scan_array[SCAN_BLOCKSIZE << 1];
 
-    //-------------------------------------------------------------------------------------
-    //      Assigning t1 and t2
-    //
-    // t1 represents a position for each work item, so does t2, but with an offset of SCAN_BLOCKSIZE
-    //
-    // Visualisation:
-    //  t2[
-    //      ITEM_1[0*2*BLOCKSIZE+256],
-    //      ITEM_2[1*2*BLOCKSIZE+256],
-    //      ITEM_3[2*2*BLOCKSIZE+256]
-    //      [...]
-    //      [...]...
-    //  ]
-    uint t1 = get_local_id(0) + 2 * get_group_id(0) * SCAN_BLOCKSIZE;
+                                                                                //-------------------------------------------------------------------------------------
+                                                                                //      Assigning t1 and t2
+                                                                                //
+                                                                                // t1 represents a position for each work item, so does t2, but with an offset of SCAN_BLOCKSIZE
+                                                                                //
+                                                                                // Visualisation:
+                                                                                //  t2[
+                                                                                //      ITEM_1[0 + 0*2*BLOCKSIZE],
+                                                                                //      ITEM_2[1 + 1*2*BLOCKSIZE],
+                                                                                //      ITEM_3[2 + 2*2*BLOCKSIZE]
+                                                                                //      [...]
+                                                                                //      [...]...
+                                                                                //  ]
+    uint t1 = get_local_id(0) + get_group_id(0) * SCAN_BLOCKSIZE * 2;
+
+    //printf("XXXXXXXXXXXXXXXXXXXXX THREAD: %u, LOCAL ID: %u, GROUP ID: %u, t1: %u\n", i, l, g, t1);
+
     uint t2 = t1 + SCAN_BLOCKSIZE;
 
-    //-------------------------------------------------------------------------------------
-    //      Pre-load into shared memory
-    // This also checks, if t1 or t2 exceed len = m_GridTotal (= 10000 as of rn).
-    // If not, it asigns the corresponding element from the input[] array.
-    if (input[i] != 0) printf("INPUT ARRAY Thread %u: [%u]\n", i, input[i]);
+                                                                                //-------------------------------------------------------------------------------------
+                                                                                //      Pre-load into shared memory
+                                                                                // This also checks, if t1 or t2 exceed len = m_GridTotal (= 10000 as of rn).
+                                                                                // If not, it asigns the corresponding element from the input[] array.
 
+//     if (input[t1] != 0) printf("INPUT ARRAY Thread [%u]: %u. \t t1 = %u\n", i, input[t1], t1);            //Tells you which bins contain particles and how many.
+//     if (input[t2] != 0) printf("INPUT ARRAY Thread [%u]: %u. \t t2 = %u\n", i, input[t2],  t2);            //Tells you which bins contain particles and how many.
+//
 
-    scan_array[get_local_id(0)] = (t1 < len) ? input[get_local_id(0)] : 0;
+    scan_array[get_local_id(0)] = (t1 < len) ? input[t1] : 0;
+    barrier(CLK_LOCAL_MEM_FENCE);
 
-    // Print out non-zero elements of scan_array
-    for (int j = 0; j < 2 * SCAN_BLOCKSIZE; ++j) {
-        if (scan_array[j] != 0) {
-                                                                        printf("--------- NON ZERO Thread %lu: SCAN_ARRAY[%d] = %u\n", get_global_id(0), j, scan_array[j]);
-        }
-    }
+//     if (l == 8) printf("scan_array[get_local_id(0)] = %u\n", scan_array[get_local_id(0)]);
+    // Print value of scan_array[1543]
+//         if (t1 == 1544) {
+//             printf("Value of scan_array[2044] after assignment: %u, Local ID: %u\n", scan_array[l], l);
+//         }
 
-    scan_array[get_local_id(0)] = (t1 < len) ? printf("Thread %d,   Local ID: %u, Group ID: %u, len = %d, t1 %u: YESSSS\n", i, l,g, len, t1)
- : printf("Thread %d,   Local ID: %u, Group ID: %u, len = %d, t1 %u: NOOOO\n", i, l,g, len, t1);
+                                                                                    // Print out non-zero elements of scan_array
+                                                                                //     for (int j = 0; j < 2 * SCAN_BLOCKSIZE; ++j) {
+                                                                                //         if (scan_array[j] != 0) {
+                                                                                //                                                                         printf("--------- NON ZERO Thread %u: SCAN_ARRAY[%d] = %u\n", i, j, scan_array[j]);
+                                                                                //         }
+                                                                                //     }
+
 
     scan_array[get_local_id(0) + SCAN_BLOCKSIZE] = (t2 < len) ? input[t2] : 0;
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    //-------------------------------------------------------------------------------------
-    //      Reduction
-    // Each iteration, the first half of the previously calculated threads will be added to the second half
-    //
+                                                                                //-------------------------------------------------------------------------------------
+                                                                                //      Reduction
+                                                                                // Each iteration, the first half of the previously calculated threads will be added to the second half
+                                                                                //
     int stride;
     for (stride = 1; stride <= SCAN_BLOCKSIZE; stride <<= 1) {
-        int index = (get_local_id(0) + 1) * stride * 2 - 1;
 
+        int index = (get_local_id(0) + 1) * stride * 2 - 1;
+        //printf("INDEX = %d\n", i);
         if (index < 2 * SCAN_BLOCKSIZE)
             scan_array[index] += scan_array[index - stride];
-                                                                        //printf("Thread %lu: SCAN_ARRAY[%d] = %u\n", get_global_id(0), index, scan_array[index]);
+            //if (scan_array[index] != 0) printf("scan_array[%u] = %u\n", index, scan_array[index]);
+
         barrier(CLK_LOCAL_MEM_FENCE);
     }
 
@@ -403,29 +414,28 @@ __kernel void prefixSum(
         int index = (get_local_id(0) + 1) * stride * 2 - 1;
         if (index + stride < 2 * SCAN_BLOCKSIZE)
             scan_array[index + stride] += scan_array[index];
-        barrier(CLK_LOCAL_MEM_FENCE);
 
         // Buffer out (if thread < 16, print thread num and the data)
+
+
     }
     barrier(CLK_LOCAL_MEM_FENCE);
 
     // Output values & aux
-    if (t1 < len)    output[t1] = scan_array[get_local_id(0)];
-    if (t2 < len)    output[t2] = (get_local_id(0) == SCAN_BLOCKSIZE - 1 && zeroff) ? 0 : scan_array[get_local_id(0) + SCAN_BLOCKSIZE];
+    if (t1 + zeroff < len)    output[t1 + zeroff] = scan_array[get_local_id(0)];
+    //if (t1 + zeroff < len && scan_array[get_local_id(0)] != 0)    printf("!!! scan_array[%lu] = %u\n", get_local_id(0), scan_array[get_local_id(0)]);
+//     if (t1 + zeroff < len && output[t1] != 0)    output[t1 + zeroff] = printf("OUTPUT: %u\n",  output[t1]);
+    if (t2 + zeroff < len)    output[t2 + zeroff] = (get_local_id(0) == SCAN_BLOCKSIZE - 1 && zeroff) ? 0 : scan_array[get_local_id(0) + SCAN_BLOCKSIZE];
+//     if (t2 + zeroff < len && output[t2] != 0)    output[t2 + zeroff] = printf("OUTPUT: %u\n",  output[t2]);
+
     if (get_local_id(0) == 0) {
         if (zeroff) output[0] = 0;
         if (aux) aux[get_group_id(0)] = scan_array[2 * SCAN_BLOCKSIZE - 1];
     }
-//     printf("Thread %d: len = %d\n", i, len);
-//     printf("Thread %d: SCAN_BLOCKSIZE = %d\n", i, SCAN_BLOCKSIZE);
-//     printf("Thread %d: zeroff = %d\n", i, zeroff);
-//     printf("Thread %d: t1 = %u, t2 = %u\n", i, t1, t2);
-//     printf("Thread %d: scan_array[%lu] = %u\n", i, get_local_id(0), scan_array[get_local_id(0)]);
-//     printf("Thread %d: scan_array[%lu] = %u\n", i, get_local_id(0) + SCAN_BLOCKSIZE, scan_array[get_local_id(0) + SCAN_BLOCKSIZE]);
-//     printf("Thread %d: output[%d] = %u\n", i, t1, output[t1]);
-
 
 }
+
+
 
 __kernel void tally_denselist_lengths(
     __global struct FParams* m_FParamsDevice,
@@ -532,10 +542,9 @@ __kernel void countingSortFull(
 }
 
 __kernel void countingSortDenseLists (
-    __global struct FParams* m_FParamsDevice,
-    __global struct FBufs* m_FluidDevice,
-
-    __global int* pnum
+    __global struct FParams*    m_FParamsDevice,
+    __global struct FBufs*      m_FluidDevice,
+                int pnum
     )
 {
     unsigned int bin = get_global_id(0) * SCAN_BLOCKSIZE / 2 + get_group_id(0) * SCAN_BLOCKSIZE / 2;
@@ -566,7 +575,7 @@ __kernel void countingSortDenseLists (
         offsets[gene] = &bufI(m_FluidDevice, FBIN_OFFSET_ACTIVE_GENES)[gene * gridTot];
     }
 
-    if (binoffset + count > *pnum) {
+    if (binoffset + count > pnum) {
         printf("\n\n!!Overflow: (binoffset+count > pnum), bin=%u \n", bin);
         return;
     }
@@ -576,7 +585,7 @@ __kernel void countingSortDenseLists (
             printf("\nparticle==%u, ", particle);
         }
         for (int gene = 0; gene < NUM_GENES; gene++) {
-            if (bufI(m_FluidDevice, FEPIGEN)[particle + *pnum * gene] > 0) {
+            if (bufI(m_FluidDevice, FEPIGEN)[particle + pnum * gene] > 0) {
                 lists[gene][offsets[gene][bin] + gene_counter[gene]] = particle;
                 gene_counter[gene]++;
                 if (m_FParamsDevice->debug > 2 && gene_counter[gene] > bufI(m_FluidDevice, FBIN_COUNT_ACTIVE_GENES)[gene * gridTot + bin]) {
@@ -848,3 +857,75 @@ well512_seed(&state, seed [gid]);
         res [i] = well512_uint (state);
     }
 }
+
+// __kernel void initialize_bonds (
+//     __global struct FParams* m_FParamsDevice,
+//     __global struct FBufs* m_FluidDevice,
+//     int ActivePoints,
+//     uint list_length,
+//     int gene
+//     )
+// {
+//     uint particle_index = get_global_id(0);
+//     if ( particle_index >= list_length ) return;
+//
+//     uint i = bufII(m_FluidDevice,FDENSE_LISTS)[gene][particle_index];
+//     if ( i >= ActivePoints ) return;
+//
+//     uint gc = bufI(m_FluidDevice, FGCELL)[ i ];
+//     uint bondToIdx[BONDS_PER_PARTICLE];
+//     for(int bond=0; bond<BONDS_PER_PARTICLE; bond++)
+//         bondToIdx[bond] = UINT_MAXSIZE;
+//
+//     float3 tpos = bufF3(m_FluidDevice, FPOS)[ i ];
+//     uint *uintptr = &bufI(m_FluidDevice, FELASTIDX)[i*BOND_DATA];
+//     float *floatptr = &bufF(m_FluidDevice, FELASTIDX)[i*BOND_DATA];
+//
+//     uint *fbufFEPIGEN = &bufI(m_FluidDevice, FEPIGEN)[i];
+//     uint bond_type[BONDS_PER_PARTICLE] = {fgenome.elastin, fgenome.elastin, fgenome.elastin, fgenome.elastin };
+//
+//     unsigned int tissueType;
+//     if (fbufFEPIGEN[9*m_FParamsDevice->maxPoints]>0) {
+//         tissueType = 9;
+//         bond_type[0]=2; bond_type[1]=2; bond_type[2]=2; bond_type[3]=2;
+//     }
+//     else if (fbufFEPIGEN[6*m_FParamsDevice->maxPoints]>0) {
+//         tissueType = 6;
+//         bond_type[0]=1; bond_type[1]=0; bond_type[2]=0; bond_type[3]=0;
+//     }
+//     else if (fbufFEPIGEN[7*m_FParamsDevice->maxPoints]>0) {
+//         tissueType = 7;
+//         bond_type[0]=1; bond_type[1]=0; bond_type[2]=0; bond_type[3]=0;
+//     }
+//     else if (fbufFEPIGEN[10*m_FParamsDevice->maxPoints]>0) {
+//         tissueType = 10;
+//         bond_type[0]=1; bond_type[1]=0; bond_type[2]=0; bond_type[3]=0;
+//     }
+//     else if (fbufFEPIGEN[6*m_FParamsDevice->maxPoints]>0) {
+//         tissueType = 8;
+//         bond_type[0]=1; bond_type[1]=1; bond_type[2]=1; bond_type[3]=1;
+//     }
+//     else {
+//         tissueType = 0;
+//         bond_type[0]=0; bond_type[1]=0; bond_type[2]=0; bond_type[3]=0;
+//     }
+//
+//     for (int bond=0; bond<BONDS_PER_PARTICLE; bond++) {
+//         float best_theta = FLT_MAX, bond_dsq = m_FParamsDevice->rd2;
+//
+//         for (int c=0; c < m_FParamsDevice->gridAdjCnt; c++)
+//             contribFindBonds ( i, tpos, gc + m_FParamsDevice->gridAdj[c], bond, bondToIdx, &bond_dsq, &best_theta, m_FParamsDevice->maxPoints);
+//
+//         if(bondToIdx[bond]<ActivePoints) {
+//             uintptr [bond*DATA_PER_BOND +0] = bondToIdx[bond];
+//             floatptr[bond*DATA_PER_BOND +1] = fgenome.param[bond_type[bond]][fgenome.elastLim];
+//             floatptr[bond*DATA_PER_BOND +2] = fgenome.param[bond_type[bond]][fgenome.default_rest_length];
+//             floatptr[bond*DATA_PER_BOND +3] = fgenome.param[bond_type[bond]][fgenome.default_modulus];
+//             floatptr[bond*DATA_PER_BOND +4] = fgenome.param[bond_type[bond]][fgenome.default_damping];
+//             uintptr [bond*DATA_PER_BOND +5] = bufI(&fbuf, FPARTICLE_ID)[bondToIdx[bond]];
+//             uintptr [bond*DATA_PER_BOND +6] = 0;
+//             uintptr [bond*DATA_PER_BOND +7] = 0;
+//         }
+//     }
+// }
+
