@@ -20,6 +20,7 @@
 #include "host_CL.cpp"
 #include <chrono>
 #include <filesystem>
+namespace fs = std::filesystem;
 
 int main ( int argc, const char** argv )
 {
@@ -32,10 +33,37 @@ int main ( int argc, const char** argv )
      * /home/goldi/Documents/KDevelop\ Projects/Morphogenesis/Morphogenesis/src/demo/out
      */
 
+    //Initialize Variables
     uint num_particles, demoType, simSpace;
     char input_folder[256];
     char output_folder[256];
     float spacing, x_dim, y_dim, z_dim;
+
+    //Find working directory
+    fs::path Path = fs::current_path().parent_path();
+    const char* directory = Path.c_str();
+    std::cout << "Directory: " << directory << std::endl;
+
+    //Initialize JSON
+    char jsonPath[512]; sprintf(jsonPath, "%s/%s", directory, argv[10]); cout << "Concatenated path: " << jsonPath << std::endl;
+    ifstream ifs(jsonPath);
+    Json::Reader reader;
+    Json::Value obj_;
+    Json::Value obj;
+    obj["verbosity"] = 1;
+    obj["opencl_platform"] = 0;
+    obj["opencl_device"] = 0;
+
+    bool b = reader.parse(ifs, obj);
+    if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
+    cout << "\n\n\n" << endl;
+
+    FluidSystem fluid(obj);
+
+    // Clear all buffers
+    fluid.Initialize();
+
+    uint debug =2;
 
     if ( argc != 11 && argc != 1 ) {
         printf ( "usage: create_demo num_particles spacing x_dim y_dim z_dim \n \
@@ -66,9 +94,9 @@ int main ( int argc, const char** argv )
         printf ( "simSpace = %u, (0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
             6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n\n", simSpace);
 
-        sprintf ( input_folder, "%s", argv[8] );
+        sprintf ( input_folder, "%s/%s", directory, argv[8]);
 
-        sprintf ( output_folder, "%s", argv[9] );
+        sprintf ( output_folder, "%s/%s", directory, argv[9]);
 
         printf ( "input_folder = %s ,\noutput_folder = %s\n", input_folder, output_folder );
 
@@ -95,27 +123,6 @@ int main ( int argc, const char** argv )
         printf ( "simSpace = %u, (0:regression test, 1:tower, 2:wavepool, 3:small dam break, 4:dual-wavepool, 5: microgravity, \n \
             6:Morphogenesis small demo  7:use SpecificationFile.txt  8:parameter sweep default )\n\n", simSpace );
     }
-    // Initialize
-    ifstream ifs(argv[10]);
-    Json::Reader reader;
-    Json::Value obj_;
-    Json::Value obj;
-    obj["verbosity"] = 1;
-    obj["opencl_platform"] = 0;
-    obj["opencl_device"] = 0;
-
-    bool b = reader.parse(ifs, obj);
-    if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
-    cout << "\n\n\n" << endl;
-
-    FluidSystem fluid(obj);
-
-    // Clear all buffers
-    fluid.Initialize();
-    int output_folder_bool;
-//     output_folder_bool = fluid.mk_subdir(&output_folder);
-
-    uint debug =2;
 
     fluid.WriteDemoSimParams("../demo", GPU_OFF, CPU_YES , num_particles, spacing, x_dim, y_dim, z_dim, demoType, simSpace, debug);/*const char * relativePath*/
 

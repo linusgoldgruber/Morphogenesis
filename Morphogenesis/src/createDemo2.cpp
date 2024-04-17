@@ -22,6 +22,7 @@
 #include "host_CL.cpp"
 #include <chrono>
 #include <filesystem>
+namespace fs = std::filesystem;
 
 int main ( int argc, const char** argv )
 {
@@ -30,22 +31,16 @@ int main ( int argc, const char** argv )
     char json_folder[256];
     cout << "argc: " << argc << "\n" << flush;
 
-    if ((argc != 4) && (argc !=3)) {
-        printf ( "usage: make_demo2 input_folder output_folder.\
-        \nNB input_folder must contain \"SpecificationFile.txt\", output will be wrtitten to \"output_folder/out_data_time/\".\
-        \nIf output_folder is not given the value from SpecificationFile.txt will be used.\n" );
-        return 0;
-    } else {
-        sprintf ( input_folder, "%s", argv[1] );
-        sprintf ( output_folder, "%s", argv[2] );
-        sprintf ( json_folder, "%s", argv[3] );
+    //Initialize Variables
 
-        printf ( "input_folder = %s , output_folder = %s, \njson_folder = %s\n", input_folder, output_folder, json_folder );
+    //Find working directory
+    fs::path Path = fs::current_path().parent_path();
+    const char* directory = Path.c_str();
+    std::cout << "Directory: " << directory << std::endl;
 
-    }
-
-    // Initialize
-    ifstream ifs(argv[3]);
+    //Initialize JSON
+    char jsonPath[512]; sprintf(jsonPath, "%s/%s", directory, argv[3]); cout << "Concatenated path: " << jsonPath << std::endl;
+    ifstream ifs(jsonPath);
     Json::Reader reader;
     Json::Value obj_;
     Json::Value obj;
@@ -53,16 +48,32 @@ int main ( int argc, const char** argv )
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
 
-//     string line;
-//     while (getline(ifs, line)) {
-//         cout << line << endl;
-//     }
-
     bool b = reader.parse(ifs, obj);
     if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
     cout << "\n\n\n" << endl;
-    //obj["kernel_filepath"] = "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/kernelTest.cl";
+
     FluidSystem fluid(obj);
+
+    if ((argc != 4) && (argc !=3)) {
+        printf ( "usage: make_demo2 input_folder output_folder.\
+        \nNB input_folder must contain \"SpecificationFile.txt\", output will be wrtitten to \"output_folder/out_data_time/\".\
+        \nIf output_folder is not given the value from SpecificationFile.txt will be used.\n" );
+        return 0;
+    } else {
+        sprintf ( input_folder, "%s/%s", directory, argv[1]);
+        sprintf ( output_folder, "%s/%s", directory, argv[2]);
+        sprintf ( json_folder, "%s/%s", directory, argv[3]);
+
+        // Check if output_folder or json_folder (if provided) exists
+        if (!fs::exists(output_folder) || (argc == 4 && !fs::exists(json_folder))) {
+            std::cerr << "Error: " << (!fs::exists(output_folder) ? "Output" : "JSON") << " folder does not exist: " << (!fs::exists(output_folder) ? output_folder : json_folder) << std::endl;
+            return 1;
+        }
+
+        printf ( "input_folder = %s , output_folder = %s, \njson_folder = %s\n", input_folder, output_folder, json_folder );
+
+    }
+
     fluid.Initialize();
     fluid.InitializeOpenCL();
     uint debug =2;

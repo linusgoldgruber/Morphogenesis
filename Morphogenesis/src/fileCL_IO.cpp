@@ -73,7 +73,8 @@ void FluidSystem::ReadGenome( const char * relativePath){
 
     const char * genes_file_path = relativePath;
     //const char * genes_file_path =  obj["genome_filepath"].asCString();
-    /*if (verbosity>1)*/printf("\nReadGenome: opening file %s \n", genes_file_path);
+    if (verbosity>1) printf("\nReadGenome: opening file %s \n", genes_file_path);
+
     FILE * genes_file = fopen(genes_file_path, "rb");
     if (genes_file == NULL) {
         if (verbosity>1)std::cout << "\nvoid FluidSystem::ReadGenome( const char * relativePath, int gpu_mode, int cpu_mode)  Could not read file. Path: "<< genes_file_path <<"\n"<< std::flush;
