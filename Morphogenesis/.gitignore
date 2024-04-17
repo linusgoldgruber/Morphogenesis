@@ -2,6 +2,9 @@ VTK-9.3.0/
 src/build
 src/verify_fluid/fluids3
 *.kdev4
+!src/demo
+!src/demo/out
+!src/demo/check
 src/demo/out/particles_pos_vel_color*.csv
 src/demo/out/particles_pos_vel_color*.vtk
 src/demo/particles_pos_vel_color*.csv
