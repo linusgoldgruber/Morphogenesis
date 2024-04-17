@@ -627,6 +627,10 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
             clSetKernelArg(m_Kern[FUNC_FPREFIXUP], 2, sizeof(int), &allElements);
 
     //clCheck ( clLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numItemsPerGroup, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
+
+    cout << "\n+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+# globalNumThreads = " << globalNumThreads << flush;          //allElements = 10000 = m_GridTotal
+    cout << "\n+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+# t_blockSize2 = " << t_blockSize2 << flush;          //allElements = 10000 = m_GridTotal
+
     clCheck(clEnqueueNDRangeKernel( //----------------------------------------------FUNC_FPREFIXUP
 
 
@@ -2069,11 +2073,16 @@ void FluidSystem::ZeroVelCL (){                                       // Used to
 void FluidSystem::AdvanceCL ( float tm, float dt, float ss ){
 
     cl_int status;
+    cout<< "-------AdvanceCL() started... -------\n" << flush;
+
     //void* args[4] = { &tm, &dt, &ss, &m_FParams.pnumActive };
-    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 0, sizeof(float), &tm), "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 0", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 1, sizeof(float), &dt), "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 1", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 2, sizeof(float), &ss), "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 2", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 3, sizeof(int), &m_FParams.pnumActive), "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 3", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 0, sizeof(cl_mem),     &m_FParamsDevice),      "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 0", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 1, sizeof(cl_mem),     &m_FluidDevice),        "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 1", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 2, sizeof(cl_mem),     &m_FluidTempDevice),    "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 2", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 3, sizeof(float),      &tm),                   "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 3", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 4, sizeof(float),      &dt),                   "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 4", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 5, sizeof(float),      &ss),                   "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 5", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_ADVANCE], 6, sizeof(int),        &m_FParams.pnumActive), "AdvanceCL", "clSetKernelArg", "FUNC_ADVANCE 6", mbDebug);
     //cout<<"\nAdvanceCL: m_FParams.pnumActive="<<m_FParams.pnumActive<<std::flush;
 
     computeNumBlocks ( m_FParams.pnumActive, local_work_size, m_FParams.numGroups, m_FParams.numItems); // particles
@@ -2093,6 +2102,7 @@ void FluidSystem::AdvanceCL ( float tm, float dt, float ss ){
         NULL
         ), "AdvanceCL", "clEnqueueNDRangeKernel", "FUNC_ADVANCE", mbDebug);
 
+    cout<< "-------AdvanceCL() finished. -------\n" << flush;
 
 }
 

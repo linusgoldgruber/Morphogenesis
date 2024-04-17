@@ -332,6 +332,13 @@ using namespace std;
 		vec->z = z;
 	}
 
+	void Set4(cl_float4* vec, float x, float y, float z) {
+		vec->x = x;
+		vec->y = y;
+		vec->z = z;
+		vec->w = 0;
+	}
+
 	cl_float3 Clamp(cl_float3* vec, float a, float b) {
 		cl_float3 result;
 		result.x = (vec->x < a) ? a : ((vec->x > b) ? b : vec->x);
@@ -483,7 +490,7 @@ using namespace std;
 			m_Kern[FUNC_COMPUTE_PRESS] = 					clCreateKernel(m_program, "computePressure", &status);
 			if(verbosity>0 && status!=CL_SUCCESS) cout << "\nclCreateKernel() Error: " << checkerror(status) << "\n" << flush;
 			m_Kern[FUNC_COMPUTE_FORCE] = 					clCreateKernel(m_program, "computeForce", &status);
-// 			m_Kern[FUNC_ADVANCE] = 							clCreateKernel(m_program, "advanceParticles", NULL);
+ 			m_Kern[FUNC_ADVANCE] = 							clCreateKernel(m_program, "advanceParticles", NULL);
 // 			m_Kern[FUNC_EMIT] = 							clCreateKernel(m_program, "emitParticles", NULL);
 // 			m_Kern[FUNC_RANDOMIZE] = 						clCreateKernel(m_program, "randomInit", NULL);
  			m_Kern[FUNC_FPREFIXSUM] = 						clCreateKernel(m_program, "prefixSum", &status);

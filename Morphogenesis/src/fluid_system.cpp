@@ -872,7 +872,7 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
     if ( mNumPoints >= mMaxPoints ) return -1;
 
     int n = mNumPoints;
-    Set(bufV3(&m_Fluid, FPOS) + n, Pos->x,Pos->y,Pos->z );
+    Set4(bufV4(&m_Fluid, FPOS) + n, Pos->x,Pos->y,Pos->z );
     printf("\n--->Assigned values at index %d: x=%f, y=%f, z=%f<---\n", n, Pos->x, Pos->y, Pos->z);
     Set(bufV3(&m_Fluid, FVEL) + n, Vel->x,Vel->y,Vel->z );
     Set(bufV3(&m_Fluid, FVEVAL) + n, 0,0,0 );
@@ -1899,23 +1899,23 @@ void FluidSystem::Run2InnerPhysicalLoop(){ //
     ComputeForceCL ();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After ComputeForceCL", mbDebug);
 
-//     if(launchParams.debug>1){
-//         TransferFromCL ();
-//         launchParams.file_increment++;
-//         cout << "----------------------------------------------------launchParams.file_num: " << launchParams.file_num << flush;
-//         cout << "----------------------------------------------------launchParams.file_increment: " << launchParams.file_increment << flush;
-//
-//         SavePointsCSV2 (  launchParams.outPath, launchParams.file_num+launchParams.file_increment );
-//         std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< launchParams.file_num+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
-//     }
-//
-//     TransferPosVelVeval ();
-//     clFinish(m_queue);
+    if(launchParams.debug>1){
+        TransferFromCL ();
+        launchParams.file_increment++;
+        cout << "----------------------------------------------------launchParams.file_num: " << launchParams.file_num << flush;
+        cout << "----------------------------------------------------launchParams.file_increment: " << launchParams.file_increment << flush;
 
-//     AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
-//     clFinish(m_queue);
-//
-//     SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]);
+        SavePointsCSV2 (  launchParams.outPath, launchParams.file_num+launchParams.file_increment );
+        std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< launchParams.file_num+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
+    }
+
+    TransferPosVelVeval ();
+    clFinish(m_queue);
+
+    AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
+    clFinish(m_queue);
+
+//     SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]); //TODO THIS CRASHES!!!!!!
 //     clFinish(m_queue);
 
 //     TransferPosVelVevalFromTemp ();
@@ -2479,8 +2479,9 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
     if (verbosity>1) std::cout<<"\n----- SetupSimulation() started,,, -----\n" << std::flush;
     if (verbosity>1) std::cout<<"\nSetupSimulation chk1 // verbosity="<<verbosity<< " // launchParams.num_particles= " << launchParams.num_particles << std::flush;
 
-    if (launchParams.num_particles > 0) {m_Param[PNUM] = launchParams.num_particles;}                             // TODO changed this to an if-statement, is this correct?
+    m_Param [PNUM] = launchParams.num_particles;                             // NB there is a line of text above the particles, hence -1.
 
+    std::cout<<"\nX X X X X X X X X m_Param[PNUM] = " << m_Param[PNUM] <<std::flush; //TODO Remove this debug line
     mMaxPoints = m_Param[PNUM];
     std::cout<<"\nX X X X X X X X X X X X X X X m_Param [PNUM] = " << m_Param [PNUM] <<std::flush; //TODO Remove this debug line
 

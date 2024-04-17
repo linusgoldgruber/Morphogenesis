@@ -929,3 +929,126 @@ well512_seed(&state, seed [gid]);
 //     }
 // }
 
+__kernel void advanceParticles (
+
+    __global struct FParams*    m_FParamsDevice,
+    __global struct FBufs*      m_FluidDevice,
+    __global struct FBufs*      m_FluidTempDevice,
+    float time,
+    float dt,
+    float ss,
+    int numPnts
+    )
+{
+    uint i = get_global_id(0); // particle index
+    if (i >= numPnts) return;
+
+    if (bufI(m_FluidDevice, FGCELL)[i] == GRID_UNDEF) {
+        bufF4(m_FluidDevice, FPOS)[i] = (float4)(m_FParamsDevice->pboundmin.x, m_FParamsDevice->pboundmin.y, m_FParamsDevice->pboundmin.z - 2 * m_FParamsDevice->gridRes.z, 0);
+        bufF4(m_FluidDevice, FVEL)[i] = (float4)(0, 0, 0, 0);
+        return;
+    }
+
+    float4 accel, norm;
+    float diff, adj, speed;
+    float4 pos = bufF4(m_FluidDevice, FPOS)[i];
+    float4 veval = bufF4(m_FluidDevice, FVEVAL)[i];
+
+    // Leapfrog integration
+    accel = bufF4(m_FluidDevice, FFORCE)[i];
+
+    // Boundaries
+    // Y-axis
+    diff = m_FParamsDevice->pradius - (pos.y - (m_FParamsDevice->pboundmin.y + (pos.x - m_FParamsDevice->pboundmin.x) * m_FParamsDevice->pground_slope));
+    if (diff > EPSILON) {
+        norm = (float4)(-m_FParamsDevice->pground_slope, 1.0 - m_FParamsDevice->pground_slope, 0, 0);
+        adj = m_FParamsDevice->pextstiff * diff - m_FParamsDevice->pdamp * dot(norm, veval);
+        norm *= adj;
+        accel += norm;
+    }
+
+    diff = m_FParamsDevice->pradius - (m_FParamsDevice->pboundmax.y - pos.y);
+    if (diff > EPSILON) {
+        norm = (float4)(0, -1, 0, 0);
+        adj = m_FParamsDevice->pextstiff * diff - m_FParamsDevice->pdamp * dot(norm, veval);
+        norm *= adj;
+        accel += norm;
+    }
+
+    // X-axis
+    diff = m_FParamsDevice->pradius - (pos.x - m_FParamsDevice->pboundmin.x);
+    if (diff > EPSILON) {
+        norm = (float4)(1, 0, 0, 0);
+        adj = (m_FParamsDevice->pforce_min + 1) * m_FParamsDevice->pextstiff * diff - m_FParamsDevice->pdamp * dot(norm, veval);
+        norm *= adj;
+        accel += norm;
+    }
+
+    diff = m_FParamsDevice->pradius - (m_FParamsDevice->pboundmax.x - pos.x);
+    if (diff > EPSILON) {
+        norm = (float4)(-1, 0, 0, 0);
+        adj = (m_FParamsDevice->pforce_max + 1) * m_FParamsDevice->pextstiff * diff - m_FParamsDevice->pdamp * dot(norm, veval);
+        norm *= adj;
+        accel += norm;
+    }
+
+    // Z-axis
+    diff = m_FParamsDevice->pradius - (pos.z - m_FParamsDevice->pboundmin.z);
+    if (diff > EPSILON) {
+        norm = (float4)(0, 0, 1, 0);
+        adj = m_FParamsDevice->pextstiff * diff - m_FParamsDevice->pdamp * dot(norm, veval);
+        norm *= adj;
+        accel += norm;
+    }
+
+    diff = m_FParamsDevice->pradius - (m_FParamsDevice->pboundmax.z - pos.z);
+    if (diff > EPSILON) {
+        norm = (float4)(0, 0, -1, 0);
+        adj = m_FParamsDevice->pextstiff * diff - m_FParamsDevice->pdamp * dot(norm, veval);
+        norm *= adj;
+        accel += norm;
+    }
+
+    // Shield for particle store at fparam.pboundmax
+    float4 dist = m_FParamsDevice->pboundmax - pos;
+    diff = 2 * m_FParamsDevice->pradius - (dist.x + dist.y + dist.z);
+    if (diff > EPSILON) {
+        norm = (float4)(1, 1, 1, 0);
+        adj = m_FParamsDevice->pextstiff * diff - m_FParamsDevice->pdamp * dot(norm, veval);
+        norm *= adj;
+        accel += norm;
+    }
+
+    // Gravity
+    accel += m_FParamsDevice->pgravity;
+
+    // Accel Limit
+    speed = accel.x * accel.x + accel.y * accel.y + accel.z * accel.z;
+    if (speed > m_FParamsDevice->AL2) {
+        accel *= m_FParamsDevice->AL / sqrt(speed);
+        if (m_FParamsDevice->debug > 1) printf("\nadvanceParticles() Accel Limit: i=%u, mass=%f, accel=(%f,%f,%f), speed=%f, m_FParamsDevice->AL2=%f, m_FParamsDevice->pgravity=(%f,%f,%f)",
+            i, m_FParamsDevice->pmass, accel.x, accel.y, accel.z, speed, m_FParamsDevice->AL2, m_FParamsDevice->pgravity.x, m_FParamsDevice->pgravity.y, m_FParamsDevice->pgravity.z);
+    }
+
+    // Velocity Limit
+    float4 vel = bufF4(m_FluidDevice, FVEL)[i];
+    speed = vel.x * vel.x + vel.y * vel.y + vel.z * vel.z;
+    if (speed > m_FParamsDevice->VL2) {
+        speed = m_FParamsDevice->VL2;
+        vel *= m_FParamsDevice->VL / sqrt(speed);
+        if (m_FParamsDevice->debug > 1) printf("\nadvanceParticles() Velocity Limit: i=%u, mass=%f, accel=(%f,%f,%f), speed=%f, m_FParamsDevice->VL2=%f, m_FParamsDevice->pgravity=(%f,%f,%f)",
+            i, m_FParamsDevice->pmass, accel.x, accel.y, accel.z, speed, m_FParamsDevice->VL2, m_FParamsDevice->pgravity.x, m_FParamsDevice->pgravity.y, m_FParamsDevice->pgravity.z);
+    }
+
+    // Leap-frog Integration
+    float4 vnext = accel * dt + vel;
+    bufF4(m_FluidTempDevice, FVEVAL)[i] = (float4)(vel.x, vel.y, vel.z, 0.0f) + (float4)(vnext.x, vnext.y, vnext.z, 0.0f) * 0.5f;
+    bufF4(m_FluidTempDevice,FVEL)[i] = vnext;
+    bufF4(m_FluidTempDevice,FPOS)[i] += (vnext * dt); /*(dt/ss)) + bmotion*/
+
+    if (m_FParamsDevice->debug > 2 && i < 10) {
+        printf("\nadvanceParticles()3: i=%u, accel=(%f,%f,%f), vel=(%f,%f,%f), dt=%f, vnext=(%f,%f,%f), ss=%f",
+            i, accel.x, accel.y, accel.z, vel.x, vel.y, vel.z, dt, vnext.x, vnext.y, vnext.z, ss);
+    }
+
+}

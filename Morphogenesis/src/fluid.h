@@ -223,6 +223,7 @@
 
             //cl_float3* bufV3(FBufs* fb, int n) { return (cl_float3*) fb->mgpu[n]; }
             float3* bufF3   (__global FBufs* fb, int n) { return (float3*) fb->mgpu[n]; }
+            float4* bufF4   (__global FBufs* fb, int n) { return (float4*) fb->mgpu[n]; }
             float*  bufF    (__global FBufs* fb, int n) { return (float*)  fb->mgpu[n]; }
             uint*   bufI    (__global FBufs* fb, int n) { return (uint*)   fb->mgpu[n]; }
             char*   bufC    (__global FBufs* fb, int n) { return (char*)   fb->mgpu[n]; }
@@ -241,7 +242,9 @@
         } FBufs;
             // NB in host code, use cl_float3 for cl_float3 in the kernel.
             cl_float3*              bufV3           (const FBufs* fb, int n) { return (cl_float3*)             fb->mcpu[n]; }
+            cl_float4*              bufV4           (const FBufs* fb, int n) { return (cl_float4*)             fb->mcpu[n]; }
             cl_float3*              bufF3           (const FBufs* fb, int n) { return (cl_float3*)             fb->mcpu[n]; }
+            cl_float4*              bufF4           (const FBufs* fb, int n) { return (cl_float4*)             fb->mcpu[n]; }
             float*                  bufF            (const FBufs* fb, int n) { return (float*)                 fb->mcpu[n]; }
             uint*                   bufI            (const FBufs* fb, int n) { return (uint*)                  fb->mcpu[n]; }
             char*                   bufC            (const FBufs* fb, int n) { return (char*)                  fb->mcpu[n]; }
@@ -300,7 +303,8 @@
         float           actuation_period;
 
         #ifndef CL_KERNEL
-		cl_float4			pboundmin, pboundmax, pgravity;
+        cl_float3           pgravity;
+		cl_float4			pboundmin, pboundmax;
 		cl_float4			gridSize, gridDelta, gridMin, gridMax;
         cl_float4*			mpos;			// particle buffers
 		cl_float4*			mvel;

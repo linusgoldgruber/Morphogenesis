@@ -1,5 +1,7 @@
 VTK-9.3.0/
 src/build
 src/demo/out
+src/demo/check
 src/verify_fluid/fluids3
 *.kdev4
+

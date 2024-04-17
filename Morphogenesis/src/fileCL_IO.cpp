@@ -55,7 +55,7 @@ int iDivUp (int a, int b) {
 
 void computeNumBlocks (int numPnts, int minThreads, size_t &numGroups, size_t &numItems){
 
-    cout << "\nRunning computeNumBlocks() with " << numPnts <<" Points and " << minThreads << " minThreads\n";
+    cout << "\n       Running computeNumBlocks() with global size = " << numPnts <<"  and local group size = " << minThreads << "\n";
 
     if (numPnts==0 & minThreads==0) {printf("\nError: numPnts and minThreads = 0 \n");exit(1);}
 
@@ -651,8 +651,10 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
 
     m_Param[PEXAMPLE] = simSpace;          // simSpace==2 : wave pool example.
     m_Param[PGRID_DENSITY] = 2.0;   // gives gridsize = 2*smoothradius/griddensity = smoothradius.
+    launchParams.num_particles = num_particles;
     m_Param[PNUM] = num_particles;  // 1000000;    //1000 = minimal simulation, 1000000 = large simulation
-        cout << "\n\n\n\nRUNNING ALLOCATEBUFFER() WITH m_Param[PNUM] SET TO: " << m_Param[PNUM] << ".\n\n\n\n" << flush;
+
+    cout << "\n\n\n\nRUNNING ALLOCATEBUFFER() WITH m_Param[PNUM] SET TO: " << m_Param[PNUM] << ".\n\n\n\n" << flush;
     AllocateBuffer ( FPARAMS, sizeof(FParams), 1,1, GPU_OFF, CPU_YES );
     m_Time = 0;
     mNumPoints = 0;			        // reset count TODO still hardcoded to 125, can it be set to 0?
@@ -671,7 +673,9 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     else {
         std::cout<<"\nWriteDemoSimParams(): Reading genome file: "<<launchParams.genomePath<<"\n"<<std::flush;
         ReadGenome(launchParams.genomePath);
-    }               // make_demo2.cpp reads Specification_File.txt, which may give launchParams.read_genome='y', to use an edited genome.
+    }   // make_demo2.cpp reads Specification_File.txt, which may give launchParams.read_genome='y', to use an edited genome.
+
+    cout << "\n\n\n\nRUNNING ALLOCATEBUFFER() WITH m_Param[PNUM] SET TO: " << m_Param[PNUM] << ".\n\n\n\n" << flush;
     SetupSimulation(gpu_mode, cpu_mode);
 
     /*mMaxPoints = m_Param[PNUM];
