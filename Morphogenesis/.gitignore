@@ -1,19 +1,18 @@
+# HOW TO: show all ignored files and paths: git status --ignored --short | grep '^!!'
+
 VTK-9.3.0/
 src/build
 src/verify_fluid/fluids3
 *.kdev4
-!src/demo
+/.gitignore
+!src/demo/*
 
 src/demo/out/particles_pos_vel_color*.csv
-!src/demo/out
 src/demo/out/particles_pos_vel_color*.vtk
-!src/demo/out
 src/demo/particles_pos_vel_color*.csv
-!src/demo
 src/demo/particles_pos_vel_color*.vtk
-!src/demo/out
 
-.gitignore
 
-#git status --ignored --short | grep '^!!'
+
+
 
