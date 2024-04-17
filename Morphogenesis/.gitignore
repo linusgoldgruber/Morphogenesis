@@ -9,3 +9,5 @@ src/demo/out/particles_pos_vel_color*.csv
 src/demo/out/particles_pos_vel_color*.vtk
 src/demo/particles_pos_vel_color*.csv
 src/demo/particles_pos_vel_color*.vtk
+!src/demo/out
+!src/demo/check
