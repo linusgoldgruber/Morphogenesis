@@ -9,8 +9,7 @@ src/verify_fluid/fluids3
 
 src/demo/out/particles_pos_vel_color*.csv
 src/demo/out/particles_pos_vel_color*.vtk
-src/demo/particles_pos_vel_color*.csv
-src/demo/particles_pos_vel_color*.vtk
+!src/demo/check
 
 
 
