@@ -627,9 +627,9 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
             clSetKernelArg(m_Kern[FUNC_FPREFIXUP], 2, sizeof(int), &allElements);
 
     //clCheck ( clLaunchKernel ( m_Kern[FUNC_FPREFIXUP], numItemsPerGroup, 1, 1, threads, 1, 1, 0, NULL, argsE, NULL ), "PrefixSumCellsCL", "cuLaunch", "FUNC_PREFIXFIXUP", mbDebug);
-
+/*
     cout << "\n+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+# globalNumThreads = " << globalNumThreads << flush;          //allElements = 10000 = m_GridTotal
-    cout << "\n+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+# t_blockSize2 = " << t_blockSize2 << flush;          //allElements = 10000 = m_GridTotal
+    cout << "\n+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+# t_blockSize2 = " << t_blockSize2 << flush;          //allElements = 10000 = m_GridTotal*/
 
     clCheck(clEnqueueNDRangeKernel( //----------------------------------------------FUNC_FPREFIXUP
 

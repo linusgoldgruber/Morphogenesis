@@ -3,7 +3,6 @@
 #define CL_TARGET_OPENCL_VERSION 300
 #define SDK_SUCCESS 0
 #define SDK_FAILURE 1
-#define CHECK_ERROR(err) if (err != CL_SUCCESS) { printf("Error: %d\n", err); exit(1); }
 
 #include <stdio.h>
 #include <iostream>
@@ -23,9 +22,6 @@
 #include <chrono>
 #include <filesystem>
 
-
-//#include "fluid_system.h"
-
 int main ( int argc, const char** argv ) 
 {
 
@@ -34,25 +30,16 @@ int main ( int argc, const char** argv )
     char pointsPath[256];
     char outPath[256];
 
-	if ( argc != 4 ){
-	    printf("usage: check_demo  simulation_data_folder  output_folder\n");
-	    return 0;
-	}else {
-        sprintf ( paramsPath, "%s/SimParams.txt", argv[1] );
-        printf("simulation parameters file = %s\n", paramsPath);
+    //Find working directory-----------------------------
+    fs::path Path = fs::current_path().parent_path();
+    const char* directory = Path.c_str();
+    std::cout << "Directory: " << directory << std::endl;
+    //---------------------------------------------------
 
-        sprintf ( genomePath, "%s/genome.csv", argv[1] );
-        printf("simulation parameters file = %s\n", genomePath);
-
-        sprintf ( pointsPath, "%s/particles_pos_vel_color100001.csv", argv[1] );  // particles_pos_vel_color100001_test_data.csv
-        printf("simulation points file = %s\n", pointsPath);
-
-        sprintf ( outPath, "%s", argv[2] );
-        printf("output_folder = %s\n", outPath);
-	}
-
-// Initialize
-    ifstream ifs(argv[3]);
+    //Initialize JSON---------------------------------------------------
+    char jsonPath[512]; sprintf(jsonPath, "%s/%s", directory, argv[1]);
+    cout << "Concatenated path: " << jsonPath << std::endl;
+    ifstream ifs(jsonPath);
     Json::Reader reader;
     Json::Value obj_;
     Json::Value obj;
@@ -60,8 +47,30 @@ int main ( int argc, const char** argv )
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
     bool b = reader.parse(ifs, obj);
-    if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   //else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
+    if (!b) {cout << "Error: " << reader.getFormattedErrorMessages();}
+    else    {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
     cout << "\n\n\n" << endl;
+    const char* in_path = obj["demo_path"].asCString();
+    std::string out_path_str = obj.isMember("demo_path") && obj["demo_path"].isString() ? std::string(obj["demo_path"].asCString()) + "/check" : (std::cerr << "Error: 'demo_path' is missing or invalid." << std::endl, nullptr);
+    const char* out_path = out_path_str.c_str();
+
+
+    if ( argc != 2 ){
+	    printf("usage: check_demo  JSON.config\n");
+	    return 0;
+	}else {
+        sprintf ( paramsPath, "%s/%s/SimParams.txt", directory, in_path );
+        printf("simulation parameters file = %s\n", paramsPath);
+
+        sprintf ( genomePath, "%s/%s/genome.csv", directory, in_path );
+        printf("simulation parameters file = %s\n", genomePath);
+
+        sprintf ( pointsPath, "%s/%s/particles_pos_vel_color100001.csv", directory, in_path );  // particles_pos_vel_color100001_test_data.csv
+        printf("simulation points file = %s\n", pointsPath);
+
+        sprintf ( outPath, "%s/%s", directory, out_path );
+        printf("output_folder = %s\n", outPath);
+	}
 
     FluidSystem fluid(obj);
 

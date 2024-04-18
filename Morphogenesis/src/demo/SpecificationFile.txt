@@ -1,4 +1,4 @@
-num_particles = 40
+num_particles = 20
  demoType = 0
  simSpace = 7
  
@@ -35,9 +35,9 @@ x_dim = 4.000000
  y_dim = 4.000000
  z_dim = 4.000000
  
-pos_x = -8954668987212365824.000000
+pos_x = 0.000000
  pos_y = 0.000000
- pos_z = -8954668987212365824.000000
+ pos_z = 0.000000
  
 volmin_x = 0.000000
  volmin_y = 0.000000
@@ -56,9 +56,9 @@ initmax_x = 10.000000
  initmax_z = 30.000000
  
 paramsPath = demo/SimParams.txt
- pointsPath = demo
+ pointsPath = demo
  genomePath = demo/genome.csv
- outPath = out€
+ outPath = demo/out
  
 num_files = 400
  steps_per_InnerPhysicalLoop = 3

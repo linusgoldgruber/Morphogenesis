@@ -47,6 +47,8 @@
 	#include <sys/stat.h>
     #include <sys/types.h> 
 	#include "fluid.h"
+	#include <filesystem>
+	namespace fs = std::filesystem;
 
 // 	#include <vtk-9.0/vtkCellArray.h>
 //     #include <vtk-9.0/vtkPoints.h>

@@ -1,0 +1,19 @@
+{
+    "verbosity":2,                                  // -1= none, 0=errors only, 1=basic, 2=lots.
+
+    "demo_path":"demo",                               // optional! specify the name of you demo folder within the /Morphogenesis/src/ directory,
+
+    "data_file_offset":0,                           //475;//10;//46;//462;//380;//0;
+
+    "kernel_filepath":"../kernels/kernelTest.cl",   // need file paths for building kernels
+
+    "includeOptions_filepath": "-I/lib/i386-linux-gnu -I../",
+
+    "genome_filepath": "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/genome.csv",
+
+    "opencl_platform": 0,                           // ThinkPad 2, Clevo 0, WS 0 or 1       // need platform & device GPU choices,
+
+    "opencl_device":0,                              // -1= none, 0=errors only, 1=basic, 2=lots.
+
+    "data_file_increment":1
+}

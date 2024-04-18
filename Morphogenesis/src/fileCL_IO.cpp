@@ -249,19 +249,12 @@ void FluidSystem::WriteGenome( const char * relativePath){
 
 void FluidSystem::SavePointsCSV2 ( const char * relativePath, int frame )
                 /*SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );*/{
-    if (verbosity>1) std::cout << "\n  SavePointsCSV2 ( const char * relativePath = "<< relativePath << ", int frame = "<< frame << " );  started \n" << std::flush;
+
     char buf[256];
     frame += 100000;    // ensures numerical and alphabetic order match
     sprintf ( buf, "%s/particles_pos_vel_color%04d.csv", relativePath, frame );
 
-    cout << "-----------------------------------------------------" << relativePath << flush;
-
     FILE* fp = fopen ( buf, "w" );
-
-    /*char buf[256];
-    frame += 100000;    // ensures numerical and alphabetic order match
-    sprintf ( buf, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/out/particles_pos_vel_color%04d.csv", frame );
-    FILE* fp = fopen ( buf, "w" );*/
 
     if (fp == NULL) {
         if (verbosity>1) std::cout << "\nvoid FluidSystem::SavePointsCSV ( const char * relativePath, int frame )  Could not open file "<< fp <<"\n"<< std::flush;
@@ -566,11 +559,11 @@ void FluidSystem::WriteSimParams ( const char * relativePath ){
 */
     if (verbosity>1)std::cout<<"\nWriteSimParams chk1 "<<std::flush;
 
+
     // open file to write SimParams to
     char SimParams_file_path[256];
     sprintf ( SimParams_file_path, "%s/SimParams.txt", relativePath );
-    //sprintf ( SimParams_file_path, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/SimParams.txt" );
-    //const char * SimParams_file_path =  obj["SimParams_filepath"].asCString();
+
     if (verbosity>0)printf("\n## opening file %s ", SimParams_file_path);
     FILE* SimParams_file = fopen ( SimParams_file_path, "w" );
     if (SimParams_file == NULL) {
@@ -750,6 +743,9 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
 }
 
 void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
+
+
+    if (verbosity>1)std::cout<<"\n-------ReadSpecificationFile() started... -------\n" <<std::flush;
     char SimParams_file_path[256];
 
     sprintf ( SimParams_file_path, "%s/SpecificationFile.txt", relativePath );
@@ -758,7 +754,7 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     FILE * SpecFile = fopen(SimParams_file_path, "rb");
 
     const char* env_pwd = std::getenv("PWD");
-    if(SpecFile == NULL)    { std::cout<<"\nCould not read file: "<<relativePath<<", working directory: "<< env_pwd <<" . \n"<<std::flush; }
+    if(SpecFile == NULL)    { std::cout<<"\nERROR: ReadSpecificationFile(Line 761): Could not read file SpecificationFile: "<<relativePath<<", working directory: "<< env_pwd <<" . \n"<<std::flush; }
 
     // find number of lines
     int ch, number_of_lines = 0;
@@ -881,6 +877,8 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     if (verbosity>1) std::cout << "\nvoid FluidSystem::ReadSpecificationFile(..),  ret = " << ret << std::flush;
     fclose ( SpecFile );
     return;
+
+    if (verbosity>1)std::cout<<"\n-------ReadSpecificationFile() finished. -------\n" <<std::flush;
 }
 
 void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ // writes a default version
@@ -1160,8 +1158,14 @@ void FluidSystem::WriteResultsCSV ( const char * input_folder, const char * outp
 }
 
 void FluidSystem::SaveUintArray( uint* array, int numElem1, const char * relativePath ){ /// Used to save an array to .csv for debugging.
-    char buf[256]; //TODO make relative
-    sprintf ( buf, "/home/goldi/Documents/KDevelop Projects/Morphogenesis/Morphogenesis/src/demo/%s", relativePath);
+    char buf[256];
+
+    //Find working directory-----------------------------
+    fs::path Path = fs::current_path().parent_path();
+    const char* directory = Path.c_str();
+    std::cout << "Directory: " << directory << std::endl;
+
+    sprintf ( buf, "%s/%s", directory, relativePath);
     FILE* fp = fopen ( buf , "w" );
 
     if (fp == NULL) {

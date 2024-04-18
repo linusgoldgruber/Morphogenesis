@@ -21,25 +21,26 @@
 #include "fluid_system.h"
 #include "host_CL.cpp"
 #include <chrono>
-#include <filesystem>
-namespace fs = std::filesystem;
+
 
 int main ( int argc, const char** argv )
 {
+    //Initialize Variables--------------------
     char input_folder[256];
+    char specfile_folder[256];
     char output_folder[256];
     char json_folder[256];
     cout << "argc: " << argc << "\n" << flush;
+    //----------------------------------------
 
-    //Initialize Variables
 
-    //Find working directory
+    //Find working directory-----------------------------
     fs::path Path = fs::current_path().parent_path();
     const char* directory = Path.c_str();
     std::cout << "Directory: " << directory << std::endl;
-
+    //---------------------------------------------------
     //Initialize JSON
-    char jsonPath[512]; sprintf(jsonPath, "%s/%s", directory, argv[3]); cout << "Concatenated path: " << jsonPath << std::endl;
+    char jsonPath[512]; sprintf(jsonPath, "%s/%s", directory, argv[1]); cout << "Concatenated path: " << jsonPath << std::endl;
     ifstream ifs(jsonPath);
     Json::Reader reader;
     Json::Value obj_;
@@ -47,53 +48,67 @@ int main ( int argc, const char** argv )
     obj["verbosity"] = 1;
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
-
     bool b = reader.parse(ifs, obj);
     if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
     cout << "\n\n\n" << endl;
+std::string in_path_str = obj.isMember("demo_path") && obj["demo_path"].isString() ? std::string(obj["demo_path"].asCString()) + "/check" : (std::cerr << "Error: 'demo_path' is missing or invalid." << std::endl, nullptr);
+const char* in_path = in_path_str.c_str();
+    std::string out_path_str = obj.isMember("demo_path") && obj["demo_path"].isString() ? std::string(obj["demo_path"].asCString()) + "/out" : (std::cerr << "Error: 'demo_path' is missing or invalid." << std::endl, nullptr);
+    const char* out_path = out_path_str.c_str();
 
-    FluidSystem fluid(obj);
+    const char* specfile_path = obj.isMember("demo_path") && obj["demo_path"].isString() ? obj["demo_path"].asCString() : (std::cerr << "Error: 'demo_path' in JSON file) is missing or invalid." << std::endl, nullptr);
 
-    if ((argc != 4) && (argc !=3)) {
+
+    //---------------------------------------------------
+
+
+    if ((argc != 2) && (argc !=1)) {
         printf ( "usage: make_demo2 input_folder output_folder.\
         \nNB input_folder must contain \"SpecificationFile.txt\", output will be wrtitten to \"output_folder/out_data_time/\".\
         \nIf output_folder is not given the value from SpecificationFile.txt will be used.\n" );
         return 0;
     } else {
-        sprintf ( input_folder, "%s/%s", directory, argv[1]);
-        sprintf ( output_folder, "%s/%s", directory, argv[2]);
-        sprintf ( json_folder, "%s/%s", directory, argv[3]);
+        sprintf ( input_folder, "%s/%s", directory, in_path);
+        sprintf ( specfile_folder, "%s/%s", directory, specfile_path);
+        sprintf ( output_folder, "%s/%s", directory, out_path);
+        sprintf ( json_folder, "%s/%s", directory, argv[1]);
 
-        // Check if output_folder or json_folder (if provided) exists
-        if (!fs::exists(output_folder) || (argc == 4 && !fs::exists(json_folder))) {
-            std::cerr << "Error: " << (!fs::exists(output_folder) ? "Output" : "JSON") << " folder does not exist: " << (!fs::exists(output_folder) ? output_folder : json_folder) << std::endl;
-            return 1;
-        }
+        // Check if input_folder or output_folder (if provided) exist
+        if (!fs::exists(input_folder)) {
+            if (!fs::create_directories(input_folder)) {std::cerr << "Error: Failed to create input folder: " << input_folder << std::endl;return 1;}}
+        if (!fs::exists(output_folder)) {
+            if (!fs::create_directories(output_folder)) {std::cerr << "Error: Failed to create output folder: " << output_folder << std::endl;return 1;}}
+
 
         printf ( "input_folder = %s , output_folder = %s, \njson_folder = %s\n", input_folder, output_folder, json_folder );
 
     }
 
+    FluidSystem fluid(obj);
     fluid.Initialize();
     fluid.InitializeOpenCL();
-    uint debug =2;
+    uint verbosity = obj["verbosity"].asUInt();
 
-    //std::cout<<"\n\nmake_demo2 chk0,"<<std::flush;
-
-    fluid.ReadSpecificationFile ( input_folder );
-    fluid.launchParams.debug = debug;
+    //Setup Simulation------------------------------------------------------------
+    fluid.ReadSpecificationFile ( specfile_folder );
+    fluid.launchParams.debug = verbosity; //TODO change debug to verbosity in general
     std::cout<<"\n\nmake_demo2 chk1, fluid.launchParams.debug="<<fluid.launchParams.debug<<", fluid.launchParams.genomePath=" <<fluid.launchParams.genomePath  << ",  fluid.launchParams.spacing="<<fluid.launchParams.spacing<< ", fluid.launchParams.paramsPath="<<fluid.launchParams.paramsPath<< ",  fluid.launchParams.num_particles="<<fluid.launchParams.num_particles<< ",  fluid.launchParams.demoType="<<fluid.launchParams.demoType<<std::flush;
 
     for(int i=0; i<256; i++){fluid.launchParams.paramsPath[i] = input_folder[i];}
     for(int i=0; i<256; i++){fluid.launchParams.pointsPath[i] = input_folder[i];}
     //for(int i=0; i<256; i++){fluid.launchParams.genomePath[i] = input_folder[i];} // obtained from SpecificationFile.txt above.
-    if(argc==4 || argc == 3){
+    if(argc==2 || argc == 1){
         for(int i=0; i<256; i++) fluid.launchParams.outPath[i] = output_folder[i];
         cout << "\nfluid.launchParams.outPath: " << fluid.launchParams.outPath << flush;
-    }
-    if(mkdir(output_folder, 0755) == -1) cerr << "\nError :  failed to create output_folder.\n" << strerror(errno) << endl;
-    else cout << "output_folder created\n"; // NB 0755 = rwx owner, rx for others.
 
+        for(int i=0; i<256; i++) fluid.launchParams.paramsPath[i] = output_folder[i];
+        cout << "\nfluid.launchParams.paramsPath: " << fluid.launchParams.paramsPath << flush;
+    }
+    if (!fs::exists(output_folder)) {
+            if (!fs::create_directories(output_folder)) {std::cerr << "Error: Failed to create output folder: " << output_folder << std::endl;return 1;}
+            else{cout << "output_folder created\n";}}
+
+    cout << "\nSTARTING WriteDemoSimParams() WITH fluid.launchParams.paramsPath = " << fluid.launchParams.paramsPath << "\n" << flush;
     fluid.WriteDemoSimParams(           // Generates the simulation from data previously loaded from SpecificationFile.txt .
         fluid.launchParams.paramsPath, GPU_SINGLE, CPU_YES, fluid.launchParams.num_particles, fluid.launchParams.spacing, fluid.launchParams.x_dim, fluid.launchParams.y_dim, fluid.launchParams.z_dim, fluid.launchParams.demoType, fluid.launchParams.simSpace, fluid.launchParams.debug
     ); /*const char * relativePath*/
@@ -102,7 +117,11 @@ int main ( int argc, const char** argv )
 
     fluid.CreateFluidBuffers();
     fluid.TransferToCL ();
+    //---------------------------------------------------
+
+    //Run Simulation---------
     fluid.Run2Simulation ();
+    //-----------------------
 
     //std::cout<<"\n\nmake_demo2 chk3 "<<std::flush;
     fluid.WriteResultsCSV(input_folder, output_folder, num_particles_start);// NB post-slurm script to (i) cat results.csv files, (ii)tar-gzip and ftp folders to recipient.
