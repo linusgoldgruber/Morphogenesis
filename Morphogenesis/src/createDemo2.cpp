@@ -45,7 +45,7 @@ int main ( int argc, const char** argv )
     Json::Reader reader;
     Json::Value obj_;
     Json::Value obj;
-    obj["verbosity"] = 1;
+    uint verbosity = obj["verbosity"].asUInt();
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
     bool b = reader.parse(ifs, obj);
@@ -73,21 +73,14 @@ const char* in_path = in_path_str.c_str();
         sprintf ( output_folder, "%s/%s", directory, out_path);
         sprintf ( json_folder, "%s/%s", directory, argv[1]);
 
-        // Check if input_folder or output_folder (if provided) exist
-        if (!fs::exists(input_folder)) {
-            if (!fs::create_directories(input_folder)) {std::cerr << "Error: Failed to create input folder: " << input_folder << std::endl;return 1;}}
-        if (!fs::exists(output_folder)) {
-            if (!fs::create_directories(output_folder)) {std::cerr << "Error: Failed to create output folder: " << output_folder << std::endl;return 1;}}
 
 
         printf ( "input_folder = %s , output_folder = %s, \njson_folder = %s\n", input_folder, output_folder, json_folder );
 
     }
-
     FluidSystem fluid(obj);
     fluid.Initialize();
     fluid.InitializeOpenCL();
-    uint verbosity = obj["verbosity"].asUInt();
 
     //Setup Simulation------------------------------------------------------------
     fluid.ReadSpecificationFile ( specfile_folder );

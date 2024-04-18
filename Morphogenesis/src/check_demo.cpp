@@ -28,7 +28,7 @@ int main ( int argc, const char** argv )
     char paramsPath[256];
     char genomePath[256];
     char pointsPath[256];
-    char outPath[256];
+    char outputFolder[256];
 
     //Find working directory-----------------------------
     fs::path Path = fs::current_path().parent_path();
@@ -68,9 +68,15 @@ int main ( int argc, const char** argv )
         sprintf ( pointsPath, "%s/%s/particles_pos_vel_color100001.csv", directory, in_path );  // particles_pos_vel_color100001_test_data.csv
         printf("simulation points file = %s\n", pointsPath);
 
-        sprintf ( outPath, "%s/%s", directory, out_path );
-        printf("output_folder = %s\n", outPath);
+        sprintf ( outputFolder, "%s/%s", directory, out_path );
+        printf("outputFolder = %s\n", outputFolder);
 	}
+
+    // Directory setup
+    if (!fs::exists(outputFolder)) {
+            if (!fs::create_directories(outputFolder)) {std::cerr << "Error: Failed to create output folder: " << outputFolder << std::endl;return 1;}}
+
+
 
     FluidSystem fluid(obj);
 
@@ -88,13 +94,13 @@ int main ( int argc, const char** argv )
     //fluid.ReadPointsCSV2_DEBUG(pointsPath, GPU_OFF, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
     fluid.ReadPointsCSV2(pointsPath, GPU_SINGLE, CPU_YES);  //fluid.ReadPointsCSV(pointsPath, GPU_OFF, CPU_YES);
     printf("\nchk1: ReadPointsCSV2() \n");
-    fluid.WriteSimParams ( outPath );
+    fluid.WriteSimParams ( outputFolder );
     printf("\nchk2: WriteSimParams() \n");
-    fluid.WriteGenome( outPath );
+    fluid.WriteGenome( outputFolder );
     printf("\nchk3: WriteGenome() \n");
-    fluid.SavePointsCSV2 ( outPath, 1 );
+    fluid.SavePointsCSV2 ( outputFolder, 1 );
     printf("\nchk4: SavePointsCSV2() \n");
-    fluid.SavePointsVTP2(outPath, 1 ); //TODO
+    fluid.SavePointsVTP2(outputFolder, 1 ); //TODO
     printf("\nchk5: SavePointsVTP2() \n");
 
     printf("\ncheck_demo finished.\n");

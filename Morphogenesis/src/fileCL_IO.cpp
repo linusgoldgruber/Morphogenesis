@@ -682,8 +682,6 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     AllocateGrid(GPU_OFF, CPU_YES);                                                              if (verbosity>1) std::cout << " chk1.2 " << std::flush ;
     std::cout<<"\nWriteDemoSimParams chk2 "<<std::flush;
     */
-    //cout << "\nXX m_Param[PGRIDSIZE]: " << m_Param[PGRIDSIZE] << endl; //TODO remove debug line
-    //cout << "\nXX m_Param[PSIMSCALE]: " << m_Param[PSIMSCALE] << endl; //TODO remove debug line
 
     cout << "XX m_Vec[PINITMIN].x: " << m_Vec[PINITMIN].x << endl;
     cout << "XX m_Vec[PINITMIN].y: " << m_Vec[PINITMIN].y << endl;
@@ -707,7 +705,7 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     pinit_max.y = std::min(pinit_max.y , m_Vec[PBOUNDMAX].y-1 );
     pinit_max.z = std::min(pinit_max.z , m_Vec[PBOUNDMAX].z-1 );
 
-    if (verbosity>0) {
+    if (verbosity>1) {
     cout<<"\n\nPGRIDSIZE=("<<m_Vec[PGRIDSIZE].x<<","<<m_Vec[PGRIDSIZE].y<<","<<m_Vec[PGRIDSIZE].z
         <<"),  PSIMSCALE=("<<m_Vec[PSIMSCALE].x<<","<<m_Vec[PSIMSCALE].y<<","<<m_Vec[PSIMSCALE].z
         <<"),  m_Param[PGRIDSIZE]="<<m_Param[PGRIDSIZE]<<",  m_Param[PSIMSCALE]="<<m_Param[PSIMSCALE]
@@ -725,7 +723,6 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
         <<"), spacing="<<spacing<<", 0.1f, demoType="<<demoType
         <<")\n"<<std::flush;
     }
-    //cout << "\n############################### SO FAR SO GOOD ###############################\n\n\n" << std::flush;
 
     SetupAddVolumeMorphogenesis2(m_Vec[PINITMIN], pinit_max, spacing, 0.1f, demoType);
 

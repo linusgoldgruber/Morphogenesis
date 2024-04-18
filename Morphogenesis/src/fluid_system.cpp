@@ -162,7 +162,6 @@ FluidSystem::FluidSystem(Json::Value obj_)
 {
 	obj = obj_;
 	verbosity = obj["verbosity"].asInt();
-	verbosity = 1;
 																						if(verbosity>1) cout << "\nFluidSystem_chk 0\n" << flush;
 	//createFolders( );																	/*Step1: Getting platforms and choose an available one.*/////////
 	cl_uint 		numPlatforms;														//the NO. of platforms
@@ -2517,7 +2516,7 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
     if (verbosity>1)std::cout<<"\nSetupSimulation chk5 "<<std::flush;
 
     AllocateGrid(gpu_mode, cpu_mode);
-    if (verbosity>1) std::cout<<"\n----- SetupSimulation() finished, -----\n" << std::flush;
+    if (verbosity>1) std::cout<<"\n----- SetupSimulation() finished. -----\n" << std::flush;
 
 
 }
@@ -2566,7 +2565,7 @@ void FluidSystem::Run2Simulation(){
         launchParams.file_increment=0;                                                                      // used within Run2InnerPhysicalLoop();
         for ( int j=0; j<launchParams.steps_per_file; j++ ) {
             for (int k=0; k<launchParams.steps_per_InnerPhysicalLoop; k++) {
-                std::cout<<"\tk="<<k;
+                std::cout<<"\tk="<<k<<"\n"<<flush;
                 Run2InnerPhysicalLoop();                                                                    // Run2InnerPhysicalLoop();
             }
             if(launchParams.gene_activity=='y') Run2GeneAction();                                           // Run2GeneAction();
