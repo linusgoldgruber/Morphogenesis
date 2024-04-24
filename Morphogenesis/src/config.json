@@ -1,5 +1,4 @@
 {
-    "verbosity":2,                                  // -1= none, 0=errors only, 1=basic, 2=lots.
 
     "demo_path":"demo",                               // optional! specify the name of you demo folder within the /Morphogenesis/src/ directory,
 
@@ -14,6 +13,8 @@
     "opencl_platform": 0,                           // ThinkPad 2, Clevo 0, WS 0 or 1       // need platform & device GPU choices,
 
     "opencl_device":0,                              // -1= none, 0=errors only, 1=basic, 2=lots.
+
+    "verbosity":2,                                  // -1= none, 0=errors only, 1=basic, 2=lots.
 
     "data_file_increment":1
 }

@@ -98,7 +98,7 @@ bool clCheck(cl_int status, const char* method, const char* apicall, const char*
         std::cout << "OpenCL Error: " << errorMessage << std::endl;
         std::cout << "Caller: " << method << std::endl;
         std::cout << "Call: " << apicall << std::endl;
-        std::cout << "Args: " << arg << std::endl;
+        std::cout << "Args: " << arg << std::flush;
         return false;
     }
     return true;
@@ -122,13 +122,18 @@ FluidSystem::FluidSystem (RunCL& runcl){
 bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall, const char* arg, bool bDebug)
 {
     // DEBUG IMPLEMENTATION MISSING!!!
+    if (apicall == "clEnqueueNDRangeKernel") {
+
+        cout << "\n\n\n☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆ K E R N E L   L A U N C H ☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆\n" << flush;
+        cout << arg << "\n" << flush;
+    }
 
     if (status != CL_SUCCESS) {
         std::string errorMessage = checkerror(status);
         std::cout << "\nOpenCL Error: " << errorMessage << std::endl;
         std::cout << "Caller: " << method << std::endl;
         std::cout << "Call: " << apicall << std::endl;
-        std::cout << "Args: " << arg << std::endl;
+        std::cout << "Args: " << arg << std::flush;
         return false;
     }
     return true;
@@ -312,10 +317,10 @@ void FluidSystem::InitializeOpenCL()
 
 
 																				if(verbosity>1) {
-																					cout << "m_FParamDevice = " 	<< m_FParamsDevice << endl;
-																					cout << "m_FluidDevice = " 		<< m_FluidDevice << endl;
-																					cout << "m_FluidTempDevice = " 	<< m_FluidTempDevice << endl;
-																					cout << "m_FGenomeDevice = " 	<< m_FGenomeDevice << endl;
+																					cout << "m_FParamDevice = " 	<< m_FParamsDevice << flush;
+																					cout << "m_FluidDevice = " 		<< m_FluidDevice << flush;
+																					cout << "m_FluidTempDevice = " 	<< m_FluidTempDevice << flush;
+																					cout << "m_FGenomeDevice = " 	<< m_FGenomeDevice << flush;
 																				}
 
     																				if(verbosity>0) cout << "FluidSystem::InitializeOpenCL_chk3\n" << flush;
@@ -431,7 +436,7 @@ void FluidSystem::Initialize(){             //Left aside for now, implement by c
 
     if (verbosity>1)std::cout << "\nChk1.6 ";
 
-                                                                            if(verbosity>0) cout << "\n-----FluidSystem::Initialize() successful-----\n" << endl;
+                                                                            if(verbosity>0) cout << "\n-----FluidSystem::Initialize() successful-----\n" << flush;
 
 }
 
@@ -716,16 +721,16 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
 
 
 
-    if (verbosity>0)std::cout<<"\n\nAllocateParticles ( cnt= "<<cnt<<", gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<verbosity<<", launchParams.debug="<<launchParams.debug<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\n";//<<std::flush;
+    if (verbosity>0)std::cout<<"\n\nAllocateParticles ( cnt= "<<cnt<<", gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<verbosity<<", launchParams.verbosity="<<launchParams.verbosity<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\n";//<<std::flush;
     if (verbosity>1)std::cout<<"\n\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUAL=3, CPU_OFF=4, CPU_YES=5"<<std::flush;
-    AllocateBuffer ( FPOS,		sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
+    AllocateBuffer ( FPOS,		sizeof(cl_float4),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FCLR,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
-    AllocateBuffer ( FVEL,		sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
-    AllocateBuffer ( FVEVAL,	sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
+    AllocateBuffer ( FVEL,		sizeof(cl_float4),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
+    AllocateBuffer ( FVEVAL,	sizeof(cl_float4),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FAGE,		sizeof(uint),       cnt,    m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FPRESS,	sizeof(float),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FDENSITY,	sizeof(float),		cnt, 	m_FParams.szPnts,	gpu_mode, cpu_mode );//
-    AllocateBuffer ( FFORCE,	sizeof(cl_float3),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
+    AllocateBuffer ( FFORCE,	sizeof(cl_float4),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FCLUSTER,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FGCELL,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FGNDX,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
@@ -809,7 +814,7 @@ void FluidSystem::AllocateBufferDenseLists(int buf_id, int stride, int gpucnt, i
 
 void FluidSystem::AllocateGrid(int gpu_mode, int cpu_mode){ // NB void FluidSystem::AllocateBuffer (int buf_id, int stride, int cpucnt, int gpucnt, int gpumode, int cpumode)
     // Allocate grid
-        if (verbosity>0)std::cout<<"\n\nAllocateGrid ( gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<verbosity<<", launchParams.debug="<<launchParams.debug<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\t"<<std::flush;
+        if (verbosity>0)std::cout<<"\n\nAllocateGrid ( gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<verbosity<<", launchParams.verbosity="<<launchParams.verbosity<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\t"<<std::flush;
 
     int cnt = m_GridTotal;
     m_FParams.szGrid = (m_FParams.gridBlocks * m_FParams.gridThreads);
@@ -1860,45 +1865,49 @@ void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting 
     InsertParticlesCL ( 0x0, 0x0, 0x0 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After InsertParticlesCL", mbDebug);
 
-    if(launchParams.debug>0){
+    if(launchParams.verbosity>0){
         std::cout<<"\nchk a"<<std::flush;
         TransferFromCL ();
         m_Debug_file++;
         std::cout<<"\nchk b: launchParams.outPath="<<launchParams.outPath<<",  m_Frame+m_Debug_file=0;="<<m_Frame+m_Debug_file<<"\t"<<std::flush;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-        std::cout << "\n\nRun2PhysicalSort() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  InsertParticlesCL\n"<<std::flush;
         //TransferFromTempCL(int buf_id, int sz );
     }
+    cout<<"\nX X X X X X before PrefixSumCells(), m_Param [PNUM] = " << m_Param [PNUM] <<std::flush; //TODO Remove this debug line
     PrefixSumCellsCL ( 1 );
+
     clCheck(clFinish(m_queue), "Run", "clFinish", "After PrefixSumCellsCL", mbDebug);
 
-    if(launchParams.debug>0){
+    if(launchParams.verbosity>0){
         TransferFromCL ();
         m_Debug_file++;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
         std::cout << "\n\nRun2PhysicalSort() Chk2, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  PrefixSumCellsCL\n"<<std::flush;
         //TransferFromTempCL(int buf_id, int sz );
     }
+    cout << "\nCHECK 1.1 Run2Simulation() \n" << flush;
     CountingSortFullCL ( 0x0 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
-
+    printf("\nCHECK 1.2 Run2Simulation() \n");
     if(verbosity>0)std::cout<<"\n####\nRun2PhysicalSort()end";
 }
 
 void FluidSystem::Run2InnerPhysicalLoop(){ //
-    if(verbosity>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()start";
-//     if(m_FParams.freeze==true){
+    printf("\n####\n------- starting Run2InnerPhysicalLoop()... -------");//     if(m_FParams.freeze==true){
 //         InitializeBondsCL ();
 //         clCheck(clFinish(m_queue), "Run", "clFinish", "After InitializeBondsCL ", mbDebug);
 //     }
+    printf("\n####\n------- Run2InnerPhysicalLoop() chk1 -------");
 
     ComputePressureCL();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After ComputePressureCL", mbDebug);
+    printf("\n####\n------- Run2InnerPhysicalLoop() chk2 -------");
 
     ComputeForceCL ();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After ComputeForceCL", mbDebug);
+    printf("\n####\n------- Run2InnerPhysicalLoop() chk3 -------");
 
-    if(launchParams.debug>1){
+    if(launchParams.verbosity>1){
         TransferFromCL ();
         launchParams.file_increment++;
         cout << "----------------------------------------------------launchParams.file_num: " << launchParams.file_num << flush;
@@ -1907,28 +1916,34 @@ void FluidSystem::Run2InnerPhysicalLoop(){ //
         SavePointsCSV2 (  launchParams.outPath, launchParams.file_num+launchParams.file_increment );
         std::cout << "\n\nRun(relativePath,frame) Chk4, saved "<< launchParams.file_num+3 <<".csv  After CountingSortFullCL\n"<<std::flush;
     }
+    printf("\n####\n------- Run2InnerPhysicalLoop() chk4 -------");
 
     TransferPosVelVeval ();
     clFinish(m_queue);
+    printf("\n####\n------- Run2InnerPhysicalLoop() chk5 -------");
 
     AdvanceCL ( m_Time, m_DT, m_Param[PSIMSCALE] );
     clFinish(m_queue);
+    printf("\n####\n------- Run2InnerPhysicalLoop() chk6 -------");
 
 //     SpecialParticlesCL ( m_Time, m_DT, m_Param[PSIMSCALE]); //TODO THIS CRASHES!!!!!!
 //     clFinish(m_queue);
+//     printf("\n####\n------- Run2InnerPhysicalLoop() chk7 -------");
 
-//     TransferPosVelVevalFromTemp ();
-//
-//      if(launchParams.debug>0){
-//         TransferFromCL ();
-//         m_Debug_file++;
-//         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-//         std::cout << "\n\nRun2InnerPhysicalLoop() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  TransferPosVelVevalFromTemp ();\n"<<std::flush;
-//         //TransferFromTempCL(int buf_id, int sz );
-//     }
-//
-//     AdvanceTime ();
-//     if(verbosity>1)std::cout<<"\n####\nRun2InnerPhysicalLoop()end";
+    TransferPosVelVevalFromTemp ();
+    printf("\n####\n------- Run2InnerPhysicalLoop() chk7 -------");
+
+     if(launchParams.verbosity>0){
+        TransferFromCL ();
+        m_Debug_file++;
+        SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
+        std::cout << "\n\nRun2InnerPhysicalLoop() Chk1, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  TransferPosVelVevalFromTemp ();\n"<<std::flush;
+        //TransferFromTempCL(int buf_id, int sz );
+    }
+    printf("\n####\n------- Run2InnerPhysicalLoop() chk8 -------");
+    AdvanceTime ();
+    if(verbosity>0)    printf("\n####\n------- Run2InnerPhysicalLoop() finished.  -------");
+
 }
 
 void FluidSystem::Run2GeneAction(){//NB gene sorting occurs within Run2PhysicalSort()
@@ -1976,7 +1991,7 @@ void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
     CountingSortChangesCL (  );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After CountingSortChangesCL", mbDebug);
 
-    if(launchParams.debug>0){
+    if(launchParams.verbosity>0){
         TransferFromCL ();
         m_Debug_file++;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
@@ -1987,7 +2002,7 @@ void FluidSystem::Run2Remodelling(uint steps_per_InnerPhysicalLoop){
     ComputeParticleChangesCL ();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After ComputeParticleChangesCL", mbDebug);
 
-    if(launchParams.debug>0){
+    if(launchParams.verbosity>0){
         TransferFromCL ();
         m_Debug_file++;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
@@ -2321,7 +2336,7 @@ void FluidSystem::SetupExampleParams (uint spacing){
         launchParams.steps_per_file = 6;
         launchParams.freeze_steps = 1;
 
-        launchParams.debug = 0;
+        launchParams.verbosity = 0;
         launchParams.file_num = 0;
 
         launchParams.save_ply = 'n';
@@ -2480,7 +2495,7 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
 
     m_Param [PNUM] = launchParams.num_particles;                             // NB there is a line of text above the particles, hence -1.
 
-    std::cout<<"\nX X X X X X X X X m_Param[PNUM] = " << m_Param[PNUM] <<std::flush; //TODO Remove this debug line
+    //std::cout<<"\nX X X X X X X X X m_Param[PNUM] = " << m_Param[PNUM] <<std::flush; //TODO Remove this debug line
     mMaxPoints = m_Param[PNUM];
     std::cout<<"\nX X X X X X X X X X X X X X X m_Param [PNUM] = " << m_Param [PNUM] <<std::flush; //TODO Remove this debug line
 
@@ -2493,14 +2508,14 @@ void FluidSystem::SetupSimulation(int gpu_mode, int cpu_mode){ // const char * r
     SetupSPH_Kernels ();
     SetupSpacing ();
 
-    std::cout << "\nmin: (" << m_Vec[PVOLMIN].x << ", " << m_Vec[PVOLMIN].y << ", " << m_Vec[PVOLMIN].z << ")" << std::endl;
-    std::cout << "max: (" << m_Vec[PVOLMAX].x << ", " << m_Vec[PVOLMAX].y << ", " << m_Vec[PVOLMAX].z << ")" << std::endl;
-    std::cout << "sim_scale: " << m_Param[PSIMSCALE] << std::endl;
-    std::cout << "cell_size: " << m_Param[PGRIDSIZE] << std::endl;
+    std::cout << "\nmin: (" << m_Vec[PVOLMIN].x << ", " << m_Vec[PVOLMIN].y << ", " << m_Vec[PVOLMIN].z << ")" << std::flush;
+    std::cout << "max: (" << m_Vec[PVOLMAX].x << ", " << m_Vec[PVOLMAX].y << ", " << m_Vec[PVOLMAX].z << ")" << std::flush;
+    std::cout << "sim_scale: " << m_Param[PSIMSCALE] << std::flush;
+    std::cout << "cell_size: " << m_Param[PGRIDSIZE] << std::flush;
 
     SetupGrid ( m_Vec[PVOLMIN]/*bottom corner*/, m_Vec[PVOLMAX]/*top corner*/, m_Param[PSIMSCALE], m_Param[PGRIDSIZE]);
 
-    std::cout<<"\nSetupSimulation chk3, verbosity="<<verbosity<<std::flush;
+    std::cout << "\nSetupSimulation chk3, verbosity=" << verbosity << "\n" <<std::flush;
 
     if (gpu_mode != GPU_OFF) {     // create CL instance etc..
         cout << "+OpenCL+ Setup started ...." << flush;
@@ -2529,7 +2544,7 @@ void FluidSystem::Run2Simulation(){
     clCheck(clFinish(m_queue), "Run", "clFinish", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
     setFreeze(true);
     m_Debug_file=0;
-    if (verbosity>0)std::cout<<"\n\nFreeze()"<<-1<<"\n"<<std::flush;
+    if (verbosity>0)std::cout<<"\n\nFreeze() "<<-1<<"\n"<<std::flush;
     Run2PhysicalSort();
 //     InitializeBondsCL();
 
@@ -2545,7 +2560,7 @@ void FluidSystem::Run2Simulation(){
       if (verbosity>0)std::cout<<"\n\nFreeze()"<<k<<"\n"<<std::flush;
       //Run2PhysicalSort();
       //InitializeBondsCL();
-      //Run (launchParams.outPath, launchParams.file_num, (launchParams.debug>4), (launchParams.gene_activity=='y'), (launchParams.remodelling=='y') );
+      //Run (launchParams.outPath, launchParams.file_num, (launchParams.verbosity>4), (launchParams.gene_activity=='y'), (launchParams.remodelling=='y') );
       for (int k=0; k<launchParams.steps_per_InnerPhysicalLoop*2; k++) Run2InnerPhysicalLoop();
       Run2PhysicalSort();
       ZeroVelCL ();                                                                                       // remove velocity, kinetic energy and momentum
@@ -2558,15 +2573,27 @@ void FluidSystem::Run2Simulation(){
     }
     */
     /////////
-    for ( ; launchParams.file_num<launchParams.freeze_steps; launchParams.file_num+=100 ) {
+    printf("\nCHECK 2 Run2Simulation() \n");
+    fflush(stdout);
+    printf("launchParams.file_num: %d\n", launchParams.file_num);
+    printf("\nlaunchParams.freeze_steps: %d\n", launchParams.freeze_steps);
+    printf("\nlaunchParams.steps_per_InnerPhysicalLoop: %d\n", launchParams.steps_per_InnerPhysicalLoop);
+
+
+    for ( ; launchParams.file_num<=launchParams.freeze_steps*100; launchParams.file_num+=100 ) {
+            printf("\nCHECK 1.LOOP Run2Simulation() \n");
+
         std::cout<<"\n\nfile_num="<<launchParams.file_num<<", of "<<launchParams.num_files<<"\n"<<std::flush;
         m_Debug_file=0;
         m_Frame=launchParams.file_num;
         launchParams.file_increment=0;                                                                      // used within Run2InnerPhysicalLoop();
         for ( int j=0; j<launchParams.steps_per_file; j++ ) {
+                        printf("\nCHECK 2.LOOP Run2Simulation() \n");
+
             for (int k=0; k<launchParams.steps_per_InnerPhysicalLoop; k++) {
                 std::cout<<"\tk="<<k<<"\n"<<flush;
                 Run2InnerPhysicalLoop();                                                                    // Run2InnerPhysicalLoop();
+                printf("\nCHECK 3.LOOP Run2Simulation() \n");
             }
             if(launchParams.gene_activity=='y') Run2GeneAction();                                           // Run2GeneAction();
             if(launchParams.remodelling=='y') Run2Remodelling(launchParams.steps_per_InnerPhysicalLoop);                                          // Run2Remodelling();
@@ -2607,7 +2634,7 @@ void FluidSystem::Run2Simulation(){
         auto end = std::chrono::steady_clock::now();
         std::chrono::duration<double> time = end - begin;
         std::chrono::duration<double> begin_dbl = begin - old_begin;
-        if(launchParams.debug>0) std::cout << "\nLoop duration : "
+        if(launchParams.verbosity>0) std::cout << "\nLoop duration : "
                     << begin_dbl.count() <<" seconds. Time taken to write files for "
                     << NumPoints() <<" particles : "
                     << time.count() << " seconds. launchParams.num_files="

@@ -39,27 +39,26 @@ int main ( int argc, const char** argv )
     const char* directory = Path.c_str();
     std::cout << "Directory: " << directory << std::endl;
     //---------------------------------------------------
-    //Initialize JSON
+
+    //Initialize JSON----------------------------------------------------------------------------------------------------------------------------
     char jsonPath[512]; sprintf(jsonPath, "%s/%s", directory, argv[1]); cout << "Concatenated path: " << jsonPath << std::endl;
     ifstream ifs(jsonPath);
     Json::Reader reader;
     Json::Value obj_;
     Json::Value obj;
+    bool b = reader.parse(ifs, obj);
+    if (!b) cout << "Error: " << reader.getFormattedErrorMessages();  else cout << "NB lists .json file entries alphabetically: \n" << obj ;
+    cout << "\n\n\n" << endl;
+    //if (!obj.isMember("verbosity")) std::cerr<< "\nError: 'verbosity' key not found in JSON file." << std::endl;return 1;
     uint verbosity = obj["verbosity"].asUInt();
     obj["opencl_platform"] = 0;
     obj["opencl_device"] = 0;
-    bool b = reader.parse(ifs, obj);
-    if (!b) { cout << "Error: " << reader.getFormattedErrorMessages();}   else {cout << "NB lists .json file entries alphabetically: \n" << obj ;}
-    cout << "\n\n\n" << endl;
-std::string in_path_str = obj.isMember("demo_path") && obj["demo_path"].isString() ? std::string(obj["demo_path"].asCString()) + "/check" : (std::cerr << "Error: 'demo_path' is missing or invalid." << std::endl, nullptr);
-const char* in_path = in_path_str.c_str();
+    std::string in_path_str = obj.isMember("demo_path") && obj["demo_path"].isString() ? std::string(obj["demo_path"].asCString()) + "/check" : (std::cerr << "Error: 'demo_path' is missing or invalid." << std::endl, nullptr);
+    const char* in_path = in_path_str.c_str();
     std::string out_path_str = obj.isMember("demo_path") && obj["demo_path"].isString() ? std::string(obj["demo_path"].asCString()) + "/out" : (std::cerr << "Error: 'demo_path' is missing or invalid." << std::endl, nullptr);
     const char* out_path = out_path_str.c_str();
-
     const char* specfile_path = obj.isMember("demo_path") && obj["demo_path"].isString() ? obj["demo_path"].asCString() : (std::cerr << "Error: 'demo_path' in JSON file) is missing or invalid." << std::endl, nullptr);
-
-
-    //---------------------------------------------------
+    //-------------------------------------------------------------------------------------------------------------------------------------------
 
 
     if ((argc != 2) && (argc !=1)) {
@@ -68,14 +67,12 @@ const char* in_path = in_path_str.c_str();
         \nIf output_folder is not given the value from SpecificationFile.txt will be used.\n" );
         return 0;
     } else {
+
         sprintf ( input_folder, "%s/%s", directory, in_path);
         sprintf ( specfile_folder, "%s/%s", directory, specfile_path);
         sprintf ( output_folder, "%s/%s", directory, out_path);
-        sprintf ( json_folder, "%s/%s", directory, argv[1]);
 
-
-
-        printf ( "input_folder = %s , output_folder = %s, \njson_folder = %s\n", input_folder, output_folder, json_folder );
+        printf ( "input_folder = %s , output_folder = %s \n", input_folder, output_folder );
 
     }
     FluidSystem fluid(obj);
@@ -84,8 +81,9 @@ const char* in_path = in_path_str.c_str();
 
     //Setup Simulation------------------------------------------------------------
     fluid.ReadSpecificationFile ( specfile_folder );
-    fluid.launchParams.debug = verbosity; //TODO change debug to verbosity in general
-    std::cout<<"\n\nmake_demo2 chk1, fluid.launchParams.debug="<<fluid.launchParams.debug<<", fluid.launchParams.genomePath=" <<fluid.launchParams.genomePath  << ",  fluid.launchParams.spacing="<<fluid.launchParams.spacing<< ", fluid.launchParams.paramsPath="<<fluid.launchParams.paramsPath<< ",  fluid.launchParams.num_particles="<<fluid.launchParams.num_particles<< ",  fluid.launchParams.demoType="<<fluid.launchParams.demoType<<std::flush;
+    fluid.launchParams.verbosity = verbosity;
+
+    std::cout<<"\n\nmake_demo2 chk1, fluid.launchParams.verbosity="<<fluid.launchParams.verbosity<<", fluid.launchParams.genomePath=" <<fluid.launchParams.genomePath  << ",  fluid.launchParams.spacing="<<fluid.launchParams.spacing<< ", fluid.launchParams.paramsPath="<<fluid.launchParams.paramsPath<< ",  fluid.launchParams.num_particles="<<fluid.launchParams.num_particles<< ",  fluid.launchParams.demoType="<<fluid.launchParams.demoType<<std::flush;
 
     for(int i=0; i<256; i++){fluid.launchParams.paramsPath[i] = input_folder[i];}
     for(int i=0; i<256; i++){fluid.launchParams.pointsPath[i] = input_folder[i];}
@@ -103,7 +101,7 @@ const char* in_path = in_path_str.c_str();
 
     cout << "\nSTARTING WriteDemoSimParams() WITH fluid.launchParams.paramsPath = " << fluid.launchParams.paramsPath << "\n" << flush;
     fluid.WriteDemoSimParams(           // Generates the simulation from data previously loaded from SpecificationFile.txt .
-        fluid.launchParams.paramsPath, GPU_SINGLE, CPU_YES, fluid.launchParams.num_particles, fluid.launchParams.spacing, fluid.launchParams.x_dim, fluid.launchParams.y_dim, fluid.launchParams.z_dim, fluid.launchParams.demoType, fluid.launchParams.simSpace, fluid.launchParams.debug
+        fluid.launchParams.paramsPath, GPU_SINGLE, CPU_YES, fluid.launchParams.num_particles, fluid.launchParams.spacing, fluid.launchParams.x_dim, fluid.launchParams.y_dim, fluid.launchParams.z_dim, fluid.launchParams.demoType, fluid.launchParams.simSpace, fluid.launchParams.verbosity
     ); /*const char * relativePath*/
     //std::cout<<"\n\nmake_demo2 chk2 "<<std::flush;
     uint num_particles_start=fluid.ActivePoints();
@@ -113,6 +111,7 @@ const char* in_path = in_path_str.c_str();
     //---------------------------------------------------
 
     //Run Simulation---------
+    cout << "\nSTARTING Run2Simulation() " << flush;
     fluid.Run2Simulation ();
     //-----------------------
 

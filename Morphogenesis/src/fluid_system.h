@@ -406,7 +406,7 @@ using namespace std;
 				delete[] str;
 				return 0;
 			}
-												cout << "Error: failed to open file\n:" << filename << endl;
+												cout << "Error: failed to open file\n:" << filename << flush;
 			return 1;
 		}
 
@@ -700,7 +700,7 @@ using namespace std;
             char pointsPath[256];
             char genomePath[256];
             char outPath[256];
-            uint num_files=1, steps_per_file=1, freeze_steps=0, debug=0, steps_per_InnerPhysicalLoop=3;
+            uint num_files=1, steps_per_file=1, freeze_steps=0, verbosity=0, steps_per_InnerPhysicalLoop=3;
             int file_num=0, file_increment=0;
             char save_ply='n', save_csv='n', save_vtp='n',  gene_activity='n', remodelling='n', read_genome='n';
             

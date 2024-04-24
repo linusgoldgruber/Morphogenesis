@@ -48,7 +48,7 @@ int main ( int argc, const char** argv )
     //std::cout<<"\n\nmake_demo2 chk0,"<<std::flush;
     
     fluid.ReadSpecificationFile ( input_folder );
-    std::cout<<"\n\nmake_demo2 chk1, fluid.launchParams.debug="<<fluid.launchParams.debug<<", fluid.launchParams.genomePath=" <<fluid.launchParams.genomePath  << ",  fluid.launchParams.spacing="<<fluid.launchParams.spacing<<std::flush;
+    std::cout<<"\n\nmake_demo2 chk1, fluid.launchParams.verbosity="<<fluid.launchParams.verbosity<<", fluid.launchParams.genomePath=" <<fluid.launchParams.genomePath  << ",  fluid.launchParams.spacing="<<fluid.launchParams.spacing<<std::flush;
     
     for(int i=0; i<256; i++){fluid.launchParams.paramsPath[i] = input_folder[i];}
     for(int i=0; i<256; i++){fluid.launchParams.pointsPath[i] = input_folder[i];}
@@ -59,7 +59,7 @@ int main ( int argc, const char** argv )
     else cout << "output_folder created\n"; // NB 0755 = rwx owner, rx for others.
     
     fluid.WriteDemoSimParams(           // Generates the simulation from data previously loaded from SpecificationFile.txt .
-        fluid.launchParams.paramsPath, GPU_DUAL, CPU_YES, fluid.launchParams.num_particles, fluid.launchParams.spacing, fluid.launchParams.x_dim, fluid.launchParams.y_dim, fluid.launchParams.z_dim, fluid.launchParams.demoType, fluid.launchParams.simSpace, fluid.launchParams.debug
+        fluid.launchParams.paramsPath, GPU_DUAL, CPU_YES, fluid.launchParams.num_particles, fluid.launchParams.spacing, fluid.launchParams.x_dim, fluid.launchParams.y_dim, fluid.launchParams.z_dim, fluid.launchParams.demoType, fluid.launchParams.simSpace, fluid.launchParams.verbosity
     ); /*const char * relativePath*/ 
     //std::cout<<"\n\nmake_demo2 chk2 "<<std::flush;
     uint num_particles_start=fluid.ActivePoints();

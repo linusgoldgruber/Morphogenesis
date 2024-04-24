@@ -119,7 +119,7 @@ int main ( int argc, const char** argv )
     fluid.launchParams.steps_per_InnerPhysicalLoop = 3;
     fluid.launchParams.steps_per_file   = 6;
     fluid.launchParams.freeze_steps     = 1;
-    fluid.launchParams.debug            = 0;
+    fluid.launchParams.verbosity            = 0;
     fluid.launchParams.file_num         = 0;
     
     fluid.launchParams.save_ply         = 'n';

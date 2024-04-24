@@ -1202,7 +1202,7 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     ret += std::fscanf ( SpecFile, "freeze_steps = %u\n ", &launchParams.freeze_steps );
     ret += std::fscanf ( SpecFile, "\n");
     
-    ret += std::fscanf ( SpecFile, "debug = %u\n ", &launchParams.debug );
+    ret += std::fscanf ( SpecFile, "debug = %u\n ", &launchParams.verbosity );
     ret += std::fscanf ( SpecFile, "file_num = %u\n ", &launchParams.file_num );
     ret += std::fscanf ( SpecFile, "\n");
     
@@ -1221,8 +1221,8 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     
     ret += std::fscanf ( SpecFile, "\n");
  
-    m_FParams.debug = launchParams.debug ;
-    if (m_FParams.debug>1)std::cout<<"\n\n   launchParams.debug="<<launchParams.debug<<",  m_FParams.debug="<<m_FParams.debug <<" .\t"<<std::flush;
+    m_FParams.debug = launchParams.verbosity ;
+    if (m_FParams.debug>1)std::cout<<"\n\n   launchParams.verbosity="<<launchParams.verbosity<<",  m_FParams.debug="<<m_FParams.debug <<" .\t"<<std::flush;
     if (m_FParams.debug>1) std::cout << "\nvoid FluidSystem::ReadSpecificationFile(..),  ret = " << ret << std::flush;
     fclose ( SpecFile );
     return;
@@ -1321,7 +1321,7 @@ void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ /
     ret += std::fprintf ( SpecFile, "freeze_steps = %u\n ", launchParams.freeze_steps );
     ret += std::fprintf ( SpecFile, "\n");
     
-    ret += std::fprintf ( SpecFile, "debug = %u\n ", launchParams.debug );
+    ret += std::fprintf ( SpecFile, "debug = %u\n ", launchParams.verbosity );
     ret += std::fprintf ( SpecFile, "file_num = %u\n ", launchParams.file_num );
     ret += std::fprintf ( SpecFile, "\n");
     
@@ -1437,7 +1437,7 @@ void FluidSystem::WriteSpecificationFile_fromLaunchParams ( const char * relativ
     ret += std::fprintf ( SpecFile, "freeze_steps = %u\n ", launchParams.freeze_steps );
     ret += std::fprintf ( SpecFile, "\n");
     
-    ret += std::fprintf ( SpecFile, "debug = %u\n ", launchParams.debug );
+    ret += std::fprintf ( SpecFile, "debug = %u\n ", launchParams.verbosity );
     ret += std::fprintf ( SpecFile, "file_num = %u\n ", launchParams.file_num );
     ret += std::fprintf ( SpecFile, "\n");
     

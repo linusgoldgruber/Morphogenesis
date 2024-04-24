@@ -55,7 +55,7 @@ int iDivUp (int a, int b) {
 
 void computeNumBlocks (int numPnts, int minThreads, size_t &numGroups, size_t &numItems){
 
-    cout << "\n       Running computeNumBlocks() with global size = " << numPnts <<"  and local group size = " << minThreads << "\n";
+    cout << "\n       Running computeNumBlocks() with global size = " << numPnts <<"  and local group size = " << minThreads << "\n" << flush;
 
     if (numPnts==0 & minThreads==0) {printf("\nError: numPnts and minThreads = 0 \n");exit(1);}
 
@@ -683,9 +683,9 @@ void FluidSystem::WriteDemoSimParams ( const char * relativePath, int gpu_mode, 
     std::cout<<"\nWriteDemoSimParams chk2 "<<std::flush;
     */
 
-    cout << "XX m_Vec[PINITMIN].x: " << m_Vec[PINITMIN].x << endl;
-    cout << "XX m_Vec[PINITMIN].y: " << m_Vec[PINITMIN].y << endl;
-    cout << "XX m_Vec[PINITMIN].z: " << m_Vec[PINITMIN].z << endl;
+    cout << "XX m_Vec[PINITMIN].x: " << m_Vec[PINITMIN].x << endl << flush;
+    cout << "XX m_Vec[PINITMIN].y: " << m_Vec[PINITMIN].y << endl << flush;
+    cout << "XX m_Vec[PINITMIN].z: " << m_Vec[PINITMIN].z << endl << flush;
 
     m_Vec[PBOUNDMIN].x= m_Vec[PVOLMIN].x + 2*(m_Param[PGRIDSIZE]/m_Param[PSIMSCALE]);
     m_Vec[PBOUNDMIN].y= m_Vec[PVOLMIN].y + 2*(m_Param[PGRIDSIZE]/m_Param[PSIMSCALE]);
@@ -773,7 +773,7 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     ret += std::fscanf ( SpecFile, "\n");
 
     ret += std::fscanf ( SpecFile, "gridsize = %f\n ", &launchParams.gridsize);
-    std::cout << "\nX X X X X X X X X X X X X X X X X X X X X X X  launchParams.gridsize = " << launchParams.gridsize << std::flush; //TODO Remove this debug line
+    //std::cout << "\nX X X X X X X X X X X X X X X X X X X X X X X  launchParams.gridsize = " << launchParams.gridsize << std::flush; //TODO Remove this debug line
     ret += std::fscanf ( SpecFile, "spacing = %f\n ", &launchParams.spacing);
     ret += std::fscanf ( SpecFile, "\n");
 
@@ -850,7 +850,7 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
     ret += std::fscanf ( SpecFile, "freeze_steps = %u\n ", &launchParams.freeze_steps );
     ret += std::fscanf ( SpecFile, "\n");
 
-    ret += std::fscanf ( SpecFile, "debug = %u\n ", &launchParams.debug );
+    ret += std::fscanf ( SpecFile, "debug = %u\n ", &launchParams.verbosity );
     ret += std::fscanf ( SpecFile, "file_num = %u\n ", &launchParams.file_num );
     ret += std::fscanf ( SpecFile, "\n");
 
@@ -869,8 +869,8 @@ void FluidSystem::ReadSpecificationFile ( const char * relativePath ){
 
     ret += std::fscanf ( SpecFile, "\n");
 
-    verbosity = launchParams.debug ;
-    if (verbosity>1)std::cout<<"\n\n   launchParams.debug="<<launchParams.debug<<",  verbosity="<<verbosity <<" .\t"<<std::flush;
+    verbosity = launchParams.verbosity ;
+    if (verbosity>1)std::cout<<"\n\n   launchParams.verbosity="<<launchParams.verbosity<<",  verbosity="<<verbosity <<" .\t"<<std::flush;
     if (verbosity>1) std::cout << "\nvoid FluidSystem::ReadSpecificationFile(..),  ret = " << ret << std::flush;
     fclose ( SpecFile );
     return;
@@ -979,7 +979,7 @@ void FluidSystem::WriteExampleSpecificationFile ( const char * relativePath ){ /
     ret += std::fprintf ( SpecFile, "freeze_steps = %u\n ", launchParams.freeze_steps );
     ret += std::fprintf ( SpecFile, "\n");
 
-    ret += std::fprintf ( SpecFile, "debug = %u\n ", launchParams.debug );
+    ret += std::fprintf ( SpecFile, "debug = %u\n ", launchParams.verbosity );
     ret += std::fprintf ( SpecFile, "file_num = %u\n ", launchParams.file_num );
     ret += std::fprintf ( SpecFile, "\n");
 
@@ -1095,7 +1095,7 @@ void FluidSystem::WriteSpecificationFile_fromLaunchParams ( const char * relativ
     ret += std::fprintf ( SpecFile, "freeze_steps = %u\n ", launchParams.freeze_steps );
     ret += std::fprintf ( SpecFile, "\n");
 
-    ret += std::fprintf ( SpecFile, "debug = %u\n ", launchParams.debug );
+    ret += std::fprintf ( SpecFile, "debug = %u\n ", launchParams.verbosity );
     ret += std::fprintf ( SpecFile, "file_num = %u\n ", launchParams.file_num );
     ret += std::fprintf ( SpecFile, "\n");
 
@@ -1160,7 +1160,7 @@ void FluidSystem::SaveUintArray( uint* array, int numElem1, const char * relativ
     //Find working directory-----------------------------
     fs::path Path = fs::current_path().parent_path();
     const char* directory = Path.c_str();
-    std::cout << "Directory: " << directory << std::endl;
+    std::cout << "Directory: " << directory << std::flush;
 
     sprintf ( buf, "%s/%s", directory, relativePath);
     FILE* fp = fopen ( buf , "w" );
@@ -1675,8 +1675,8 @@ if (verbosity>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
     //writer->SetDataModeToBinary();
 
 	writer->Write();
-if (verbosity>1)cout << "\nFinished writing vtp file " << buf << "." << endl;
-if (verbosity>1)cout << "\tnum_active_points: " << num_active_points << endl;
+if (verbosity>1)cout << "\nFinished writing vtp file " << buf << "." << flush;
+if (verbosity>1)cout << "\tnum_active_points: " << num_active_points << flush;
 	//if (verbosity>1)cout << "\nFinished writing vtp file " << buf << "." << endl;
 	//if (verbosity>1)cout << "\tnum_active_points: " << num_active_points << endl;
 }
