@@ -532,7 +532,8 @@ using namespace std;
 		}
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//FluidSystem (RunCL& runcl);
-        bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
+		bool clCheck(cl_int status, std::string method, std::string apicall, std::string arg, bool bDebug);
+//         bool clCheck (cl_int launch_stat, const char* method, const char* apicall, const char* arg, bool bDebug);
 		//FluidSystem(RunCL& runCLInstance) : m_runCLInstance(runCLInstance) {}
 		void LoadKernel (int id, std::string kname );
 		void Initialize ();

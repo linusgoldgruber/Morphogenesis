@@ -184,6 +184,7 @@ void FluidSystem::TransferToTempCL ( int buf_id, int sz ){
 
     clFlush (m_queue);
     clFinish (m_queue);
+
 /*
     printf("------- TransferToTempCL() finished. -------\n");
     fflush(stdout);*/
@@ -1285,7 +1286,7 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
         NULL,
         NULL),
 
-        "CountingSortFullCL", "clEnqueueNDRangeKernel", "FUNC_COUNTING_SORT_FULL", mbDebug );
+        "CountingSortFullCL", "clEnqueueNDRangeKernel", "FUNC_COUNTING_SORT_FULL 1", mbDebug );
 
 
     // Having sorted the particle data, we can start using a shortened list of particles.

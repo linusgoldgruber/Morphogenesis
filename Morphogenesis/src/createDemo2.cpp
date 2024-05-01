@@ -111,7 +111,6 @@ int main ( int argc, const char** argv )
     //---------------------------------------------------
 
     //Run Simulation---------
-    cout << "\nSTARTING Run2Simulation() " << flush;
     fluid.Run2Simulation ();
     //-----------------------
 

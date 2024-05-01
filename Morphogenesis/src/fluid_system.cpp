@@ -85,24 +85,24 @@ std::string checkerror(int input) {
 		}
 	}
 
-bool clCheck(cl_int status, const char* method, const char* apicall, const char* arg, bool bDebug)
-{
-
-    // DEBUG IMPLEMENTATION MISSING!!!
-//         if (bDebug) {
-//         kern_stat = clFinish(m_queue);
+// bool clCheck(cl_int status, const char* method, const char* apicall, const char* arg, bool bDebug)
+// {
+//
+//     // DEBUG IMPLEMENTATION MISSING!!!
+// //         if (bDebug) {
+// //         kern_stat = clFinish(m_queue);
+// //     }
+//
+//     if (status != CL_SUCCESS) {
+//         std::string errorMessage = checkerror(status);
+//         std::cout << "OpenCL Error: " << errorMessage << std::endl;
+//         std::cout << "Caller: " << method << std::endl;
+//         std::cout << "Call: " << apicall << std::endl;
+//         std::cout << "Args: " << arg << std::flush;
+//         return false;
 //     }
-
-    if (status != CL_SUCCESS) {
-        std::string errorMessage = checkerror(status);
-        std::cout << "OpenCL Error: " << errorMessage << std::endl;
-        std::cout << "Caller: " << method << std::endl;
-        std::cout << "Call: " << apicall << std::endl;
-        std::cout << "Args: " << arg << std::flush;
-        return false;
-    }
-    return true;
-}
+//     return true;
+// }
 /*
 FluidSystem::FluidSystem (RunCL& runcl){
     if (verbosity>1)cout<<"\n\nFluidSystem ()"<<std::flush;
@@ -119,16 +119,54 @@ FluidSystem::FluidSystem (RunCL& runcl){
 }
 */
 
+
+bool FluidSystem::clCheck(cl_int status, std::string method, std::string apicall, std::string arg, bool bDebug) {
+
+
+    // Check for null pointers and handle them appropriately
+    const std::string methodString = (method == "NULL") ? "" : method;
+    const std::string apicallString = (apicall == "NULL") ? "" : apicall;
+    const std::string argString = (arg == "NULL") ? "" : arg;
+
+    // Check for null pointers and handle them appropriately
+    if (methodString.empty() || apicallString.empty() || argString.empty()) {
+        std::cout << "WARING: method, apicall or arg is empty! " << std::endl;
+        std::cout << "Caller: " << methodString << std::endl;
+        std::cout << "Call: " << apicallString << std::endl;
+        std::cout << "Args: " << argString << std::flush;
+        return false;
+    }
+
+    // DEBUG IMPLEMENTATION MISSING!!!
+    if (apicallString == "clEnqueueNDRangeKernel") {
+        std::cout << "\n\n\n+ + + + + + + + + + +  K E R N E L   L A U N C H  + + + + + + + + + + +\n" << std::flush;
+        if (argString != "FUNC_COUNTING_SORT_FULL 1") std::cout << "Kernel: " << argString << "\n" << std::flush;
+        if (argString == "FUNC_COUNTING_SORT_FULL 1") std::cout << "THE Kernel: FUNC_COUNTING_SORT_FULL\n" << std::flush;
+    }
+
+    if (status != CL_SUCCESS) {
+        std::string errorMessage = checkerror(status);
+        std::cout << "\nOpenCL Error: " << errorMessage << std::endl;
+        std::cout << "Caller: " << methodString << std::endl;
+        std::cout << "Call: " << apicallString << std::endl;
+        std::cout << "Args: " << argString << std::flush;
+        return false;
+    }
+    return true;
+}
+
+/*
 bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall, const char* arg, bool bDebug)
 {
     // DEBUG IMPLEMENTATION MISSING!!!
     if (apicall == "clEnqueueNDRangeKernel") {
 
         cout << "\n\n\n+ + + + + + + + + + +  K E R N E L   L A U N C H  + + + + + + + + + + +\n" << flush;
-        cout << "Kernel: " << arg << " \n" << flush;
+        if (arg != "FUNC_COUNTING_SORT_FULL 1") std::cout << "THE Kernel: " << arg << " \n" << flush;
+        if (arg == "FUNC_COUNTING_SORT_FULL 1") std::cout << "Kernel: FUNC_COUNTING_SORT_FULL\n" << flush;
     }
 
-    if (apicall == "clEnqueueNDRangeKernel" && arg == "FUNC_COUNTING_SORT_FULL") cout << "FUNC_COUNTING_SORT_FULL" << flush;
+//     if (apicall == "clEnqueueNDRangeKernel" && arg == "FUNC_COUNTING_SORT_FULL") cout << "FUNC_COUNTING_SORT_FULL" << flush;
 
     if (status != CL_SUCCESS) {
         std::string errorMessage = checkerror(status);
@@ -139,7 +177,7 @@ bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall
         return false;
     }
     return true;
-}
+}*/
 
 // void FluidSystem::CalculateWorkGroupSizes(size_t maxWorkGroupSize, size_t numComputeUnits, size_t numItems, size_t &numGroups, size_t &numItemsPerGroup) {
 //     // Calculate the ideal number of items per group
@@ -2548,6 +2586,7 @@ void FluidSystem::Run2Simulation(){
         std::cout<<"\n\n-----Run2Simulation() started... -----"<<"\n"<<std::flush;
     Init_CLRand();
     auto old_begin = std::chrono::steady_clock::now();
+
     TransferPosVelVeval ();
     clCheck(clFinish(m_queue), "Run", "clFinish", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
     setFreeze(true);
