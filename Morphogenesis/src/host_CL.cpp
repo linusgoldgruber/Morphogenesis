@@ -4,6 +4,7 @@
 #include "fluid_system.h"
 #include "fluid_system.cpp"
 #include "fileCL_IO.cpp"
+#include <CL/cl.h>
 #include <CL/cl_ext.h>
 #include "randCL_well512.cl"        // for RandCL
 #include <unordered_set>
@@ -78,14 +79,8 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size
 	clCheck(clEnqueueWriteBuffer(upload_queue, m_FGenomeDevice, 	CL_FALSE, 0, sizeof(m_FGenome), 		&m_FGenome,         0, NULL, &writeEvt), "FluidSetupCL", "clEnqueueWriteBuffer", "m_FGenomeDevice",   mbDebug);
 
     //set m_FParamsDevice and m_FluidDevice(Temp) buffers as arguments to kernels
+/*  TODO TODO Wohin damit?
 
-    status = clSetKernelArg(m_Kern[FUNC_TALLYLISTS], 0, sizeof(cl_mem),                 &m_FParamsDevice);                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_TALLYLISTS, 0)\n" << endl; exit_(status);}
-
-    status = clSetKernelArg(m_Kern[FUNC_TALLYLISTS], 1, sizeof(cl_mem),                 &m_FluidDevice);                     if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_TALLYLISTS, 0)\n" << endl; exit_(status);}
-
-    status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 0, sizeof(cl_mem),         &m_FParamsDevice);                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COUNTING_SORT, 0)\n" << endl; exit_(status);}
-
-    status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 1, sizeof(cl_mem),         &m_FluidDevice);                     if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COUNTING_SORT, 0)\n" << endl; exit_(status);}
 
     status = clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 0, sizeof(cl_mem),     &m_FParamsDevice);                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COUNT_SORT_LISTS, 0)\n" << endl; exit_(status);}
 
@@ -98,6 +93,8 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size
     status = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 0, sizeof(cl_mem),              &m_FParamsDevice);                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COMPUTE_FORCE, 0)\n" << endl; exit_(status);}
 
     status = clSetKernelArg(m_Kern[FUNC_COMPUTE_FORCE], 1, sizeof(cl_mem),              &m_FluidDevice);                     if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_COMPUTE_FORCE, 0)\n" << endl; exit_(status);}
+
+*/
 
 
 
@@ -177,56 +174,36 @@ void FluidSystem::FluidSetupCL ( int num, int gsrch, cl_int3 res, cl_float3 size
 }
 
 void FluidSystem::TransferToTempCL ( int buf_id, int sz ){
-    cl_int status;
-    m_FluidTemp.mgpu[buf_id] = clCreateBuffer(m_context, CL_MEM_READ_WRITE, sz, NULL, &status);
 
-        if(status!=CL_SUCCESS)	{cout<<"\nTransferToTempCL: clCreateBuffer status="<<checkerror(status)<<"\n"<<flush;exit_(status);}
-
-
-    clCheck ( clEnqueueCopyBuffer(m_queue, gpuVar(&m_Fluid, buf_id), gpuVar(&m_FluidTemp, buf_id), 0, 0, sz, 0, NULL, NULL), "TransferToTempCL", "clEnqueueCopyBuffer", "m_FluidTempDevice", mbDebug);
-
-
-    if (buf_id == FPOS) {
-
-        printf("FPOSFPOSFPOS: "); clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_FluidTemp, FPOS), 0, NULL, NULL);
-
-        printf("\n############################################################################################### FPOS W I T H I N TransferToTempCL():\n");
-        for (int i = 0; i < mMaxPoints; ++i) {
-            cl_float3 value = bufV3(&m_FluidTemp, FPOS)[i];
-            printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
-    }
-
-    fflush(stdout);
-    }
+//     printf("\n------- TransferToTempCL() started... -------\n");
+//     fflush(stdout);
     clFlush (m_queue);
     clFinish (m_queue);
+
+    clCheck ( clEnqueueCopyBuffer(m_queue, gpuVar(&m_Fluid, buf_id), gpuVar(&m_FluidTemp, buf_id), 0, 0, sz, 0, NULL, NULL), "TransferToTempCL", "clEnqueueCopyBuffer", "m_FluidTemp", mbDebug);
+
+    clFlush (m_queue);
+    clFinish (m_queue);
+/*
+    printf("------- TransferToTempCL() finished. -------\n");
+    fflush(stdout);*/
 }
 
 void FluidSystem::TransferFromTempCL ( int buf_id, int sz ){
 
     clCheck ( clEnqueueCopyBuffer(m_queue, gpuVar(&m_FluidTemp, buf_id), gpuVar(&m_Fluid, buf_id), 0, 0, sz, 0, NULL, NULL), "TransferFromTempCL", "clEnqueueCopyBuffer", "m_Fluid", mbDebug);
 
-
-    if (buf_id == FPOS) {
-
-        printf("FPOSFPOSFPOS: "); clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_FluidTemp, FPOS), 0, NULL, NULL);
-
-        printf("\n############################################################################################### FPOS W I T H I N TransferFromTempCL():\n");
-        for (int i = 0; i < mMaxPoints; ++i) {
-            cl_float3 value = bufV3(&m_FluidTemp, FPOS)[i];
-            printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
-        }
-    }
 }
 
 void FluidSystem::TransferPosVelVeval (){
 
-    cout<< "-------TransferPosVelVeval started... -------\n" << flush;
+    printf("\n-------TransferPosVelVeval started... -------\n");
+    fflush(stdout);
     TransferToTempCL ( FPOS,		 mMaxPoints *sizeof(cl_float3) );    // NB if some points have been removed, then the existing list is no longer dense,
     TransferToTempCL ( FVEL,		 mMaxPoints *sizeof(cl_float3) );    // hence must use mMaxPoints, not mNumPoints
     TransferToTempCL ( FVEVAL,	     mMaxPoints *sizeof(cl_float3) );
-    cout<< "-------TransferPosVelVeval finished.-------\n" << flush;
-
+    printf("-------TransferPosVelVeval finished. -------\n");
+    fflush(stdout);
 }
 
 void FluidSystem::TransferPosVelVevalFromTemp (){
@@ -320,27 +297,15 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     clFlush(m_queue);
     clFinish(m_queue);
 
-    clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
-
-
-    printf("\n############################################################################################### FPOS B E F O R E InsertParticles():\n");
-    for (int i = 0; i < mMaxPoints; ++i) {
-        cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
-        printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
-    }
-    fflush(stdout);
-
-
-    // printf("\n############################################################################################### FPOS B E F O R E InsertParticles():\n");
-    // for (int i = 0; i < 10000; ++i) {
-    //     cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
-    //     // Check if the value is not zero
-    //     if (value.s[0] != 0 || value.s[1] != 0 || value.s[2] != 0) {
-    //         printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
-    //     }
-    // }
-    // fflush(stdout);
-
+//     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
+//
+//
+//     printf("\n############################################################################################### FPOS B E F O R E InsertParticles():\n");
+//     for (int i = 0; i < mMaxPoints; ++i) {
+//         cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
+//         printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
+//     }
+//     fflush(stdout);
 
 
     clFlush(m_queue);
@@ -349,7 +314,7 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     // set arguments and launch kernel "InsertParticles"
     //void* args[1] = {&mMaxPoints}; //&mNumPoints
     clCheck(clSetKernelArg(m_Kern[FUNC_INSERT], 0, sizeof(cl_mem),   &m_FParamsDevice),                         "InsertParticlesCL", "clSetKernelArg 0", "FUNC_INSERT", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_INSERT], 1,    sizeof(int),   &mMaxPoints),                              "InsertParticlesCL", "clSetKernelArg 1", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_INSERT], 1, sizeof(int),      &mMaxPoints),                              "InsertParticlesCL", "clSetKernelArg 1", "FUNC_INSERT", mbDebug);
     clCheck(clSetKernelArg(m_Kern[FUNC_INSERT], 2, sizeof(cl_mem),   &m_Fluid.mgpu[FPOS]),                      "InsertParticlesCL", "clSetKernelArg 2", "FUNC_INSERT", mbDebug);
     clCheck(clSetKernelArg(m_Kern[FUNC_INSERT], 3, sizeof(cl_mem),   &m_Fluid.mgpu[FGCELL]),                    "InsertParticlesCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
     clCheck(clSetKernelArg(m_Kern[FUNC_INSERT], 4, sizeof(cl_mem),   &m_Fluid.mgpu[FGNDX]),                     "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
@@ -718,25 +683,30 @@ void FluidSystem::InsertParticlesCL(uint* gcell, uint* gndx, uint* gcnt) { //bin
     clFlush(m_queue);
     clFinish(m_queue);
 
-    clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FBIN_OFFSET), CL_TRUE, 0, (m_GridTotal-1)*sizeof(int), bufI(&m_Fluid, FBIN_OFFSET), 0, NULL, NULL);
-
+//     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FBIN_OFFSET), CL_TRUE, 0, (m_GridTotal-1)*sizeof(int), bufI(&m_Fluid, FBIN_OFFSET), 0, NULL, NULL);
+//
 //     cout << "\n############################################################################################### FBIN_OFFSET A F T E R  PrefixSumCellsCL():\n";
 //     for (int i = 0; i < 10000; ++i) {
 //         if (bufI(&m_Fluid, FBIN_OFFSET)[i] != 0) {
 //             cout << "Index: " << i << ", Value: " << bufI(&m_Fluid, FBIN_OFFSET)[i] << endl;
 //         }
 //     }
-/*
+
     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
 
+    clFlush(m_queue);
+    clFinish(m_queue);
 
     printf("\n############################################################################################### FPOS A F T E R PrefixSumCells():\n");
     for (int i = 0; i < mMaxPoints; ++i) {
         cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
-        printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
+        uint x = (uint)value.s[0];
+        uint y = (uint)value.s[1];
+        uint z = (uint)value.s[2];
+        printf("Index: %d, Value: (%u, %u, %u)\n", i, x, y, z);
     }
     fflush(stdout);
-*/
+
 
     // Loop to PrefixSum the Dense Lists - NB by doing one gene at a time, we reuse the FAUX* arrays & scans.
     // For each gene, input FBIN_COUNT_ACTIVE_GENES[gene*m_GridTotal], output FBIN_OFFSET_ACTIVE_GENES[gene*m_GridTotal]
@@ -1097,8 +1067,6 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
 
     cout << "\nCHECK 1.1 Run2Simulation() \n" << flush;
 
-
-
         clCheck(
             clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FBIN_OFFSET), CL_TRUE, grid_ScanMax*sizeof(int), sizeof(int), &mActivePoints, 0, NULL, NULL), "CountingSortFullCL2", "clEnqueueReadBuffer", "FBIN_OFFSET", mbDebug);
 
@@ -1115,9 +1083,9 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
 
     m_FParams.pnumActive = mActivePoints;                                     // TODO eliminate duplication of information & variables between fluid.h and fluid_system.h
     //clCheck ( cuMemcpyHtoD ( clFParams,	&m_FParams, sizeof(FParams) ), "CountingSortFullCL3", "cuMemcpyHtoD", "clFParams", mbDebug); // seems the safest way to update fparam.pnumActive on device.
+    clCheck( clEnqueueWriteBuffer(m_queue, m_FParamsDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL), "CountingSortFullCL3", "clEnqueueWriteBuffer", "clFParams", mbDebug);
     //std::cout << "\nCountingSortFullCL()1: chk ----> 4"<< std::flush;
 
-    clCheck( clEnqueueWriteBuffer(m_queue, m_FParamsDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL), "CountingSortFullCL3", "clEnqueueWriteBuffer", "clFParams", mbDebug);
 
 
     // Transfer particle data to temp buffers
@@ -1128,8 +1096,8 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     TransferToTempCL ( FFORCE,	     mMaxPoints *sizeof(cl_float3)   );    // NB buffers are declared and initialized on mMaxPoints.
     TransferToTempCL ( FPRESS,	     mMaxPoints *sizeof(float)       );
     TransferToTempCL ( FDENSITY,	 mMaxPoints *sizeof(float)       );
-    TransferToTempCL ( FCLR,		 mMaxPoints *sizeof(uint)        );
     TransferToTempCL ( FAGE,		 mMaxPoints *sizeof(uint)        );
+    TransferToTempCL ( FCOLOR,		 mMaxPoints *sizeof(uint)        );
     TransferToTempCL ( FGCELL,	     mMaxPoints *sizeof(uint)        );
     TransferToTempCL ( FGNDX,		 mMaxPoints *sizeof(uint)        );
     //std::cout << "\nCountingSortFullCL()2: chk ----> 1"<< std::flush;
@@ -1152,37 +1120,36 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     // because these are not necessarily overwritten by the FUNC_COUNTING_SORT_FULL kernel.
     clFinish (m_queue);    // needed to prevent colision with previous operations
 
-    clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
-    clFinish (m_queue);
-
-    printf("\n############################################################################################### FPOS BEFORE MEMSET: FLUID-Buffer, CountingSortFullCL():\n");
-    for (int i = 0; i < mMaxPoints; ++i) {
-        cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
-        printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
-    }
-    fflush(stdout);
-
-    clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_FluidTemp, FPOS), 0, NULL, NULL);
-    clFinish (m_queue);
-
-    printf("\n############################################################################################### FPOS BEFORE MEMSET: FluidTEMP-Buffer, CountingSortFullCL():\n");
-    fflush(stdout);
-    for (int i = 0; i < mMaxPoints; ++i) {
-        cl_float3 value2 = bufV3(&m_FluidTemp, FPOS)[i];
-        printf("Index: %d, Value: (%f, %f, %f)\n", i, value2.s[0], value2.s[1], value2.s[2]);
-    }
-    fflush(stdout);
-
-    clFlush (m_queue);
-    clFinish (m_queue);
+//     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
+//     clFinish (m_queue);
+//
+//     printf("\n############################################################################################### FPOS BEFORE MEMSET: FLUID-Buffer, CountingSortFullCL():\n");
+//     for (int i = 0; i < mMaxPoints; ++i) {
+//         cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
+//         printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
+//     }
+//     fflush(stdout);
+//
+//     clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_FluidTemp, FPOS), 0, NULL, NULL);
+//     clFinish (m_queue);
+//
+//     printf("\n############################################################################################### FPOS BEFORE MEMSET: FluidTEMP-Buffer, CountingSortFullCL():\n");
+//     fflush(stdout);
+//     for (int i = 0; i < mMaxPoints; ++i) {
+//         cl_float3 value2 = bufV3(&m_FluidTemp, FPOS)[i];
+//         printf("Index: %d, Value: (%f, %f, %f)\n", i, value2.s[0], value2.s[1], value2.s[2]);
+//     }
+//     fflush(stdout);
+//
+//     clFlush (m_queue);
+//     clFinish (m_queue);
 
     float max_pos = max(max(m_Vec[PVOLMAX].x, m_Vec[PVOLMAX].y), m_Vec[PVOLMAX].z);
     uint * uint_max_pos = (uint*)&max_pos;
-//     clCheck ( clMemsetD32 ( gpuVar(&m_Fluid, FPOS), *uint_max_pos, mMaxPoints * 3 ),  "CountingSortFullCL", "clMemsetD32", "FELASTIDX",   mbDebug);
-    clCheck ( clEnqueueFillBuffer(m_queue, m_Fluid.mgpu[FPOS], &uint_max_pos, sizeof(uint), 0, mMaxPoints * 3 * sizeof(float), 0, NULL, NULL),  "CountingSortFullCL", "clMemsetD32", "FELASTIDX",   mbDebug);
 
-
-
+    // Reset FPOS buffer
+    size_t zero = 0;
+    clCheck ( clEnqueueFillBuffer(m_queue, m_Fluid.mgpu[FPOS], &uint_max_pos, sizeof(uint), zero, mMaxPoints * sizeof(cl_float3), 0, NULL, NULL),  "CountingSortFullCL", "clMemsetD32", "FELASTIDX",   mbDebug);
 
     clFlush (m_queue);
     clFinish (m_queue);
@@ -1190,10 +1157,29 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
 
 
-    printf("\n############################################################################################### FPOS R I G H T AFTER MEMSET CountingSortFullCL():\n");
+    printf("\n############################################################################################### FPOS AFTER MEMSET:\n");
     for (int i = 0; i < mMaxPoints; ++i) {
         cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
-        printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
+        uint x = (uint)value.s[0];
+        uint y = (uint)value.s[1];
+        uint z = (uint)value.s[2];
+        printf("Index: %d, Value: (%u, %u, %u)\n", i, x, y, z);
+    }
+    fflush(stdout);
+
+    clFlush (m_queue);
+    clFinish (m_queue);
+
+    clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_FluidTemp, FPOS), 0, NULL, NULL);
+
+    printf("\n############################################################################################### FPOS_TEMP AFTER MEMSET:\n");
+    fflush(stdout);
+    for (int i = 0; i < mMaxPoints; ++i) {
+        cl_float3 value = bufV3(&m_FluidTemp, FPOS)[i];
+        uint x = (uint)value.s[0];
+        uint y = (uint)value.s[1];
+        uint z = (uint)value.s[2];
+        printf("Index: %d, Value: (%u, %u, %u)\n", i, x, y, z);
     }
     fflush(stdout);
 
@@ -1216,9 +1202,16 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
 
 
-    clFlush (m_queue);
-    clFinish (m_queue);
+//     clCheck ( clEnqueueCopyBuffer(m_queue, gpuVar(&m_FluidTemp, FPOS), cl_gpuVar(&m_FluidTempDevice, FPOS), 0, 0,  mMaxPoints*sizeof(cl_float3), 0, NULL, NULL), "TransferToTempCL", "clEnqueueCopyBuffer", "m_FluidTempDevice", mbDebug);
+//
+//     clFlush (m_queue);
+//     clFinish (m_queue);
 
+// 	clCheck(clEnqueueWriteBuffer(upload_queue, m_FluidDevice, 	    CL_FALSE, 0, sizeof(m_Fluid), 		    &m_Fluid, 		    0, NULL, NULL), "FluidSetupCL", "clEnqueueWriteBuffer", "m_FluidTempDevice", mbDebug);
+// 	clCheck(clEnqueueWriteBuffer(upload_queue, m_FluidTempDevice, 	CL_FALSE, 0, sizeof(m_FluidTemp), 		&m_FluidTemp, 		0, NULL, NULL), "FluidSetupCL", "clEnqueueWriteBuffer", "m_FluidTempDevice", mbDebug);
+//
+//     clFlush (upload_queue);
+//     clFinish (upload_queue);
 
     //Calculate the work group sizes
     clCheck ( clGetKernelWorkGroupInfo(m_Kern[FUNC_COUNTING_SORT_FULL], m_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL),  "CountingSortFullCL ", "clGetKernelWorkGroupInfo", "FUNC_COUNTING_SORT_FULL",      mbDebug);
@@ -1236,10 +1229,52 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     // clCheck(clMemsetD32(gpu(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "clMemsetD32(Sort)");
 
     //void* args[1] = { &mMaxPoints };
-    status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 0)\n" << endl; exit_(status);}
-    status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 1, sizeof(cl_mem),          &m_FluidDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 0)\n" << endl; exit_(status);}
-    status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 2, sizeof(cl_mem),          &m_FluidTempDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 0)\n" << endl; exit_(status);}
-    status  = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 3, sizeof(int), &mMaxPoints);
+    status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL],    0,  sizeof(cl_mem),         &m_FParamsDevice);       if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 0)\n" << endl; exit_(status);}
+//     status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL],    1,  sizeof(cl_mem),         &m_FluidDevice);         if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 1)\n" << endl; exit_(status);}
+//     status = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL],    2,  sizeof(cl_mem),         &m_FluidTempDevice);     if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 2)\n" << endl; exit_(status);}
+    status  = clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL],   1,  sizeof(int),            &mMaxPoints);            if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 3)\n" << endl; exit_(status);}
+    //////////////////////////////////
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 2,  sizeof(cl_mem),  &m_Fluid.mgpu[FBIN]),                 "InsertParticlesCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 3,  sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_OFFSET]),          "InsertParticlesCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 4,  sizeof(cl_mem),  &m_Fluid.mgpu[FPOS]),                 "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 5,  sizeof(cl_mem),  &m_Fluid.mgpu[FVEL]),                 "InsertParticlesCL", "clSetKernelArg 5", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 6,  sizeof(cl_mem),  &m_Fluid.mgpu[FVEVAL]),               "InsertParticlesCL", "clSetKernelArg 6", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 7,  sizeof(cl_mem),  &m_Fluid.mgpu[FFORCE]),               "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 8,  sizeof(cl_mem),  &m_Fluid.mgpu[FPRESS]),               "InsertParticlesCL", "clSetKernelArg 2", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 9,  sizeof(cl_mem),  &m_Fluid.mgpu[FDENSITY]),             "InsertParticlesCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 10, sizeof(cl_mem),  &m_Fluid.mgpu[FAGE]),                 "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 11, sizeof(uint),    &m_Fluid.mgpu[FCOLOR]),               "InsertParticlesCL", "clSetKernelArg 5", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 12, sizeof(cl_mem),  &m_Fluid.mgpu[FGCELL]),               "InsertParticlesCL", "clSetKernelArg 6", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 13, sizeof(cl_mem),  &m_Fluid.mgpu[FGNDX]),                "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 14, sizeof(cl_mem),  &m_Fluid.mgpu[FELASTIDX]),            "InsertParticlesCL", "clSetKernelArg 2", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 15, sizeof(cl_mem),  &m_Fluid.mgpu[FPARTICLEIDX]),         "InsertParticlesCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 16, sizeof(cl_mem),  &m_Fluid.mgpu[FPARTICLE_ID]),         "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 17, sizeof(uint),    &m_Fluid.mgpu[FMASS_RADIUS]),         "InsertParticlesCL", "clSetKernelArg 5", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 18, sizeof(cl_mem),  &m_Fluid.mgpu[FNERVEIDX]),            "InsertParticlesCL", "clSetKernelArg 6", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 19, sizeof(cl_mem),  &m_Fluid.mgpu[FEPIGEN]),              "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 20, sizeof(cl_mem),  &m_Fluid.mgpu[FCONC]),                "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 21, sizeof(cl_mem),  &m_FluidTemp.mgpu[FPOS]),             "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 5,  sizeof(cl_mem),  &m_FluidTemp.mgpu[FVEL]),             "InsertParticlesCL", "clSetKernelArg 5", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 6,  sizeof(cl_mem),  &m_FluidTemp.mgpu[FVEVAL]),           "InsertParticlesCL", "clSetKernelArg 6", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 7,  sizeof(cl_mem),  &m_FluidTemp.mgpu[FFORCE]),           "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 8,  sizeof(cl_mem),  &m_FluidTemp.mgpu[FPRESS]),           "InsertParticlesCL", "clSetKernelArg 2", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 9,  sizeof(cl_mem),  &m_FluidTemp.mgpu[FDENSITY]),         "InsertParticlesCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 10, sizeof(cl_mem),  &m_FluidTemp.mgpu[FAGE]),             "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 11, sizeof(uint),    &m_FluidTemp.mgpu[FCOLOR]),           "InsertParticlesCL", "clSetKernelArg 5", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 22, sizeof(cl_mem),  &m_FluidTemp.mgpu[FGCELL]),           "InsertParticlesCL", "clSetKernelArg 6", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 23, sizeof(cl_mem),  &m_FluidTemp.mgpu[FGNDX]),            "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 24, sizeof(cl_mem),  &m_FluidTemp.mgpu[FELASTIDX]),        "InsertParticlesCL", "clSetKernelArg 2", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 25, sizeof(cl_mem),  &m_FluidTemp.mgpu[FPARTICLEIDX]),     "InsertParticlesCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 26, sizeof(cl_mem),  &m_FluidTemp.mgpu[FPARTICLE_ID]),     "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 27, sizeof(uint),    &m_FluidTemp.mgpu[FMASS_RADIUS]),     "InsertParticlesCL", "clSetKernelArg 5", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 28, sizeof(cl_mem),  &m_FluidTemp.mgpu[FNERVEIDX]),        "InsertParticlesCL", "clSetKernelArg 6", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 29, sizeof(cl_mem),  &m_FluidTemp.mgpu[FEPIGEN]),          "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 30, sizeof(cl_mem),  &m_FluidTemp.mgpu[FCONC]),            "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
+
+
+    ////////////////////////////////////
+    clFlush (m_queue);
+    clFinish (m_queue);
 
     clCheck ( clEnqueueNDRangeKernel(
 
@@ -1260,9 +1295,43 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     // NB have to reset to long list at start of time step.
     //std::cout << "\nCountingSortFullCL()2: chk ----> 6"<< std::flush;
 
+    clFlush (m_queue);
+    clFinish (m_queue);
+
+//     clCheck ( clEnqueueCopyBuffer(m_queue, cl_gpuVar(&m_FluidDevice, FPOS), gpuVar(&m_FluidTemp, FPOS), 0, 0,  mMaxPoints*sizeof(cl_float3), 0, NULL, NULL), "TransferToTempCL", "clEnqueueCopyBuffer", "m_FluidTempDevice", mbDebug);
+//
+//     clFlush (m_queue);
+//     clFinish (m_queue);
+//
+//     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
+//
+//
+//     printf("\n############################################################################################### m_Fluid after CountingSortFullCL():\n");
+//     for (int i = 0; i < mMaxPoints; ++i) {
+//         cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
+//         printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
+//     }
+//     fflush(stdout);
+//
+//     clFlush (m_queue);
+//     clFinish (m_queue);
+//
+//     clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_FluidTemp, FPOS), 0, NULL, NULL);
+//
+//     printf("\n############################################################################################### m_FluidTemp after CountingSortFullCL():\n");
+//     fflush(stdout);
+//     for (int i = 0; i < mMaxPoints; ++i) {
+//         cl_float3 value2 = bufV3(&m_FluidTemp, FPOS)[i];
+//         printf("Index: %d, Value: (%f, %f, %f)\n", i, value2.s[0], value2.s[1], value2.s[2]);
+//     }
+//     fflush(stdout);
+
+    clFlush (m_queue);
+    clFinish (m_queue);
+
     computeNumBlocks ( m_FParams.pnumActive, local_work_size, m_FParams.numGroups, m_FParams.numItems); // particles
 
-    if (verbosity>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_LISTS\n"<<std::flush;
+    if (verbosity>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_DENSE_LISTS\n"<<std::flush;
     // countingSortDenseLists ( int pnum ) // NB launch on bins not particles.
     // Calculate the smallest multiple of 128 greater than 10000
     size_t t_blockSize  = SCAN_BLOCKSIZE << 1;
@@ -1270,10 +1339,16 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     size_t t_numElem2   = int (t_numElem1 / t_blockSize) + 1;
     clFinish (m_queue);    // needed to prevent colision with previous operations
 
-    status = clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 0, sizeof(cl_mem),          &m_FParamsDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 0)\n" << endl; exit_(status);}
-    status = clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 1, sizeof(cl_mem),          &m_FluidDevice);                                                                   if (status != CL_SUCCESS)	{ cout << "\nstatus = " << checkerror(status) <<"\n"<<flush; cout << "Error: allocatemem_chk1.4, clSetKernelArg(FUNC_INSERT, 0)\n" << endl; exit_(status);}
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 0, sizeof(cl_mem),  &m_FParamsDevice),                          "InsertParticlesCL", "clSetKernelArg 0", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 1, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_OFFSET]),                "InsertParticlesCL", "clSetKernelArg 1", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 2, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_COUNT]),                 "InsertParticlesCL", "clSetKernelArg 2", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 3, sizeof(cl_mem),  &m_Fluid.mgpu[FDENSE_LISTS]),               "InsertParticlesCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 4, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_COUNT_ACTIVE_GENES]),    "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 5, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_OFFSET_ACTIVE_GENES]),   "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 6, sizeof(cl_mem),  &m_Fluid.mgpu[FEPIGEN]),                    "InsertParticlesCL", "clSetKernelArg 5", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 7, sizeof(cl_mem),  &m_Fluid.mgpu[FPARTICLE_ID]),               "InsertParticlesCL", "clSetKernelArg 6", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 8, sizeof(int),     &mMaxPoints),                               "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
 
-    status  = clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 2, sizeof(int), &mMaxPoints);
 
     // Enqueue kernel
     clCheck(clEnqueueNDRangeKernel(
@@ -1431,63 +1506,108 @@ void FluidSystem::CountingSortChangesCL ( ){
 void FluidSystem::CreateFluidBuffers() {
     cl_int status;
 
-    m_Fluid.mgpu[FPOS] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &status);
-    m_Fluid.mgpu[FVEL] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &status);
-    m_Fluid.mgpu[FVEVAL] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &status);
-    m_Fluid.mgpu[FFORCE] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float) * 4,                NULL, &status);
-    m_Fluid.mgpu[FPRESS] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float),                    NULL, &status);
-    m_Fluid.mgpu[FDENSITY] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(float),                    NULL, &status);
-    m_Fluid.mgpu[FCLR] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 3,                 NULL, &status); //TODO maybe need to adapt all of them to be "*4", as cl_cloat3 is actually = cl_float4
+    m_Fluid.mgpu[FPOS] =                clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_Fluid.mgpu[FVEL] =                clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_Fluid.mgpu[FVEVAL] =              clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_Fluid.mgpu[FFORCE] =              clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_Fluid.mgpu[FPRESS] =              clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float),                      NULL, &status);
+    m_Fluid.mgpu[FDENSITY] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float),                      NULL, &status);
+    m_Fluid.mgpu[FAGE] =                clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint),                       NULL, &status);
+    m_Fluid.mgpu[FCOLOR] =              clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status); //TODO maybe need to adapt all of them to be "*4", as cl_float3 is actually = cl_float4
 
-    m_Fluid.mgpu[FGNDX] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 4,                NULL, &status);
-    m_Fluid.mgpu[FGCELL] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 4,                NULL, &status);
+    m_Fluid.mgpu[FGNDX] =               clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *  sizeof(uint)  * 4,                  NULL, &status);
+    m_Fluid.mgpu[FGCELL] =              clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *  sizeof(uint)  * 4,                  NULL, &status);
+
+    m_Fluid.mgpu[FELASTIDX] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[BOND_DATA]),            NULL, &status);
+    m_Fluid.mgpu[FPARTICLEIDX] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[BONDS_PER_PARTICLE*2]), NULL, &status);
+    m_Fluid.mgpu[FPARTICLE_ID] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status);
+    m_Fluid.mgpu[FMASS_RADIUS] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status);
+    m_Fluid.mgpu[FNERVEIDX] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint),                       NULL, &status);
+    m_Fluid.mgpu[FCONC] =               clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(float[NUM_TF]),              NULL, &status);
+    m_Fluid.mgpu[FEPIGEN] =             clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[NUM_GENES]),            NULL, &status);
 
 
+    m_FluidTemp.mgpu[FPOS] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidTemp.mgpu[FVEL] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidTemp.mgpu[FVEVAL] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidTemp.mgpu[FFORCE] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidTemp.mgpu[FPRESS] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float),                      NULL, &status);
+    m_FluidTemp.mgpu[FDENSITY] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float),                      NULL, &status);
+    m_FluidTemp.mgpu[FAGE] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint),                       NULL, &status);
+    m_FluidTemp.mgpu[FCOLOR] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status);
 
-    m_Fluid.mgpu[FELASTIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint[BOND_DATA]),            NULL, &status);
-    m_Fluid.mgpu[FPARTICLEIDX] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint[BONDS_PER_PARTICLE*2]), NULL, &status);
-    m_Fluid.mgpu[FPARTICLE_ID] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 3,                 NULL, &status);
-    m_Fluid.mgpu[FMASS_RADIUS] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints * sizeof(uint) * 3,                 NULL, &status);
-    m_Fluid.mgpu[FNERVEIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint),                       NULL, &status);
-    m_Fluid.mgpu[FCONC] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(float[NUM_TF]),              NULL, &status);
-    m_Fluid.mgpu[FEPIGEN] =         clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*sizeof(uint[NUM_GENES]),            NULL, &status);
+    m_FluidTemp.mgpu[FGNDX] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *  sizeof(uint)  * 4,                  NULL, &status);
+    m_FluidTemp.mgpu[FGCELL] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *  sizeof(uint)  * 4,                  NULL, &status);
+
+    m_FluidTemp.mgpu[FELASTIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[BOND_DATA]),            NULL, &status);
+    m_FluidTemp.mgpu[FPARTICLEIDX] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[BONDS_PER_PARTICLE*2]), NULL, &status);
+    m_FluidTemp.mgpu[FPARTICLE_ID] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status);
+    m_FluidTemp.mgpu[FMASS_RADIUS] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status);
+    m_FluidTemp.mgpu[FNERVEIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint),                       NULL, &status);
+    m_FluidTemp.mgpu[FCONC] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(float[NUM_TF]),              NULL, &status);
+    m_FluidTemp.mgpu[FEPIGEN] =         clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[NUM_GENES]),            NULL, &status);
+
+
+/*
+    m_FluidDevice->mgpu[FPOS] =               clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidDevice.mgpu[FVEL] =                clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidDevice.mgpu[FVEVAL] =              clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidDevice.mgpu[FFORCE] =              clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidDevice.mgpu[FPRESS] =              clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float),                      NULL, &status);
+    m_FluidDevice.mgpu[FDENSITY] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float),                      NULL, &status);
+    m_FluidDevice.mgpu[FCLR] =                clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status); //TODO maybe need to adapt all of them to be "*4", as cl_float3 is actually = cl_float4
+
+    m_FluidDevice.mgpu[FGNDX] =               clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *  sizeof(uint)  * 4,                  NULL, &status);
+    m_FluidDevice.mgpu[FGCELL] =              clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *  sizeof(uint)  * 4,                  NULL, &status);
+
+    m_FluidDevice.mgpu[FELASTIDX] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[BOND_DATA]),            NULL, &status);
+    m_FluidDevice.mgpu[FPARTICLEIDX] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[BONDS_PER_PARTICLE*2]), NULL, &status);
+    m_FluidDevice.mgpu[FPARTICLE_ID] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status);
+    m_FluidDevice.mgpu[FMASS_RADIUS] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status);
+    m_FluidDevice.mgpu[FNERVEIDX] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint),                       NULL, &status);
+    m_FluidDevice.mgpu[FCONC] =               clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(float[NUM_TF]),              NULL, &status);
+    m_FluidDevice.mgpu[FEPIGEN] =             clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[NUM_GENES]),            NULL, &status);
+
+
+    m_FluidTempDevice.mgpu[FPOS] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidTempDevice.mgpu[FVEL] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidTempDevice.mgpu[FVEVAL] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidTempDevice.mgpu[FFORCE] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float) * 4,                  NULL, &status);
+    m_FluidTempDevice.mgpu[FPRESS] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float),                      NULL, &status);
+    m_FluidTempDevice.mgpu[FDENSITY] =        clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(float),                      NULL, &status);
+    m_FluidTempDevice.mgpu[FCLR] =            clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status); //TODO maybe need to adapt all of them to be "*4", as cl_float3 is actually = cl_float4
+
+    m_FluidTempDevice.mgpu[FGNDX] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *  sizeof(uint)  * 4,                  NULL, &status);
+    m_FluidTempDevice.mgpu[FGCELL] =          clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *  sizeof(uint)  * 4,                  NULL, &status);
+
+    m_FluidTempDevice.mgpu[FELASTIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[BOND_DATA]),            NULL, &status);
+    m_FluidTempDevice.mgpu[FPARTICLEIDX] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[BONDS_PER_PARTICLE*2]), NULL, &status);
+    m_FluidTempDevice.mgpu[FPARTICLE_ID] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status);
+    m_FluidTempDevice.mgpu[FMASS_RADIUS] =    clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints *   sizeof(uint)  * 3,                  NULL, &status);
+    m_FluidTempDevice.mgpu[FNERVEIDX] =       clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint),                       NULL, &status);
+    m_FluidTempDevice.mgpu[FCONC] =           clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(float[NUM_TF]),              NULL, &status);
+    m_FluidTempDevice.mgpu[FEPIGEN] =         clCreateBuffer(m_context, CL_MEM_READ_WRITE, mMaxPoints*    sizeof(uint[NUM_GENES]),            NULL, &status);*/
 
 }
 
-void FluidSystem::TransferToCL (){ //TODO This function currently also handles the INITIALIZATION of the gpu buffers, not only the transfer!
+void FluidSystem::TransferToCL (){
     if (verbosity>0) std::cout<<"\n-----TransferToCL() started... -----\n"<<std::flush;
 
-    //cout << "CHECKING clEnqueueWriteBuffer: gpuVar(&m_Fluid, FPOS) = " << gpuVar(&m_Fluid, FPOS) << ", mMaxPoints = " << mMaxPoints << "\n\n\n" << flush;
-
     clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0,      mMaxPoints * sizeof(float) * 3,                 bufC(&m_Fluid, FPOS), 0, NULL, NULL),       "TransferToCL", "clEnqueueWriteBuffer", "FPOS", mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FVEL), CL_TRUE, 0,      mMaxPoints * sizeof(float) * 3,                 bufC(&m_Fluid, FVEL), 0, NULL, NULL),       "TransferToCL", "clEnqueueWriteBuffer", "FVEL", mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FVEVAL), CL_TRUE, 0,    mMaxPoints * sizeof(float) * 3,                 bufC(&m_Fluid, FVEVAL), 0, NULL, NULL),     "TransferToCL", "clEnqueueWriteBuffer", "FVEVAL", mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FFORCE), CL_TRUE, 0,    mMaxPoints * sizeof(float) * 3,                 bufC(&m_Fluid, FFORCE), 0, NULL, NULL),     "TransferToCL", "clEnqueueWriteBuffer", "FFORCE", mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FPRESS), CL_TRUE, 0,    mMaxPoints * sizeof(float),                     bufC(&m_Fluid, FPRESS), 0, NULL, NULL),     "TransferToCL", "clEnqueueWriteBuffer", "FPRESS", mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid, FDENSITY), CL_TRUE, 0,  mMaxPoints * sizeof(float),                     bufC(&m_Fluid, FDENSITY), 0,NULL,NULL),     "TransferToCL","clEnqueueWriteBuffer","FDENSITY",mbDebug);
-
-    clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid,FCLR),CL_TRUE ,0,        mMaxPoints * sizeof(uint),                      bufC(&m_Fluid,FCLR),0,NULL,NULL),           "TransferToCL","clEnqueueWriteBuffer","FCLR",mbDebug);
-
+    clCheck( clEnqueueWriteBuffer(m_queue, gpuVar(&m_Fluid,FCOLOR),CL_TRUE ,0,        mMaxPoints * sizeof(uint),                      bufC(&m_Fluid,FCOLOR),0,NULL,NULL),           "TransferToCL","clEnqueueWriteBuffer","FCLR",mbDebug);
 
     // add extra data for morphogenesis
-
     clCheck( clEnqueueWriteBuffer(m_queue,gpuVar(&m_Fluid,FELASTIDX),CL_TRUE ,0,    mMaxPoints*sizeof(uint[BOND_DATA]),             bufC(&m_Fluid,FELASTIDX),0,NULL,NULL),      "TransferToCL","clEnqueueWriteBuffer","FELASTIDX",mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue,gpuVar(&m_Fluid,FPARTICLEIDX),CL_TRUE ,0, mMaxPoints*sizeof(uint[BONDS_PER_PARTICLE*2]),  bufC(&m_Fluid,FPARTICLEIDX),0,NULL,NULL),   "TransferToCL","clEnqueueWriteBuffer","FPARTICLEIDX",mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue,gpuVar(&m_Fluid,FPARTICLE_ID),CL_TRUE ,0, mMaxPoints*sizeof(uint),                        bufC(&m_Fluid,FPARTICLE_ID),0,NULL,NULL),   "TransferToCL","clEnqueueWriteBuffer","FPARTICLE_ID",mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue,gpuVar(&m_Fluid,FMASS_RADIUS),CL_TRUE ,0, mMaxPoints*sizeof(uint),                        bufC(&m_Fluid,FMASS_RADIUS),0,NULL,NULL),   "TransferToCL","clEnqueueWriteBuffer","FMASS_RADIUS",mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue,gpuVar(&m_Fluid,FNERVEIDX),CL_TRUE ,0,    mMaxPoints*sizeof(uint),                        bufC(&m_Fluid,FNERVEIDX),0,NULL,NULL),      "TransferToCL","clEnqueueWriteBuffer","FNERVEIDX",mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue,gpuVar(&m_Fluid,FCONC),CL_TRUE ,0,        mMaxPoints*sizeof(float[NUM_TF]),               bufC(&m_Fluid,FCONC),0,NULL,NULL),          "TransferToCL","clEnqueueWriteBuffer","FCONC",mbDebug);
-
     clCheck( clEnqueueWriteBuffer(m_queue,gpuVar(&m_Fluid,FEPIGEN),CL_TRUE ,0,      mMaxPoints*sizeof(uint[NUM_GENES]),             bufC(&m_Fluid,FEPIGEN),0,NULL,NULL),        "TransferToCL","clEnqueueWriteBuffer","FEPIGEN",mbDebug);
 
     if (verbosity>0) std::cout<<"\n-----TransferToCL() finished. -----\n"<<std::flush;
@@ -1502,33 +1622,28 @@ void FluidSystem::TransferFromCL() {
 
     if (verbosity>0) std::cout<<"\n-----TransferFromCL() started... -----\n"<<std::flush;
 
-    //std::cout<<"\nTransferFromCL () \n"<<std::flush;
     // Return particle buffers
-
-
     clFlush (m_queue);
     clFinish (m_queue);
 
-    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0,             mMaxPoints * sizeof(float) * 3, bufC(&m_Fluid, FPOS), 0, NULL, NULL),      "TransferFromCL", "clEnqueueReadBuffer", "FPOS", mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FVEL), CL_TRUE, 0,             mMaxPoints * sizeof(float) * 3, bufC(&m_Fluid, FVEL), 0, NULL, NULL),      "TransferFromCL", "clEnqueueReadBuffer", "FVEL", mbDebug);
-
-    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FVEVAL), CL_TRUE, 0,           mMaxPoints * sizeof(float) * 3, bufC(&m_Fluid, FVEVAL), 0, NULL, NULL),     "TransferFromCL", "clEnqueueReadBuffer", "FVEVAL", mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FFORCE), CL_TRUE, 0,       mMaxPoints * sizeof(float) * 3, bufC(&m_Fluid, FFORCE), 0, NULL, NULL), "TransferFromCL", "clEnqueueReadBuffer", "FFORCE", mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0,         mMaxPoints *sizeof(cl_float3), bufC(&m_Fluid, FPOS), 0, NULL, NULL),         "TransferFromCL", "clEnqueueReadBuffer", "FPOS",     mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FVEL), CL_TRUE, 0,         mMaxPoints *sizeof(cl_float3), bufC(&m_Fluid, FVEL), 0, NULL, NULL),         "TransferFromCL", "clEnqueueReadBuffer", "FVEL",     mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FVEVAL), CL_TRUE, 0,       mMaxPoints *sizeof(cl_float3), bufC(&m_Fluid, FVEVAL), 0, NULL, NULL),       "TransferFromCL", "clEnqueueReadBuffer", "FVEVAL",   mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FFORCE), CL_TRUE, 0,       mMaxPoints *sizeof(cl_float3), bufC(&m_Fluid, FFORCE), 0, NULL, NULL),       "TransferFromCL", "clEnqueueReadBuffer", "FFORCE",   mbDebug);
     //NB PhysicalSort zeros gpuVar(&m_FluidTemp, FFORCE)
-    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPRESS), CL_TRUE, 0,       mMaxPoints * sizeof(float),     bufC(&m_Fluid, FPRESS), 0, NULL, NULL),     "TransferFromCL", "clEnqueueReadBuffer", "FPRESS", mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FDENSITY), CL_TRUE, 0,     mMaxPoints * sizeof(float),     bufC(&m_Fluid, FDENSITY), 0, NULL,NULL),    "TransferFromCL", "clEnqueueReadBuffer", "FDENSITY", mbDebug);
-
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FAGE), CL_TRUE ,0 ,          mMaxPoints*sizeof(uint) ,       bufC(&m_Fluid,FAGE) ,0 ,NULL ,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FAGE" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FCLR), CL_TRUE ,0 ,          mMaxPoints*sizeof(uint) ,       bufC(&m_Fluid,FCLR) ,0 ,NULL ,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FCLR" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPRESS), CL_TRUE, 0,       mMaxPoints *sizeof(float),     bufC(&m_Fluid, FPRESS), 0, NULL, NULL),       "TransferFromCL", "clEnqueueReadBuffer", "FPRESS",   mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FDENSITY), CL_TRUE, 0,     mMaxPoints *sizeof(float),     bufC(&m_Fluid, FDENSITY), 0, NULL,NULL),      "TransferFromCL", "clEnqueueReadBuffer", "FDENSITY", mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FAGE), CL_TRUE ,0 ,          mMaxPoints*sizeof(uint) ,       bufC(&m_Fluid,FAGE) ,0 ,NULL ,NULL) ,        "TransferFromCL", "clEnqueueReadBuffer" ,"FAGE" ,    mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FCOLOR), CL_TRUE ,0 ,          mMaxPoints*sizeof(uint) ,       bufC(&m_Fluid,FCOLOR) ,0 ,NULL ,NULL) ,        "TransferFromCL", "clEnqueueReadBuffer" ,"FCLR" ,    mbDebug);
 
     // add extra data for morphogenesis
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FELASTIDX), CL_TRUE ,0 ,     mMaxPoints*sizeof(uint[BOND_DATA]) ,                bufC(&m_Fluid,FELASTIDX) ,0 ,NULL ,NULL) ,"TransferFromCL" ,"clEnqueueReadBuffer" ,"FELASTIDX" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FPARTICLEIDX), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint[BONDS_PER_PARTICLE *2]),     bufC(&m_Fluid,FPARTICLEIDX) ,0 ,NULL ,NULL) ,"TransferFromCL" ,"clEnqueueReadBuffer" ,"FPARTICLEIDX" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FPARTICLE_ID), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint) ,                           bufC(&m_Fluid,FPARTICLE_ID) ,0 ,NULL,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FPARTICLE_ID" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FMASS_RADIUS), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint) ,                           bufC(&m_Fluid,FMASS_RADIUS) ,0 ,NULL,NULL) ,         "TransferFromCL" ,"clEnqueueReadBuffer" ,"FMASS_RADIUS" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FNERVEIDX), CL_TRUE ,0 ,     mMaxPoints*sizeof(uint) ,                           bufC(&m_Fluid,FNERVEIDX) ,0 ,NULL,NULL) ,            "TransferFromCL" ,"clEnqueueReadBuffer" ,"FNERVEIDX" ,mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid, FCONC), CL_TRUE ,0 ,              mMaxPoints*sizeof(float[NUM_TF]) ,                bufC(&m_Fluid,FCONC) ,0,NULL,NULL),             "TransferFromCL","clEnqueueReadBuffer","FCONC",mbDebug);
-    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FEPIGEN), CL_TRUE ,0,        mMaxPoints*sizeof(uint[NUM_GENES]),                 bufC(&m_Fluid,FEPIGEN),0,NULL,NULL),       "TransferFromCL","clEnqueueReadBuffer","FEPIGEN",mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FELASTIDX), CL_TRUE ,0 ,     mMaxPoints*sizeof(uint[BOND_DATA]) ,                bufC(&m_Fluid,FELASTIDX) ,0 ,NULL ,NULL) ,            "TransferFromCL","clEnqueueReadBuffer", "FELASTIDX" ,   mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FPARTICLEIDX), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint[BONDS_PER_PARTICLE *2]),     bufC(&m_Fluid,FPARTICLEIDX) ,0 ,NULL ,NULL) ,         "TransferFromCL","clEnqueueReadBuffer", "FPARTICLEIDX" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FPARTICLE_ID), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint) ,                           bufC(&m_Fluid,FPARTICLE_ID) ,0 ,NULL,NULL) ,          "TransferFromCL","clEnqueueReadBuffer", "FPARTICLE_ID" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FMASS_RADIUS), CL_TRUE ,0 ,  mMaxPoints*sizeof(uint) ,                           bufC(&m_Fluid,FMASS_RADIUS) ,0 ,NULL,NULL) ,          "TransferFromCL","clEnqueueReadBuffer", "FMASS_RADIUS" ,mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FNERVEIDX), CL_TRUE ,0 ,     mMaxPoints*sizeof(uint) ,                           bufC(&m_Fluid,FNERVEIDX) ,0 ,NULL,NULL) ,             "TransferFromCL","clEnqueueReadBuffer", "FNERVEIDX" ,   mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid, FCONC), CL_TRUE ,0 ,        mMaxPoints*sizeof(float[NUM_TF]) ,                  bufC(&m_Fluid,FCONC) ,0,NULL,NULL),                   "TransferFromCL","clEnqueueReadBuffer", "FCONC",        mbDebug);
+    clCheck( clEnqueueReadBuffer(m_queue,gpuVar(&m_Fluid,FEPIGEN), CL_TRUE ,0,        mMaxPoints*sizeof(uint[NUM_GENES]),                 bufC(&m_Fluid,FEPIGEN),0,NULL,NULL),                  "TransferFromCL","clEnqueueReadBuffer", "FEPIGEN",      mbDebug);
 
     clFlush (m_queue);
     clFinish (m_queue);

@@ -216,10 +216,13 @@ using namespace std;
 		return fb->mgpu[n];
 	}
 
-// 	// Overloaded gpuVar function for cl_mem
-// 	cl_mem gpuVar(cl_mem* mgpu, int n) {
-// 		return mgpu[n];
-// 	}
+	cl_mem cl_gpuVar(cl_mem* mgpu, int n) {
+		return mgpu[n];
+	}
+
+	cl_mem cl_cpuVar(cl_mem* mcpu, int n) {
+		return mcpu[n];
+	}
 
 	cl_mem* gpuptr(FBufs *fb, int n) {
 		return &fb->mgpu[n];
@@ -559,7 +562,7 @@ using namespace std;
 		float* getPres ( int n )        { return &bufF(&m_Fluid, FPRESS)[n];}
 		float* getDensity ( int n )     { return &bufF(&m_Fluid, FDENSITY)[n];}
 		
-		uint* getClr ( int n )			{ return &bufI(&m_Fluid, FCLR)[n]; }
+		uint* getClr ( int n )			{ return &bufI(&m_Fluid, FCOLOR)[n]; }
 		uint* getAge ( int n )			{ return &bufI(&m_Fluid, FAGE)[n]; }
         uint* getElastIdx( int n )      { return &bufI(&m_Fluid, FELASTIDX)[n*(BONDS_PER_PARTICLE * DATA_PER_BOND)]; }        //note #define FELASTIDX   14
         uint* getParticle_Idx( int n )  { return &bufI(&m_Fluid, FPARTICLEIDX)[n*BONDS_PER_PARTICLE*2]; }

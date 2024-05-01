@@ -142,7 +142,7 @@
 	#define FPRESS		                 4       //# F      32  pressure
 	#define FDENSITY	                 5       //# F          density
 	#define FAGE		                 6       //# Ushort 16  particle age.
-	#define FCLR		                 7       //# uint   16  colour
+	#define FCOLOR		                 7       //# uint   16  colour
 	#define FGCELL		                 8       //# uint       grid cell
 	#define FGNDX		                 9       //# uint       grid index
 	#define FGNEXT		                10      //# uint

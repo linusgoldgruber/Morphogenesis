@@ -226,7 +226,7 @@ extern "C" __global__ void countingSortFull ( int pnum )                        
 		fbuf.bufF (FPRESS)  [sort_ndx] =	ftemp.bufF(FPRESS)   [i];
 		fbuf.bufF (FDENSITY)[sort_ndx] =	ftemp.bufF(FDENSITY) [i];
         fbuf.bufI (FAGE)    [sort_ndx] =	ftemp.bufI(FAGE)     [i];
-		fbuf.bufI (FCLR)    [sort_ndx] =	ftemp.bufI(FCLR)     [i];
+		fbuf.bufI (FCOLOR)    [sort_ndx] =	ftemp.bufI(FCOLOR)     [i];
 		fbuf.bufI (FGCELL)  [sort_ndx] =	icell;
 		fbuf.bufI (FGNDX)   [sort_ndx] =	indx;
         cl_float3 pos = ftemp.bufF3(FPOS) [i];
@@ -1351,7 +1351,7 @@ extern "C" __device__ void addParticle (uint parent_Idx, uint &new_particle_Idx)
         bufF3(&fbuf, FFORCE)[new_particle_Idx]        = bufF3(&fbuf, FFORCE)[parent_Idx];
         bufI(&fbuf, FMASS_RADIUS)[new_particle_Idx]   = bufI(&fbuf, FMASS_RADIUS)[parent_Idx];
         bufI(&fbuf, FAGE)[new_particle_Idx]           = fparam.frame;
-        bufI(&fbuf, FCLR)[new_particle_Idx]           = bufI(&fbuf, FCLR)[parent_Idx];
+        bufI(&fbuf, FCOLOR)[new_particle_Idx]           = bufI(&fbuf, FCOLOR)[parent_Idx];
         bufI(&fbuf, FNERVEIDX)[new_particle_Idx]      = bufI(&fbuf, FNERVEIDX)[parent_Idx];
         
         uint * uint_ptr = &bufI(&fbuf, FELASTIDX)[new_particle_Idx * BOND_DATA];
@@ -2192,7 +2192,7 @@ return;  // suspend use of this kernel for now.
 
     // colour particles to indicate replacement of original bond
     uint increment                                      = fparam.frame*10000 + particle_index*10;
-    for (int n=0;n<5;n++){bufI(&fbuf, FCLR)[Particle[n]]  = increment + n;}
+    for (int n=0;n<5;n++){bufI(&fbuf, FCOLOR)[Particle[n]]  = increment + n;}
 /*    
     bufI(&fbuf, FCLR)[new_particle_Idx]   = increment + 4;
     bufI(&fbuf, FCLR)[i]                  = increment + 1;

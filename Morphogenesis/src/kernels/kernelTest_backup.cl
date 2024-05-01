@@ -307,7 +307,7 @@ __kernel void countingSortFull(int pnum) {
         bufF(&fbuf, FPRESS)[sort_ndx] = bufF(&ftemp, FPRESS)[i];
         bufF(&fbuf, FDENSITY)[sort_ndx] = bufF(&ftemp, FDENSITY)[i];
         bufI(&fbuf, FAGE)[sort_ndx] = bufI(&ftemp, FAGE)[i];
-        bufI(&fbuf, FCLR)[sort_ndx] = bufI(&ftemp, FCLR)[i];
+        bufI(&fbuf, FCOLOR)[sort_ndx] = bufI(&ftemp, FCOLOR)[i];
         bufI(&fbuf, FGCELL)[sort_ndx] = icell;
         bufI(&fbuf, FGNDX)[sort_ndx] = indx;
         float3 pos = bufF3(&ftemp, FPOS)[i];

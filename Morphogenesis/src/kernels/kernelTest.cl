@@ -178,7 +178,6 @@ __kernel void insertParticlesCL(
 
 __kernel void insertParticlesCL(
     __global struct FParams* m_FParamsDevice,
-//     __global struct FBufs* m_FluidDevice,
     int pnum,
     volatile __global float4* fpos,
     volatile __global uint* fgcell,
@@ -451,126 +450,168 @@ __kernel void tally_denselist_lengths(
 
 __kernel void countingSortFull(
     __global struct FParams*    m_FParamsDevice,
-    __global struct FBufs*      m_FluidDevice,
-    __global struct FBufs*      m_FluidTempDevice,
-                int pnum
+                  int pnum,
+    volatile __global float4* fbin,
+    volatile __global uint* fbin_offset,
+    volatile __global float4* fpos,
+    volatile __global float4* fvel,
+    volatile __global float4* fveval,
+    volatile __global float4* fforce,
+    volatile __global float*  fpress,
+    volatile __global float*  fdensity,
+    volatile __global uint*   fage,
+    volatile __global uint*   fcolor,
+    volatile __global uint*   fgcell,
+    volatile __global uint*   fgndx,
+    volatile __global uint*   felastidx,
+    volatile __global uint*   fparticleidx,
+    volatile __global uint*   fparticle_id,
+    volatile __global uint*   fmass_radius,
+    volatile __global uint*   fnerveidx,
+    volatile __global uint*   fepigen,
+    volatile __global uint*   fconc,
+    volatile __global float4* fposTemp,
+    volatile __global float4* fvelTemp,
+    volatile __global float4* fvevalTemp,
+    volatile __global float4* fforceTemp,
+    volatile __global float*  fpressTemp,
+    volatile __global float*  fdensityTemp,
+    volatile __global uint*   fageTemp,
+    volatile __global uint*   fcolorTemp,
+    volatile __global uint*   fgcellTemp,
+    volatile __global uint*   fgndxTemp,
+    volatile __global uint*   felastidxTemp,
+    volatile __global uint*   fparticleidxTemp,
+    volatile __global uint*   fparticle_idTemp,
+    volatile __global uint*   fmass_radiusTemp,
+    volatile __global uint*   fnerveidxTemp,
+    volatile __global uint*   fepigenTemp,
+    volatile __global uint*   fconcTemp
     )
 {
     uint i = get_global_id(0);
     if (i >= pnum) return;
     if (m_FParamsDevice->debug > 1 && i == 0) printf("\ncountingSortFull(): pnum=%u\n", pnum);
-    uint icell = bufI(m_FluidTempDevice, FGCELL)[i];
+    uint icell = fgcell[i];
     if (icell != GRID_UNDEF) {
-        uint indx = bufI(m_FluidTempDevice, FGNDX)[i];
-        int sort_ndx = bufI(m_FluidDevice, FBIN_OFFSET)[icell] + indx;
-        float3 zero = (float3)(0, 0, 0);
+        uint indx = fgcell[i];
+        int sort_ndx = fbin_offset[icell] + indx;
+        printf("\nIndices: indx = %u, sort_ndx = %d\n", indx, sort_ndx);
 
-        bufI(m_FluidDevice, FBIN)[sort_ndx] = sort_ndx;
-        bufF3(m_FluidDevice, FPOS)[sort_ndx] = bufF3(m_FluidTempDevice, FPOS)[i];
-        bufF3(m_FluidDevice, FVEL)[sort_ndx] = bufF3(m_FluidTempDevice, FVEL)[i];
-        bufF3(m_FluidDevice, FVEVAL)[sort_ndx] = bufF3(m_FluidTempDevice, FVEVAL)[i];
-        bufF3(m_FluidDevice, FFORCE)[sort_ndx] = zero;
-        bufF(m_FluidDevice, FPRESS)[sort_ndx] = bufF(m_FluidTempDevice, FPRESS)[i];
-        bufF(m_FluidDevice, FDENSITY)[sort_ndx] = bufF(m_FluidTempDevice, FDENSITY)[i];
-        bufI(m_FluidDevice, FAGE)[sort_ndx] = bufI(m_FluidTempDevice, FAGE)[i];
-        bufI(m_FluidDevice, FCLR)[sort_ndx] = bufI(m_FluidTempDevice, FCLR)[i];
-        bufI(m_FluidDevice, FGCELL)[sort_ndx] = icell;
-        bufI(m_FluidDevice, FGNDX)[sort_ndx] = indx;
-        float3 pos = bufF3(m_FluidTempDevice, FPOS)[i];
+        float4 zero = (float4)(0, 0, 0, 0);
+
+        fbin      [sort_ndx] = sort_ndx;
+        fpos      [sort_ndx] = fposTemp[i];
+//         printf("\nPosition assigned to m_FluidDevice at Thread %u, index %u: (%f, %f, %f, %f)\n", i, sort_ndx,
+//         bufF4(m_FluidTempDevice, FPOS)[i].x, bufF4(m_FluidTempDevice, FPOS)[i].y,
+//         bufF4(m_FluidTempDevice, FPOS)[i].z, bufF4(m_FluidTempDevice, FPOS)[i].w);
+
+        fvel      [sort_ndx] = fvelTemp[i];
+        fveval    [sort_ndx] = fvevalTemp[i];
+        fforce    [sort_ndx] = zero;
+        fpress    [sort_ndx] = fpressTemp[i];
+        fdensity  [sort_ndx] = fdensityTemp[i];
+        fage      [sort_ndx] = fageTemp[i];
+        fcolor    [sort_ndx] = fcolorTemp[i];
+        fgcell    [sort_ndx] = icell;
+        fgndx     [sort_ndx] = indx;
+        float4 pos = fpos[i];
         for (int a = 0; a < BONDS_PER_PARTICLE; a++) {
-            uint j = bufI(m_FluidTempDevice, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND];
+            uint j = felastidx[i * BOND_DATA + a * DATA_PER_BOND];
             uint j_sort_ndx = UINT_MAX;
             uint jcell = GRID_UNDEF;
             if (j < pnum) {
-                jcell = bufI(m_FluidTempDevice, FGCELL)[j];
+                jcell = fgcell[j];
                 uint jndx = UINT_MAX;
                 if (jcell != GRID_UNDEF) {
-                    jndx = bufI(m_FluidTempDevice, FGNDX)[j];
-                    if ((bufI(m_FluidDevice, FBIN_OFFSET)[jcell] + jndx) < pnum) {
-                        j_sort_ndx = bufI(m_FluidDevice, FBIN_OFFSET)[jcell] + jndx;
+                    jndx = fgndx[j];
+                    if ((fbin_offset[jcell] + jndx) < pnum) {
+                        j_sort_ndx = fbin_offset[jcell] + jndx;
                     }
                 }
             }
-            bufI(m_FluidDevice, FELASTIDX)[sort_ndx * BOND_DATA + a * DATA_PER_BOND] = j_sort_ndx;
+            fparticleidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND] = j_sort_ndx;
             for (int b = 1; b < 5 / DATA_PER_BOND; b++) {
-                bufF(m_FluidDevice, FELASTIDX)[sort_ndx * BOND_DATA + a * DATA_PER_BOND + b] =
-                bufF(m_FluidTempDevice, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + b];
+                fparticleidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + b] =
+                fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + b];
             }
-            bufI(m_FluidDevice, FELASTIDX)[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 5] =
-            bufI(m_FluidTempDevice, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 5];
-            bufI(m_FluidDevice, FELASTIDX)[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 6] =
-            bufI(m_FluidTempDevice, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 6];
-            bufF(m_FluidDevice, FELASTIDX)[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 7] =
-            bufF(m_FluidTempDevice, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 7];
-            bufI(m_FluidDevice, FELASTIDX)[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 8] =
-            bufF(m_FluidTempDevice, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 8];
-            bufI(m_FluidDevice, FELASTIDX)[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 8] =
-            bufI(m_FluidTempDevice, FELASTIDX)[i * BOND_DATA + a * DATA_PER_BOND + 8];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 5] =
+            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 5];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 6] =
+            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 6];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 7] =
+            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 7];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 8] =
+            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 8];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 8] =
+            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 8];
 
         }
             for (int a = 0; a < BONDS_PER_PARTICLE; a++) {
-                uint k = bufI(m_FluidTempDevice, FPARTICLEIDX)[i * BONDS_PER_PARTICLE * 2 + a * 2];
-                uint b = bufI(m_FluidTempDevice, FPARTICLEIDX)[i * BONDS_PER_PARTICLE * 2 + a * 2 + 1];
+                uint k = fparticleidxTemp[i * BONDS_PER_PARTICLE * 2 + a * 2];
+                uint b = fparticleidxTemp[i * BONDS_PER_PARTICLE * 2 + a * 2 + 1];
                 uint kndx, kcell, ksort_ndx = UINT_MAX;
                 if (k < pnum) {
-                    kcell = bufI(m_FluidTempDevice, FGCELL)[k];
+                    kcell = fgcellTemp[k];
                     if (kcell != GRID_UNDEF) {
-                        kndx = bufI(m_FluidTempDevice, FGNDX)[k];
-                        ksort_ndx = bufI(m_FluidDevice, FBIN_OFFSET)[kcell] + kndx;
+                        kndx = fgndxTemp[k];
+                        ksort_ndx = fbin_offset[kcell] + kndx;
                     }
                 }
-                bufI(m_FluidDevice, FPARTICLEIDX)[sort_ndx * BONDS_PER_PARTICLE * 2 + a * 2] = ksort_ndx;
-                bufI(m_FluidDevice, FPARTICLEIDX)[sort_ndx * BONDS_PER_PARTICLE * 2 + a * 2 + 1] = b;
-                bufI(m_FluidTempDevice, FPARTICLEIDX)[i * BONDS_PER_PARTICLE * 2 + a * 2] = UINT_MAX;
+                fparticleidx[sort_ndx * BONDS_PER_PARTICLE * 2 + a * 2] = ksort_ndx;
+                fparticleidx[sort_ndx * BONDS_PER_PARTICLE * 2 + a * 2 + 1] = b;
+                fparticleidxTemp[i * BONDS_PER_PARTICLE * 2 + a * 2] = UINT_MAX;
             }
 
-            bufI(m_FluidDevice, FPARTICLE_ID)[sort_ndx] = bufI(m_FluidTempDevice, FPARTICLE_ID)[i];
-            bufI(m_FluidDevice, FMASS_RADIUS)[sort_ndx] = bufI(m_FluidTempDevice, FMASS_RADIUS)[i];
-            bufI(m_FluidDevice, FNERVEIDX)[sort_ndx] = bufI(m_FluidTempDevice, FNERVEIDX)[i];
+            fparticle_id[sort_ndx] = fparticle_idTemp[i];
+            fmass_radius[sort_ndx] = fmass_radiusTemp[i];
+            fnerveidx   [sort_ndx] = fnerveidxTemp   [i];
 
-            uint* fbuf_epigen = &bufI(m_FluidDevice, FEPIGEN)[sort_ndx];
-            uint* ftemp_epigen = &bufI(m_FluidTempDevice, FEPIGEN)[i];
-            for (int a = 0; a < NUM_GENES; a++) fbuf_epigen[pnum * a] = ftemp_epigen[pnum * a];
 
-            float* fbuf_conc = &bufF(m_FluidDevice, FCONC)[sort_ndx * NUM_TF];
-            float* ftemp_conc = &bufF(m_FluidTempDevice, FCONC)[i * NUM_TF];
-            for (int a = 0; a < NUM_TF; a++) fbuf_conc[a] = ftemp_conc[a];
+
+            if (i < NUM_GENES) {
+                // Access memory directly and perform element-wise assignment for fbuf_epigen
+                fepigen[sort_ndx + pnum * i] = fepigenTemp[i + pnum * i];
+            }
+
+            if (i < NUM_TF) {
+                // Access memory directly and perform element-wise assignment for fbuf_conc
+                fconc[sort_ndx * NUM_TF + i] = fconcTemp[i * NUM_TF + i];
+            }
+
         }
 }
 
 __kernel void countingSortDenseLists (
     __global struct FParams*    m_FParamsDevice,
-    __global struct FBufs*      m_FluidDevice,
-                int pnum
+    volatile __global uint* fbin_offset,
+    volatile __global uint* fbin_count,
+    volatile __global uint* fdense_lists,
+    volatile __global uint* fbin_count_active_genes,
+    volatile __global uint* fbin_offset_active_genes,
+    volatile __global uint* fepigen,
+    volatile __global uint* fparticle_id,
+                       int  pnum
     )
 {
-    unsigned int bin = get_global_id(0) * SCAN_BLOCKSIZE / 2 + get_group_id(0) * SCAN_BLOCKSIZE / 2;
+    uint i = get_global_id(0);
+    unsigned int bin = i * SCAN_BLOCKSIZE / 2 + get_group_id(0) * SCAN_BLOCKSIZE / 2;
     int gridTot = m_FParamsDevice->gridTotal;
 
     if (m_FParamsDevice->debug > 2 && bin == 0) {
-        printf("\n\n######countingSortDenseLists###### bin==0  gridTot=%u, fbuf.bufI (FBIN_OFFSET)[bin]=%u \n", gridTot, bufI(m_FluidDevice, FBIN_OFFSET)[0]);
+        printf("\n\n######countingSortDenseLists###### bin==0  gridTot=%u, fbuf.bufI (FBIN_OFFSET)[bin]=%u \n", gridTot, fbin_offset[0]);
     }
 
     if (bin >= gridTot)
         return;
 
-    uint count = bufI(m_FluidDevice,FBIN_COUNT)[bin];
+    uint count = fbin_count[bin];
 
     if (count == 0)
         return;
 
-    uint binoffset = bufI(m_FluidDevice,FBIN_OFFSET)[bin];
+    uint binoffset = fbin_offset[bin];
     uint gene_counter[NUM_GENES] = {0};
-
-    __private uint* lists[NUM_GENES];
-    for (int gene = 0; gene < NUM_GENES; gene++) {
-        lists[gene] = bufII(m_FluidDevice,FDENSE_LISTS)[gene];
-    }
-
-    __private uint* offsets[NUM_GENES];
-    for (int gene = 0; gene < NUM_GENES; gene++) {
-        offsets[gene] = &bufI(m_FluidDevice, FBIN_OFFSET_ACTIVE_GENES)[gene * gridTot];
-    }
 
     if (binoffset + count > pnum) {
         printf("\n\n!!Overflow: (binoffset+count > pnum), bin=%u \n", bin);
@@ -582,18 +623,19 @@ __kernel void countingSortDenseLists (
             printf("\nparticle==%u, ", particle);
         }
         for (int gene = 0; gene < NUM_GENES; gene++) {
-            if (bufI(m_FluidDevice, FEPIGEN)[particle + pnum * gene] > 0) {
-                lists[gene][offsets[gene][bin] + gene_counter[gene]] = particle;
+            if (fepigen[particle + pnum * gene] > 0) {
+                fdense_lists[gene * NUM_GENES + particle] = particle;
                 gene_counter[gene]++;
-                if (m_FParamsDevice->debug > 2 && gene_counter[gene] > bufI(m_FluidDevice, FBIN_COUNT_ACTIVE_GENES)[gene * gridTot + bin]) {
-                    printf("\n Overflow: particle=,%u, ID=,%u, gene=,%u, bin=,%u, gene_counter[gene]=,%u, bufI (m_FluidDevice, FBIN_COUNT_ACTIVE_GENES)[gene*gridTot +bin]=,%u \t\t",
-                           particle, bufI(m_FluidDevice, FPARTICLE_ID)[particle], gene, bin, gene_counter[gene], bufI(m_FluidDevice, FBIN_COUNT_ACTIVE_GENES)[gene * gridTot + bin]);
+                if (m_FParamsDevice->debug > 2 && gene_counter[gene] > fbin_count_active_genes[gene * gridTot + bin]) {
+                    printf("\n Overflow: particle=,%u, ID=,%u, gene=,%u, bin=,%u, gene_counter[gene]=,%u, fbin_count_active_genes[gene*gridTot +bin]=,%u \t\t",
+                        particle, fparticle_id[particle], gene, bin, gene_counter[gene], fbin_count_active_genes[gene * gridTot + bin]);
                 }
             } else if (m_FParamsDevice->debug > 2 && gene == 2 && particle % 1000 == 0) {
                 printf("*");
             }
         }
     }
+
 }
 
 

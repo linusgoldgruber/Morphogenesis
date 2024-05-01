@@ -145,7 +145,7 @@ if (m_FParams.debug>1) std::cout<<"\nTransferToCL ()\n"<<std::flush;
     clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FFORCE),        bufC(&m_Fluid, FFORCE),       mMaxPoints *sizeof(float)*3 ),                      "TransferToCL", "cuMemcpyHtoD", "FFORCE",         mbDebug);
     clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FPRESS),        bufC(&m_Fluid, FPRESS),       mMaxPoints *sizeof(float) ),                        "TransferToCL", "cuMemcpyHtoD", "FPRESS",         mbDebug);
     clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FDENSITY),      bufC(&m_Fluid, FDENSITY),     mMaxPoints *sizeof(float) ),                        "TransferToCL", "cuMemcpyHtoD", "FDENSITY",       mbDebug);
-    clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FCLR),          bufC(&m_Fluid, FCLR),         mMaxPoints *sizeof(uint) ),                         "TransferToCL", "cuMemcpyHtoD", "FCLR",           mbDebug);
+    clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FCOLOR),          bufC(&m_Fluid, FCOLOR),         mMaxPoints *sizeof(uint) ),                         "TransferToCL", "cuMemcpyHtoD", "FCLR",           mbDebug);
     // add extra data for morphogenesis
     clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FELASTIDX),     bufC(&m_Fluid, FELASTIDX),    mMaxPoints *sizeof(uint[BOND_DATA]) ),              "TransferToCL", "cuMemcpyHtoD", "FELASTIDX",      mbDebug);
     clCheck( cuMemcpyHtoD ( gpuVar(&m_Fluid, FPARTICLEIDX),  bufC(&m_Fluid, FPARTICLEIDX), mMaxPoints *sizeof(uint[BONDS_PER_PARTICLE *2]) ),  "TransferToCL", "cuMemcpyHtoD", "FPARTICLEIDX",   mbDebug);
@@ -171,7 +171,7 @@ void FluidSystem::TransferFromCL (){
     clCheck( cuMemcpyDtoH ( bufC(&m_Fluid, FDENSITY),     gpuVar(&m_Fluid, FDENSITY),      mMaxPoints *sizeof(float) ),                           "TransferFromCL", "cuMemcpyDtoH", "FDENSITY",     mbDebug);
     
     clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FAGE),         gpuVar(&m_Fluid, FAGE),          mMaxPoints *sizeof(uint) ),                            "TransferFromCL", "cuMemcpyDtoH", "FAGE",         mbDebug);
-    clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FCLR),         gpuVar(&m_Fluid, FCLR),          mMaxPoints *sizeof(uint) ),                            "TransferFromCL", "cuMemcpyDtoH", "FCLR",         mbDebug);
+    clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FCOLOR),         gpuVar(&m_Fluid, FCOLOR),          mMaxPoints *sizeof(uint) ),                            "TransferFromCL", "cuMemcpyDtoH", "FCLR",         mbDebug);
     
     // add extra data for morphogenesis
     clCheck( cuMemcpyDtoH ( bufC(&m_Fluid, FELASTIDX),	gpuVar(&m_Fluid, FELASTIDX),	    mMaxPoints *sizeof(uint[BOND_DATA]) ),                 "TransferFromCL", "cuMemcpyDtoH", "FELASTIDX",    mbDebug);
@@ -521,7 +521,7 @@ void FluidSystem::CountingSortFullCL ( Vector3DF* ppos ){
     TransferToTempCL ( FFORCE,	mMaxPoints *sizeof(Vector3DF) );    // NB buffers are declared and initialized on mMaxPoints.
     TransferToTempCL ( FPRESS,	mMaxPoints *sizeof(float) );
     TransferToTempCL ( FDENSITY,	mMaxPoints *sizeof(float) );
-    TransferToTempCL ( FCLR,		mMaxPoints *sizeof(uint) );
+    TransferToTempCL ( FCOLOR,		mMaxPoints *sizeof(uint) );
     TransferToTempCL ( FAGE,		mMaxPoints *sizeof(uint) );
     TransferToTempCL ( FGCELL,	mMaxPoints *sizeof(uint) );
     TransferToTempCL ( FGNDX,		mMaxPoints *sizeof(uint) );

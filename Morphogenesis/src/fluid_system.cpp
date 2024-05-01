@@ -553,7 +553,7 @@ void FluidSystem::FluidParamCL (float ss, float sr, float pr, float mass, float 
         NULL),
     "FluidParamCL", "clEnqueueWriteBuffer", "m_FParamDevice", mbDebug);
 
-    if (verbosity>0) std::cout << "\n-----FluidParamCL() started... -----" << std::flush;
+    if (verbosity>0) std::cout << "\n-------FluidParamCL() finished. ---------" << std::flush;
 
 
 }
@@ -625,10 +625,13 @@ void FluidSystem::AllocateBuffer(int buf_id, int stride, int cpucnt, int gpucnt,
 
         // Allocate memory
         m_Fluid.mcpu[buf_id] = (char*)malloc(cpucnt * stride);
+        m_FluidTemp.mcpu[buf_id] = (char*)malloc(cpucnt * stride);
+
 
         // Initialize the buffer with zeros
         if (m_Fluid.mcpu[buf_id] != nullptr) {
             memset(m_Fluid.mcpu[buf_id], 0, cpucnt * stride);
+            memset(m_FluidTemp.mcpu[buf_id], 0, cpucnt * stride);
 
         } else {std::cout << "\nmcpu[" << buf_id << "] allocation failed!" << std::flush;}
 
@@ -724,7 +727,7 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
     if (verbosity>0)std::cout<<"\n\nAllocateParticles ( cnt= "<<cnt<<", gpu_mode "<<gpu_mode<<", cpu_mode "<<cpu_mode<<" ), debug="<<verbosity<<", launchParams.verbosity="<<launchParams.verbosity<<", m_FParams.szPnts:"<<m_FParams.szPnts<<"\n";//<<std::flush;
     if (verbosity>1)std::cout<<"\n\tGPU_OFF=0, GPU_SINGLE=1, GPU_TEMP=2, GPU_DUAL=3, CPU_OFF=4, CPU_YES=5"<<std::flush;
     AllocateBuffer ( FPOS,		sizeof(cl_float4),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
-    AllocateBuffer ( FCLR,		sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
+    AllocateBuffer ( FCOLOR,	sizeof(uint),		cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FVEL,		sizeof(cl_float4),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FVEVAL,	sizeof(cl_float4),	cnt,	m_FParams.szPnts,	gpu_mode, cpu_mode );//
     AllocateBuffer ( FAGE,		sizeof(uint),       cnt,    m_FParams.szPnts,	gpu_mode, cpu_mode );//
@@ -761,13 +764,15 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
 
     // Update GPU access pointers
     if (gpu_mode != GPU_OFF ) {
-
+        cout << "\nUpdating GPU access pointers ..." << flush;
         clCheck( clEnqueueWriteBuffer(m_queue, m_FluidDevice, CL_TRUE, 0, sizeof(FBufs), &m_Fluid, 0, NULL, NULL), "AllocateParticles", "clEnqueueWriteBuffer", "m_FluidDevice", mbDebug);
         clCheck( clEnqueueWriteBuffer(m_queue, m_FluidTempDevice, CL_TRUE, 0, sizeof(FBufs), &m_FluidTemp, 0, NULL, NULL),	"AllocateParticles", "clEnqueueWriteBuffer", "m_FluidTempDevice", mbDebug);
         clCheck( clEnqueueWriteBuffer(m_queue, m_FParamsDevice, CL_TRUE, 0, sizeof(FParams), &m_FParams, 0, NULL, NULL),  "AllocateParticles", "clEnqueueWriteBuffer", "m_FParamDevice", mbDebug);
         clCheck( clEnqueueWriteBuffer(m_queue, m_FGenomeDevice, CL_TRUE, 0, sizeof(FGenome), &m_FGenome, 0, NULL, NULL),  "AllocateParticles", "clEnqueueWriteBuffer", "m_FGenomeDevice", mbDebug);
 
         clCheck(clFinish(m_queue), "AllocateParticles", "clFinish", "", mbDebug );
+        cout << "\nUpdating GPU access pointers finished.\n" << flush;
+
     }
 
     // Allocate auxiliary buffers (prefix sums)
@@ -775,6 +780,7 @@ void FluidSystem::AllocateParticles ( int cnt, int gpu_mode, int cpu_mode ){ // 
     int numElem1 = m_GridTotal;
     int numElem2 = int ( numElem1 / blockSize ) + 1;
     int numElem3 = int ( numElem2 / blockSize ) + 1;
+
 
     if (gpu_mode != GPU_OFF ) {
         AllocateBuffer ( FAUXARRAY1,	sizeof(uint),		0,	numElem2, GPU_SINGLE, CPU_OFF );
@@ -888,7 +894,7 @@ int FluidSystem::AddParticleMorphogenesis2 (cl_float3* Pos, cl_float3* Vel, uint
         //std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 1 XXXXXXXXXXXXXXXXX \t" << flush; //TODO remove
     *(bufF(&m_Fluid, FSTATE) + n ) = (float) rand();
     *(bufI(&m_Fluid, FAGE) + n) = Age;
-    *(bufI(&m_Fluid, FCLR) + n) = Clr;
+    *(bufI(&m_Fluid, FCOLOR) + n) = Clr;
   if (verbosity>0)printf("bufV3(&m_Fluid, FPOS)[n]=(%f,%f,%f), Pos->x=%f, Pos->y=%f, Pos->z=%f,\t",bufV3(&m_Fluid, FPOS)[n].x,bufV3(&m_Fluid, FPOS)[n].y,bufV3(&m_Fluid, FPOS)[n].z,Pos->x,Pos->y,Pos->z);
 
         //std::cout << "\n AddParticleMorphogenesis2() XXXXXXXXXXXXXXXX DEBUG 2 XXXXXXXXXXXXXXXXX \t" << flush; //TODO remove
@@ -1882,7 +1888,7 @@ void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting 
         TransferFromCL ();
         m_Debug_file++;
         SavePointsCSV2 (  launchParams.outPath, m_Frame+m_Debug_file );
-        std::cout << "\n\nRun2PhysicalSort() Chk2, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  After  PrefixSumCellsCL\n"<<std::flush;
+        std::cout << "\n\nRun2PhysicalSort() Chk2, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  _after_  PrefixSumCellsCL\n"<<std::flush;
         //TransferFromTempCL(int buf_id, int sz );
     }
     cout << "\nCHECK 1.1 Run2Simulation() \n" << flush;
@@ -2546,7 +2552,7 @@ void FluidSystem::Run2Simulation(){
     m_Debug_file=0;
     if (verbosity>0)std::cout<<"\n\nFreeze() "<<-1<<"\n"<<std::flush;
     Run2PhysicalSort();
-//     InitializeBondsCL();
+//     InitializeBondsCL(); //TODO Implement again!
 
     if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
     clCheck(clFinish(m_queue), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);

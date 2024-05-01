@@ -371,7 +371,7 @@ __kernel void countingSortFull(
         bufF(m_FluidDevice, FPRESS)[sort_ndx] = bufF(m_FluidTempDevice, FPRESS)[i];
         bufF(m_FluidDevice, FDENSITY)[sort_ndx] = bufF(m_FluidTempDevice, FDENSITY)[i];
         bufI(m_FluidDevice, FAGE)[sort_ndx] = bufI(m_FluidTempDevice, FAGE)[i];
-        bufI(m_FluidDevice, FCLR)[sort_ndx] = bufI(m_FluidTempDevice, FCLR)[i];
+        bufI(m_FluidDevice, FCOLOR)[sort_ndx] = bufI(m_FluidTempDevice, FCOLOR)[i];
         bufI(m_FluidDevice, FGCELL)[sort_ndx] = icell;
         bufI(m_FluidDevice, FGNDX)[sort_ndx] = indx;
         float3 pos = bufF3(m_FluidTempDevice, FPOS)[i];
