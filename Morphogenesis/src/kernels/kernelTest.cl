@@ -452,7 +452,7 @@ __kernel void countingSortFull(
     __global struct FParams*    m_FParamsDevice,
                   int pnum,
     volatile __global float4* fbin,
-    volatile __global uint* fbin_offset,
+    volatile __global uint*   fbin_offset,
     volatile __global float4* fpos,
     volatile __global float4* fvel,
     volatile __global float4* fveval,
@@ -490,6 +490,11 @@ __kernel void countingSortFull(
     )
 {
     uint i = get_global_id(0);
+
+    // Print the value along with the thread index
+    printf("Thread Index: %d, Value: (%f, %f, %f, %f)\n", i, fposTemp[i].x, fposTemp[i].y, fposTemp[i].z, fposTemp[i].w);
+
+
     if (i >= pnum) return;
     if (m_FParamsDevice->debug > 1 && i == 0) printf("\ncountingSortFull(): pnum=%u\n", pnum);
     uint icell = fgcell[i];

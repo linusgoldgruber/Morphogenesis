@@ -124,9 +124,11 @@ bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall
     // DEBUG IMPLEMENTATION MISSING!!!
     if (apicall == "clEnqueueNDRangeKernel") {
 
-        cout << "\n\n\n☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆ K E R N E L   L A U N C H ☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆☆\n" << flush;
-        cout << arg << "\n" << flush;
+        cout << "\n\n\n+ + + + + + + + + + +  K E R N E L   L A U N C H  + + + + + + + + + + +\n" << flush;
+        cout << "Kernel: " << arg << " \n" << flush;
     }
+
+    if (apicall == "clEnqueueNDRangeKernel" && arg == "FUNC_COUNTING_SORT_FULL") cout << "FUNC_COUNTING_SORT_FULL" << flush;
 
     if (status != CL_SUCCESS) {
         std::string errorMessage = checkerror(status);
