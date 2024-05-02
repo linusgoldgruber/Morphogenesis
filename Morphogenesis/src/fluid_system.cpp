@@ -119,7 +119,7 @@ FluidSystem::FluidSystem (RunCL& runcl){
 }
 */
 
-
+/*
 bool FluidSystem::clCheck(cl_int status, std::string method, std::string apicall, std::string arg, bool bDebug) {
 
 
@@ -153,21 +153,24 @@ bool FluidSystem::clCheck(cl_int status, std::string method, std::string apicall
         return false;
     }
     return true;
-}
+}*/
 
-/*
-bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall, const char* arg, bool bDebug)
-{
-    // DEBUG IMPLEMENTATION MISSING!!!
-    if (apicall == "clEnqueueNDRangeKernel") {
 
-        cout << "\n\n\n+ + + + + + + + + + +  K E R N E L   L A U N C H  + + + + + + + + + + +\n" << flush;
-        if (arg != "FUNC_COUNTING_SORT_FULL 1") std::cout << "THE Kernel: " << arg << " \n" << flush;
-        if (arg == "FUNC_COUNTING_SORT_FULL 1") std::cout << "Kernel: FUNC_COUNTING_SORT_FULL\n" << flush;
+bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall, const char* arg, bool bDebug) {
+
+    std::cout << "                                                                                                                            clCheck() called for ";
+    if (method != nullptr) {
+        std::cout << method;
     }
-
-//     if (apicall == "clEnqueueNDRangeKernel" && arg == "FUNC_COUNTING_SORT_FULL") cout << "FUNC_COUNTING_SORT_FULL" << flush;
-
+    std::cout << ", ";
+    if (apicall != nullptr) {
+        std::cout << apicall;
+    }
+    std::cout << ", ";
+    if (arg != nullptr) {
+        std::cout << arg;
+    }
+    std::cout << ", + + +\n" << std::flush;
     if (status != CL_SUCCESS) {
         std::string errorMessage = checkerror(status);
         std::cout << "\nOpenCL Error: " << errorMessage << std::endl;
@@ -177,7 +180,7 @@ bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall
         return false;
     }
     return true;
-}*/
+}
 
 // void FluidSystem::CalculateWorkGroupSizes(size_t maxWorkGroupSize, size_t numComputeUnits, size_t numItems, size_t &numGroups, size_t &numItemsPerGroup) {
 //     // Calculate the ideal number of items per group
@@ -2588,7 +2591,7 @@ void FluidSystem::Run2Simulation(){
     auto old_begin = std::chrono::steady_clock::now();
 
     TransferPosVelVeval ();
-    clCheck(clFinish(m_queue), "Run", "clFinish", "After TransferPosVelVeval, before 1st timestep", 1/*mbDebug*/);
+    clCheck(clFinish(m_queue), "Run", "clFinish", "After TransferPosVelVeval, before 1st timestep", mbDebug);
     setFreeze(true);
     m_Debug_file=0;
     if (verbosity>0)std::cout<<"\n\nFreeze() "<<-1<<"\n"<<std::flush;

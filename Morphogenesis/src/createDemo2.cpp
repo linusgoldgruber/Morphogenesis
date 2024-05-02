@@ -29,7 +29,6 @@ int main ( int argc, const char** argv )
     char input_folder[256];
     char specfile_folder[256];
     char output_folder[256];
-    char json_folder[256];
     cout << "argc: " << argc << "\n" << flush;
     //----------------------------------------
 

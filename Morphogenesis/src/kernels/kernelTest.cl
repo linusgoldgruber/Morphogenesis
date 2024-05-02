@@ -447,6 +447,20 @@ __kernel void tally_denselist_lengths(
     int gridTot = m_FParamsDevice->gridTotal;
     bufI(m_Fluid, fdense_list_lengths)[list] = bufI(m_Fluid, fgridcnt)[(list+1)*gridTot -1] + bufI(m_Fluid, fgridoff)[(list+1)*gridTot -1];
 }
+/*
+__kernel void countingSortFull(
+    __global struct FParams*    m_FParamsDevice,
+                  int pnum,
+    volatile __global float4* fposTemp
+
+    )
+{
+    uint i = get_global_id(0);
+
+    // Print the value along with the thread index
+    printf("\nThread Index: %d, Value: (%f, %f, %f, %f)\n", i, fposTemp[i].x, fposTemp[i].y, fposTemp[i].z, fposTemp[i].w);
+}*/
+
 
 __kernel void countingSortFull(
     __global struct FParams*    m_FParamsDevice,
@@ -492,8 +506,48 @@ __kernel void countingSortFull(
     uint i = get_global_id(0);
 
     // Print the value along with the thread index
-    printf("Thread Index: %d, Value: (%f, %f, %f, %f)\n", i, fposTemp[i].x, fposTemp[i].y, fposTemp[i].z, fposTemp[i].w);
+    //printf("Thread Index: %d, Value: (%f, %f, %f, %f)\n", i, fposTemp[i].x, fposTemp[i].y, fposTemp[i].z, fposTemp[i].w);
 
+if(get_global_id(0) == 1) {
+        printf("Thread Index: %d\n", i);
+        printf("fbin: (%f, %f, %f, %f)\n", fbin[i].x, fbin[i].y, fbin[i].z, fbin[i].w);
+        printf("fbin_offset: %u\n", fbin_offset[i]);
+        printf("fpos: (%f, %f, %f, %f)\n", fpos[i].x, fpos[i].y, fpos[i].z, fpos[i].w);
+        printf("fvel: (%f, %f, %f, %f)\n", fvel[i].x, fvel[i].y, fvel[i].z, fvel[i].w);
+        printf("fveval: (%f, %f, %f, %f)\n", fveval[i].x, fveval[i].y, fveval[i].z, fveval[i].w);
+        printf("fforce: (%f, %f, %f, %f)\n", fforce[i].x, fforce[i].y, fforce[i].z, fforce[i].w);
+        printf("fpress: %f\n", fpress[i]);
+        printf("fdensity: %f\n", fdensity[i]);
+        printf("fage: %u\n", fage[i]);
+        printf("fcolor: %u\n", fcolor[i]);
+        printf("fgcell: %u\n", fgcell[i]);
+        printf("fgndx: %u\n", fgndx[i]);
+        printf("felastidx: %u\n", felastidx[i]);
+        printf("fparticleidx: %u\n", fparticleidx[i]);
+        printf("fparticle_id: %u\n", fparticle_id[i]);
+        printf("fmass_radius: %u\n", fmass_radius[i]);
+        printf("fnerveidx: %u\n", fnerveidx[i]);
+        printf("fepigen: %u\n", fepigen[i]);
+        printf("fconc: %u\n", fconc[i]);
+        printf("fposTemp: (%f, %f, %f, %f)\n", fposTemp[i].x, fposTemp[i].y, fposTemp[i].z, fposTemp[i].w);
+        printf("fvelTemp: (%f, %f, %f, %f)\n", fvelTemp[i].x, fvelTemp[i].y, fvelTemp[i].z, fvelTemp[i].w);
+        printf("fvevalTemp: (%f, %f, %f, %f)\n", fvevalTemp[i].x, fvevalTemp[i].y, fvevalTemp[i].z, fvevalTemp[i].w);
+        printf("fforceTemp: (%f, %f, %f, %f)\n", fforceTemp[i].x, fforceTemp[i].y, fforceTemp[i].z, fforceTemp[i].w);
+        printf("fpressTemp: %f\n", fpressTemp[i]);
+        printf("fdensityTemp: %f\n", fdensityTemp[i]);
+        printf("fageTemp: %u\n", fageTemp[i]);
+        printf("fcolorTemp: %u\n", fcolorTemp[i]);
+        printf("fgcellTemp: %u\n", fgcellTemp[i]);
+        printf("fgndxTemp: %u\n", fgndxTemp[i]);
+        printf("felastidxTemp: %u\n", felastidxTemp[i]);
+        printf("fparticleidxTemp: %u\n", fparticleidxTemp[i]);
+        printf("fparticle_idTemp: %u\n", fparticle_idTemp[i]);
+        printf("fmass_radiusTemp: %u\n", fmass_radiusTemp[i]);
+        printf("fnerveidxTemp: %u\n", fnerveidxTemp[i]);
+        printf("fepigenTemp: %u\n", fepigenTemp[i]);
+        printf("fconcTemp: %u\n", fconcTemp[i]);
+
+}
 
     if (i >= pnum) return;
     if (m_FParamsDevice->debug > 1 && i == 0) printf("\ncountingSortFull(): pnum=%u\n", pnum);
@@ -501,7 +555,7 @@ __kernel void countingSortFull(
     if (icell != GRID_UNDEF) {
         uint indx = fgcell[i];
         int sort_ndx = fbin_offset[icell] + indx;
-        printf("\nIndices: indx = %u, sort_ndx = %d\n", indx, sort_ndx);
+        //printf("\nIndices: indx = %u, sort_ndx = %d\n", indx, sort_ndx);
 
         float4 zero = (float4)(0, 0, 0, 0);
 

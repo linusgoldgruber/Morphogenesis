@@ -1176,10 +1176,12 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     fflush(stdout);
     for (int i = 0; i < mMaxPoints; ++i) {
         cl_float3 value = bufV3(&m_FluidTemp, FPOS)[i];
-        uint x = (uint)value.s[0];
-        uint y = (uint)value.s[1];
-        uint z = (uint)value.s[2];
-        printf("Index: %d, Value: (%u, %u, %u)\n", i, x, y, z);
+//         uint x = (uint)value.s[0];
+//         uint y = (uint)value.s[1];
+//         uint z = (uint)value.s[2];
+//         printf("Index: %d, Value: (%u, %u, %u)\n", i, x, y, z);
+        printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
+
     }
     fflush(stdout);
 
@@ -1214,12 +1216,8 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
 //     clFinish (upload_queue);
 
     //Calculate the work group sizes
-    clCheck ( clGetKernelWorkGroupInfo(m_Kern[FUNC_COUNTING_SORT_FULL], m_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local_work_size), &local_work_size, NULL),  "CountingSortFullCL ", "clGetKernelWorkGroupInfo", "FUNC_COUNTING_SORT_FULL",      mbDebug);
+    computeNumBlocks ( mMaxPoints, local_work_size, m_FParams.numGroups, m_FParams.numItems); // particles
 
-    computeNumBlocks ( m_FParams.pnumActive, local_work_size, m_FParams.numGroups, m_FParams.numItems); // particles
-
-    std::cout << "\nm_FParams.pnumActive: " << m_FParams.pnumActive << std::endl;
-    std::cout << "local_work_size: " << local_work_size << std::endl;
     std::cout << "m_FParams.numGroups: " << m_FParams.numGroups << std::endl;
     std::cout << "m_FParams.numItems: " << m_FParams.numItems << std::endl;
 
@@ -1229,47 +1227,50 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     // clCheck(clMemsetD32(gpu(&m_Fluid, FGCELL), GRID_UNDEF, numPoints ), "clMemsetD32(Sort)");
 
     //void* args[1] = { &mMaxPoints };
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 0,  sizeof(cl_mem),  &m_FParamsDevice),                    "InsertParticlesCL", "clSetKernelArg 0",  "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 1,  sizeof(int),     &mMaxPoints),                         "InsertParticlesCL", "clSetKernelArg 1",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 0,  sizeof(cl_mem),  &m_FParamsDevice),                    "CountingSortFullCL", "clSetKernelArg 0",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 1,  sizeof(int),     &mMaxPoints),                         "CountingSortFullCL", "clSetKernelArg 1",  "FUNC_COUNTING_SORT_FULL", mbDebug);
     /////////////////////////////////
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 2,  sizeof(cl_mem),  &m_Fluid.mgpu[FBIN]),                 "InsertParticlesCL", "clSetKernelArg 2",  "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 3,  sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_OFFSET]),          "InsertParticlesCL", "clSetKernelArg 3",  "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 4,  sizeof(cl_mem),  &m_Fluid.mgpu[FPOS]),                 "InsertParticlesCL", "clSetKernelArg 4",  "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 5,  sizeof(cl_mem),  &m_Fluid.mgpu[FVEL]),                 "InsertParticlesCL", "clSetKernelArg 5",  "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 6,  sizeof(cl_mem),  &m_Fluid.mgpu[FVEVAL]),               "InsertParticlesCL", "clSetKernelArg 6",  "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 7,  sizeof(cl_mem),  &m_Fluid.mgpu[FFORCE]),               "InsertParticlesCL", "clSetKernelArg 7",  "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 8,  sizeof(cl_mem),  &m_Fluid.mgpu[FPRESS]),               "InsertParticlesCL", "clSetKernelArg 8",  "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 9,  sizeof(cl_mem),  &m_Fluid.mgpu[FDENSITY]),             "InsertParticlesCL", "clSetKernelArg 9",  "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 10, sizeof(cl_mem),  &m_Fluid.mgpu[FAGE]),                 "InsertParticlesCL", "clSetKernelArg 10", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 11, sizeof(cl_mem),  &m_Fluid.mgpu[FCOLOR]),               "InsertParticlesCL", "clSetKernelArg 11", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 12, sizeof(cl_mem),  &m_Fluid.mgpu[FGCELL]),               "InsertParticlesCL", "clSetKernelArg 12", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 13, sizeof(cl_mem),  &m_Fluid.mgpu[FGNDX]),                "InsertParticlesCL", "clSetKernelArg 13", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 14, sizeof(cl_mem),  &m_Fluid.mgpu[FELASTIDX]),            "InsertParticlesCL", "clSetKernelArg 14", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 15, sizeof(cl_mem),  &m_Fluid.mgpu[FPARTICLEIDX]),         "InsertParticlesCL", "clSetKernelArg 15", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 16, sizeof(cl_mem),  &m_Fluid.mgpu[FPARTICLE_ID]),         "InsertParticlesCL", "clSetKernelArg 16", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 17, sizeof(cl_mem),  &m_Fluid.mgpu[FMASS_RADIUS]),         "InsertParticlesCL", "clSetKernelArg 17", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 18, sizeof(cl_mem),  &m_Fluid.mgpu[FNERVEIDX]),            "InsertParticlesCL", "clSetKernelArg 18", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 19, sizeof(cl_mem),  &m_Fluid.mgpu[FEPIGEN]),              "InsertParticlesCL", "clSetKernelArg 19", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 20, sizeof(cl_mem),  &m_Fluid.mgpu[FCONC]),                "InsertParticlesCL", "clSetKernelArg 20", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 21, sizeof(cl_mem),  &m_FluidTemp.mgpu[FPOS]),             "InsertParticlesCL", "clSetKernelArg 21", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 22,  sizeof(cl_mem), &m_FluidTemp.mgpu[FVEL]),             "InsertParticlesCL", "clSetKernelArg 22", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 23,  sizeof(cl_mem), &m_FluidTemp.mgpu[FVEVAL]),           "InsertParticlesCL", "clSetKernelArg 23", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 24,  sizeof(cl_mem), &m_FluidTemp.mgpu[FFORCE]),           "InsertParticlesCL", "clSetKernelArg 24", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 25,  sizeof(cl_mem), &m_FluidTemp.mgpu[FPRESS]),           "InsertParticlesCL", "clSetKernelArg 25", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 26,  sizeof(cl_mem), &m_FluidTemp.mgpu[FDENSITY]),         "InsertParticlesCL", "clSetKernelArg 26", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 27, sizeof(cl_mem),  &m_FluidTemp.mgpu[FAGE]),             "InsertParticlesCL", "clSetKernelArg 27", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 28, sizeof(cl_mem),  &m_FluidTemp.mgpu[FCOLOR]),           "InsertParticlesCL", "clSetKernelArg 28", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 29, sizeof(cl_mem),  &m_FluidTemp.mgpu[FGCELL]),           "InsertParticlesCL", "clSetKernelArg 29", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 30, sizeof(cl_mem),  &m_FluidTemp.mgpu[FGNDX]),            "InsertParticlesCL", "clSetKernelArg 30", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 31, sizeof(cl_mem),  &m_FluidTemp.mgpu[FELASTIDX]),        "InsertParticlesCL", "clSetKernelArg 31", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 32, sizeof(cl_mem),  &m_FluidTemp.mgpu[FPARTICLEIDX]),     "InsertParticlesCL", "clSetKernelArg 32", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 33, sizeof(cl_mem),  &m_FluidTemp.mgpu[FPARTICLE_ID]),     "InsertParticlesCL", "clSetKernelArg 33", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 34, sizeof(cl_mem),  &m_FluidTemp.mgpu[FMASS_RADIUS]),     "InsertParticlesCL", "clSetKernelArg 34", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 35, sizeof(cl_mem),  &m_FluidTemp.mgpu[FNERVEIDX]),        "InsertParticlesCL", "clSetKernelArg 35", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 36, sizeof(cl_mem),  &m_FluidTemp.mgpu[FEPIGEN]),          "InsertParticlesCL", "clSetKernelArg 36", "FUNC_COUNTING_SORT_FULL", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 37, sizeof(cl_mem),  &m_FluidTemp.mgpu[FCONC]),            "InsertParticlesCL", "clSetKernelArg 37", "FUNC_COUNTING_SORT_FULL", mbDebug);
-
-
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 2,  sizeof(cl_mem),  &m_Fluid.mgpu[FBIN]),                 "CountingSortFullCL", "clSetKernelArg 2",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 3,  sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_OFFSET]),          "CountingSortFullCL", "clSetKernelArg 3",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 4,  sizeof(cl_mem),  &m_Fluid.mgpu[FPOS]),                 "CountingSortFullCL", "clSetKernelArg 4",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 5,  sizeof(cl_mem),  &m_Fluid.mgpu[FVEL]),                 "CountingSortFullCL", "clSetKernelArg 5",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 6,  sizeof(cl_mem),  &m_Fluid.mgpu[FVEVAL]),               "CountingSortFullCL", "clSetKernelArg 6",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 7,  sizeof(cl_mem),  &m_Fluid.mgpu[FFORCE]),               "CountingSortFullCL", "clSetKernelArg 7",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 8,  sizeof(cl_mem),  &m_Fluid.mgpu[FPRESS]),               "CountingSortFullCL", "clSetKernelArg 8",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 9,  sizeof(cl_mem),  &m_Fluid.mgpu[FDENSITY]),             "CountingSortFullCL", "clSetKernelArg 9",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 10, sizeof(cl_mem),  &m_Fluid.mgpu[FAGE]),                 "CountingSortFullCL", "clSetKernelArg 10", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 11, sizeof(cl_mem),  &m_Fluid.mgpu[FCOLOR]),               "CountingSortFullCL", "clSetKernelArg 11", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 12, sizeof(cl_mem),  &m_Fluid.mgpu[FGCELL]),               "CountingSortFullCL", "clSetKernelArg 12", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 13, sizeof(cl_mem),  &m_Fluid.mgpu[FGNDX]),                "CountingSortFullCL", "clSetKernelArg 13", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 14, sizeof(cl_mem),  &m_Fluid.mgpu[FELASTIDX]),            "CountingSortFullCL", "clSetKernelArg 14", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 15, sizeof(cl_mem),  &m_Fluid.mgpu[FPARTICLEIDX]),         "CountingSortFullCL", "clSetKernelArg 15", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 16, sizeof(cl_mem),  &m_Fluid.mgpu[FPARTICLE_ID]),         "CountingSortFullCL", "clSetKernelArg 16", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 17, sizeof(cl_mem),  &m_Fluid.mgpu[FMASS_RADIUS]),         "CountingSortFullCL", "clSetKernelArg 17", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 18, sizeof(cl_mem),  &m_Fluid.mgpu[FNERVEIDX]),            "CountingSortFullCL", "clSetKernelArg 18", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 19, sizeof(cl_mem),  &m_Fluid.mgpu[FEPIGEN]),              "CountingSortFullCL", "clSetKernelArg 19", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 20, sizeof(cl_mem),  &m_Fluid.mgpu[FCONC]),                "CountingSortFullCL", "clSetKernelArg 20", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 21, sizeof(cl_mem),  &m_FluidTemp.mgpu[FPOS]),             "CountingSortFullCL", "clSetKernelArg 21", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 22,  sizeof(cl_mem), &m_FluidTemp.mgpu[FVEL]),             "CountingSortFullCL", "clSetKernelArg 22", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 23,  sizeof(cl_mem), &m_FluidTemp.mgpu[FVEVAL]),           "CountingSortFullCL", "clSetKernelArg 23", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 24,  sizeof(cl_mem), &m_FluidTemp.mgpu[FFORCE]),           "CountingSortFullCL", "clSetKernelArg 24", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 25,  sizeof(cl_mem), &m_FluidTemp.mgpu[FPRESS]),           "CountingSortFullCL", "clSetKernelArg 25", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 26,  sizeof(cl_mem), &m_FluidTemp.mgpu[FDENSITY]),         "CountingSortFullCL", "clSetKernelArg 26", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 27, sizeof(cl_mem),  &m_FluidTemp.mgpu[FAGE]),             "CountingSortFullCL", "clSetKernelArg 27", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 28, sizeof(cl_mem),  &m_FluidTemp.mgpu[FCOLOR]),           "CountingSortFullCL", "clSetKernelArg 28", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 29, sizeof(cl_mem),  &m_FluidTemp.mgpu[FGCELL]),           "CountingSortFullCL", "clSetKernelArg 29", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 30, sizeof(cl_mem),  &m_FluidTemp.mgpu[FGNDX]),            "CountingSortFullCL", "clSetKernelArg 30", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 31, sizeof(cl_mem),  &m_FluidTemp.mgpu[FELASTIDX]),        "CountingSortFullCL", "clSetKernelArg 31", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 32, sizeof(cl_mem),  &m_FluidTemp.mgpu[FPARTICLEIDX]),     "CountingSortFullCL", "clSetKernelArg 32", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 33, sizeof(cl_mem),  &m_FluidTemp.mgpu[FPARTICLE_ID]),     "CountingSortFullCL", "clSetKernelArg 33", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 34, sizeof(cl_mem),  &m_FluidTemp.mgpu[FMASS_RADIUS]),     "CountingSortFullCL", "clSetKernelArg 34", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 35, sizeof(cl_mem),  &m_FluidTemp.mgpu[FNERVEIDX]),        "CountingSortFullCL", "clSetKernelArg 35", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 36, sizeof(cl_mem),  &m_FluidTemp.mgpu[FEPIGEN]),          "CountingSortFullCL", "clSetKernelArg 36", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 37, sizeof(cl_mem),  &m_FluidTemp.mgpu[FCONC]),            "CountingSortFullCL", "clSetKernelArg 37", "FUNC_COUNTING_SORT_FULL", mbDebug);
+    /*
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 0,  sizeof(cl_mem),  &m_FParamsDevice),                    "CountingSortFullCL", "clSetKernelArg 0",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 1,  sizeof(int),     &mMaxPoints),                         "CountingSortFullCL", "clSetKernelArg 1",  "FUNC_COUNTING_SORT_FULL", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNTING_SORT_FULL], 2,  sizeof(cl_mem),  &m_FluidTemp.mgpu[FPOS]),             "CountingSortFullCL", "clSetKernelArg 21", "FUNC_COUNTING_SORT_FULL", mbDebug);*/
     ////////////////////////////////////
     clFlush (m_queue);
     clFinish (m_queue);
@@ -1279,14 +1280,14 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
         m_queue,
         m_Kern[FUNC_COUNTING_SORT_FULL],
         1,
+        NULL,
         &m_FParams.numItems,
         &m_FParams.numGroups,
-        0,
         0,
         NULL,
         NULL),
 
-        "CountingSortFullCL", "clEnqueueNDRangeKernel", "FUNC_COUNTING_SORT_FULL 1", mbDebug );
+        "CountingSortFullCL", "clEnqueueNDRangeKernel 1", "FUNC_COUNTING_SORT_FULL", mbDebug );
 
 
     // Having sorted the particle data, we can start using a shortened list of particles.
@@ -1298,38 +1299,38 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
 
 //     clCheck ( clEnqueueCopyBuffer(m_queue, cl_gpuVar(&m_FluidDevice, FPOS), gpuVar(&m_FluidTemp, FPOS), 0, 0,  mMaxPoints*sizeof(cl_float3), 0, NULL, NULL), "TransferToTempCL", "clEnqueueCopyBuffer", "m_FluidTempDevice", mbDebug);
 //
-//     clFlush (m_queue);
-//     clFinish (m_queue);
-//
-//     clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
-//
-//
-//     printf("\n############################################################################################### m_Fluid after CountingSortFullCL():\n");
-//     for (int i = 0; i < mMaxPoints; ++i) {
-//         cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
-//         printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
-//     }
-//     fflush(stdout);
-//
-//     clFlush (m_queue);
-//     clFinish (m_queue);
-//
-//     clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_FluidTemp, FPOS), 0, NULL, NULL);
-//
-//     printf("\n############################################################################################### m_FluidTemp after CountingSortFullCL():\n");
-//     fflush(stdout);
-//     for (int i = 0; i < mMaxPoints; ++i) {
-//         cl_float3 value2 = bufV3(&m_FluidTemp, FPOS)[i];
-//         printf("Index: %d, Value: (%f, %f, %f)\n", i, value2.s[0], value2.s[1], value2.s[2]);
-//     }
-//     fflush(stdout);
+    clFlush (m_queue);
+    clFinish (m_queue);
+
+    clEnqueueReadBuffer(m_queue, gpuVar(&m_Fluid, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_Fluid, FPOS), 0, NULL, NULL);
+
+
+    printf("\n############################################################################################### m_Fluid after CountingSortFullCL():\n");
+    for (int i = 0; i < mMaxPoints; ++i) {
+        cl_float3 value = bufV3(&m_Fluid, FPOS)[i];
+        printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
+    }
+    fflush(stdout);
+
+    clFlush (m_queue);
+    clFinish (m_queue);
+
+    clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FPOS), CL_TRUE, 0, mMaxPoints*sizeof(cl_float3), bufV3(&m_FluidTemp, FPOS), 0, NULL, NULL);
+
+    printf("\n############################################################################################### m_FluidTemp after CountingSortFullCL():\n");
+    fflush(stdout);
+    for (int i = 0; i < mMaxPoints; ++i) {
+        cl_float3 value = bufV3(&m_FluidTemp, FPOS)[i];
+        printf("Index: %d, Value: (%f, %f, %f)\n", i, value.s[0], value.s[1], value.s[2]);
+    }
+    fflush(stdout);
 
     clFlush (m_queue);
     clFinish (m_queue);
 
     computeNumBlocks ( m_FParams.pnumActive, local_work_size, m_FParams.numGroups, m_FParams.numItems); // particles
 
-    if (verbosity>1) std::cout<<"\n CountingSortFullCL : FUNC_COUNT_SORT_DENSE_LISTS\n"<<std::flush;
+    if (verbosity>1) std::cout<<"\n CountingSortDenseListsCL : FUNC_COUNT_SORT_DENSE_LISTS\n"<<std::flush;
     // countingSortDenseLists ( int pnum ) // NB launch on bins not particles.
     // Calculate the smallest multiple of 128 greater than 10000
     size_t t_blockSize  = SCAN_BLOCKSIZE << 1;
@@ -1337,15 +1338,15 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
     size_t t_numElem2   = int (t_numElem1 / t_blockSize) + 1;
     clFinish (m_queue);    // needed to prevent colision with previous operations
 
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 0, sizeof(cl_mem),  &m_FParamsDevice),                          "InsertParticlesCL", "clSetKernelArg 0", "FUNC_INSERT", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 1, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_OFFSET]),                "InsertParticlesCL", "clSetKernelArg 1", "FUNC_INSERT", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 2, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_COUNT]),                 "InsertParticlesCL", "clSetKernelArg 2", "FUNC_INSERT", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 3, sizeof(cl_mem),  &m_Fluid.mgpu[FDENSE_LISTS]),               "InsertParticlesCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 4, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_COUNT_ACTIVE_GENES]),    "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 5, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_OFFSET_ACTIVE_GENES]),   "InsertParticlesCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 6, sizeof(cl_mem),  &m_Fluid.mgpu[FEPIGEN]),                    "InsertParticlesCL", "clSetKernelArg 5", "FUNC_INSERT", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 7, sizeof(cl_mem),  &m_Fluid.mgpu[FPARTICLE_ID]),               "InsertParticlesCL", "clSetKernelArg 6", "FUNC_INSERT", mbDebug);
-    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 8, sizeof(int),     &mMaxPoints),                               "InsertParticlesCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 0, sizeof(cl_mem),  &m_FParamsDevice),                          "CountingSortDenseListsCL", "clSetKernelArg 0", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 1, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_OFFSET]),                "CountingSortDenseListsCL", "clSetKernelArg 1", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 2, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_COUNT]),                 "CountingSortDenseListsCL", "clSetKernelArg 2", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 3, sizeof(cl_mem),  &m_Fluid.mgpu[FDENSE_LISTS]),               "CountingSortDenseListsCL", "clSetKernelArg 3", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 4, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_COUNT_ACTIVE_GENES]),    "CountingSortDenseListsCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 5, sizeof(cl_mem),  &m_Fluid.mgpu[FBIN_OFFSET_ACTIVE_GENES]),   "CountingSortDenseListsCL", "clSetKernelArg 4", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 6, sizeof(cl_mem),  &m_Fluid.mgpu[FEPIGEN]),                    "CountingSortDenseListsCL", "clSetKernelArg 5", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 7, sizeof(cl_mem),  &m_Fluid.mgpu[FPARTICLE_ID]),               "CountingSortDenseListsCL", "clSetKernelArg 6", "FUNC_INSERT", mbDebug);
+    clCheck(clSetKernelArg(m_Kern[FUNC_COUNT_SORT_DENSE_LISTS], 8, sizeof(int),     &mMaxPoints),                               "CountingSortDenseListsCL", "clSetKernelArg 7", "FUNC_INSERT", mbDebug);
 
 
     // Enqueue kernel
@@ -1360,7 +1361,7 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
         0,
         NULL,
         NULL),
-    "CountingSortFullCL", "clEnqueueNDRangeKernel", "FUNC_COUNT_SORT_LISTS", mbDebug);
+    "CountingSortDenseListsCL", "clEnqueueNDRangeKernel", "FUNC_COUNT_SORT_LISTS", mbDebug);
 
     clFinish (m_queue);
 
@@ -1368,7 +1369,7 @@ void FluidSystem::CountingSortFullCL ( cl_float3* ppos ){
         std::cout<<"\n### Saving UintArray .csv files."<<std::flush;
 
         //clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FEPIGEN), gpuVar(&m_FluidTemp, FEPIGEN),	mMaxPoints *sizeof(uint[NUM_GENES]) ), "CountingSortFullCL8", "cuMemcpyDtoH", "FBIN_COUNT", mbDebug);
-        //clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FEPIGEN), CL_TRUE, mMaxPoints *sizeof(uint[NUM_GENES]), sizeof(int), bufI(&m_Fluid, FEPIGEN), 0, NULL, NULL), "CountingSortFullCL8", "clEnqueueReadBuffer", "FBIN_COUNT", mbDebug);
+        clCheck( clEnqueueReadBuffer(m_queue, gpuVar(&m_FluidTemp, FEPIGEN), CL_TRUE, mMaxPoints *sizeof(uint[NUM_GENES]), sizeof(int), bufI(&m_Fluid, FEPIGEN), 0, NULL, NULL), "CountingSortFullCL8", "clEnqueueReadBuffer", "FBIN_COUNT", mbDebug);
         SaveUintArray_2D( bufI(&m_Fluid, FEPIGEN), mMaxPoints, NUM_GENES, "CountingSortFullCL__m_FluidTemp.bufI(FEPIGEN)3.csv" );
 
         //clCheck( cuMemcpyDtoH ( bufI(&m_Fluid, FEPIGEN), gpuVar(&m_Fluid, FEPIGEN),	/*mMaxPoints*/mNumPoints *sizeof(uint[NUM_GENES]) ), "PrefixSumChangesCL", "cuMemcpyDtoH", "FBIN_COUNT", mbDebug);
