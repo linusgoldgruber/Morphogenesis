@@ -24,6 +24,14 @@
 
 using namespace std;
 
+// Define an error checking function
+void checkStatusError(cl_int status, const std::string& operation, int verbosity) {
+    if (status != CL_SUCCESS && verbosity > 0) {
+        std::cerr << "Error during " << operation << ": " << status << std::endl;
+        exit(EXIT_FAILURE); // Terminate the program
+    }
+}
+
 
 std::string checkerror(int input) {
 		int errorCode = input;
@@ -158,7 +166,7 @@ bool FluidSystem::clCheck(cl_int status, std::string method, std::string apicall
 
 bool FluidSystem::clCheck(cl_int status, const char* method, const char* apicall, const char* arg, bool bDebug) {
 
-    std::cout << "                                                                                                                            clCheck() called for ";
+    std::cout << "                                                                                                                            clCheck(): ";
     if (method != nullptr) {
         std::cout << method;
     }
@@ -1934,7 +1942,7 @@ void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting 
         std::cout << "\n\nRun2PhysicalSort() Chk2, saved "<<launchParams.outPath<< m_Frame+m_Debug_file <<".csv  _after_  PrefixSumCellsCL\n"<<std::flush;
         //TransferFromTempCL(int buf_id, int sz );
     }
-    cout << "\nCHECK 1.1 Run2Simulation() \n" << flush;
+    cout << "\nCHECK 1.1 Run2PhysicalSort() \n" << flush;
     CountingSortFullCL ( 0x0 );
     clCheck(clFinish(m_queue), "Run", "clFinish", "After CountingSortFullCL", mbDebug);
     printf("\nCHECK 1.2 Run2Simulation() \n");
@@ -1943,7 +1951,7 @@ void FluidSystem::Run2PhysicalSort(){ // beginning of every time step, sorrting 
 
 void FluidSystem::Run2InnerPhysicalLoop(){ //
     printf("\n####\n------- starting Run2InnerPhysicalLoop()... -------");//     if(m_FParams.freeze==true){
-//         InitializeBondsCL ();
+//         InitializeBondsCL (); //TODO Reimplement!
 //         clCheck(clFinish(m_queue), "Run", "clFinish", "After InitializeBondsCL ", mbDebug);
 //     }
     printf("\n####\n------- Run2InnerPhysicalLoop() chk1 -------");
@@ -2652,8 +2660,8 @@ void FluidSystem::Run2Simulation(){
         }
         if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
         clCheck(clFinish(m_queue), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);
-        if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
-        if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
+//         if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
+//         if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
         if (verbosity>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
     }
     setFreeze(false);                                                                                       // freeze=false => bonds can be broken now.
@@ -2677,8 +2685,8 @@ void FluidSystem::Run2Simulation(){
         auto begin = std::chrono::steady_clock::now();
         if(launchParams.save_csv=='y'||launchParams.save_vtp=='y') TransferFromCL ();
         clCheck(clFinish(m_queue), "Run", "clFinish", "Run2Simulation After TransferFromCL", mbDebug);
-        if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
-        if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
+//         if(launchParams.save_csv=='y') SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+90);
+//         if(launchParams.save_vtp=='y') SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+90);
         if (verbosity>0)cout << "\n File# " << launchParams.file_num << ". " << std::flush;
 
         auto end = std::chrono::steady_clock::now();
@@ -2696,8 +2704,8 @@ void FluidSystem::Run2Simulation(){
     //launchParams.file_num++;
 
     TransferFromCL ();
-    SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+99);   // save "end condition", even if not saving the series.
-    SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+99);
+//     SavePointsCSV2 ( launchParams.outPath, launchParams.file_num+99);   // save "end condition", even if not saving the series.
+//     SavePointsVTP2 ( launchParams.outPath, launchParams.file_num+99);
 
     WriteSimParams ( launchParams.outPath );
     WriteGenome( launchParams.outPath );

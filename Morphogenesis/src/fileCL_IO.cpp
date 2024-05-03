@@ -1230,7 +1230,7 @@ void FluidSystem::SavePointsVTP2 ( const char * relativePath, int frame ){// use
 
     // points, vertices & lines
     // points & vertices = FPOS 3df
-if (verbosity>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
+    if (verbosity>1)cout<<"\nSavePointsVTP2: chk 0"<<std::flush;
     vtkSmartPointer<vtkPoints> points3D = vtkSmartPointer<vtkPoints>::New();                           // Points3D
 	vtkSmartPointer<vtkCellArray> Vertices = vtkSmartPointer<vtkCellArray>::New();                     // Vertices
     uint num_active_points = 0;
@@ -1283,6 +1283,7 @@ if (verbosity>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
     cl_float3* Pos_i;
     //cl_float3* Pos_j;
     //
+
     for ( unsigned int i = 0; i < num_active_points; ++i )
 	{
         Pos_i = getPos(i);
@@ -1298,7 +1299,7 @@ if (verbosity>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
             vtkSmartPointer<vtkLine> line = vtkSmartPointer<vtkLine>::New();
             line->GetPointIds()->SetId(0,i);
             line->GetPointIds()->SetId(1,secondParticle);
-            Lines->InsertNextCell(line);
+//             Lines->InsertNextCell(line); //TODO Reimplement
             /*
             //points3D->Get ?;
             double samplePoint_i[3], samplePoint_j[3];
@@ -1320,24 +1321,24 @@ if (verbosity>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
 	for(int corner=0; corner<8; corner++){
         int firstParticle = corner + num_active_points;
         vtkSmartPointer<vtkLine> line = vtkSmartPointer<vtkLine>::New();
-        if(corner&1){ // Pos->x = m_Vec[ PVOLMAX ].x; // bitmask to select axes to swap to PVOLMAX
-            int secondParticle = corner -1 + num_active_points;
-            line->GetPointIds()->SetId(0,firstParticle);
-            line->GetPointIds()->SetId(1,secondParticle);
-            Lines->InsertNextCell(line);
-        }
-        if(corner&2){ // Pos->y = m_Vec[ PVOLMAX ].y;
-            int secondParticle = corner -2 + num_active_points;
-            line->GetPointIds()->SetId(0,firstParticle);
-            line->GetPointIds()->SetId(1,secondParticle);
-            Lines->InsertNextCell(line);
-        }
-        if(corner&4){ // Pos->z = m_Vec[ PVOLMAX ].z;
-            int secondParticle = corner -4 + num_active_points;
-            line->GetPointIds()->SetId(0,firstParticle);
-            line->GetPointIds()->SetId(1,secondParticle);
-            Lines->InsertNextCell(line);
-        }
+//         if(corner&1){ // Pos->x = m_Vec[ PVOLMAX ].x; // bitmask to select axes to swap to PVOLMAX
+//             int secondParticle = corner -1 + num_active_points;
+//             line->GetPointIds()->SetId(0,firstParticle);
+//             line->GetPointIds()->SetId(1,secondParticle);
+//             Lines->InsertNextCell(line);
+//         }
+//         if(corner&2){ // Pos->y = m_Vec[ PVOLMAX ].y;
+//             int secondParticle = corner -2 + num_active_points;
+//             line->GetPointIds()->SetId(0,firstParticle);
+//             line->GetPointIds()->SetId(1,secondParticle);
+//             Lines->InsertNextCell(line);
+//         }
+//         if(corner&4){ // Pos->z = m_Vec[ PVOLMAX ].z;
+//             int secondParticle = corner -4 + num_active_points;
+//             line->GetPointIds()->SetId(0,firstParticle);
+//             line->GetPointIds()->SetId(1,secondParticle);
+//             Lines->InsertNextCell(line);
+//         }
         //pid[0] = points3D->InsertNextPoint(Pos->x, Pos->y, Pos->z);
         //Vertices->InsertNextCell(1,pid);
         /*
@@ -1645,6 +1646,7 @@ if (verbosity>1)cout<<"\nSavePointsVTP2: chk 1"<<std::flush;
 
     //polydata->GetPointData()->AddArray(BondsUIntData);
     //polydata->GetPointData()->AddArray(BondsFloatData);
+
     polydata->GetPointData()->AddArray(fage);
     polydata->GetPointData()->AddArray(fcolor);
     polydata->GetPointData()->AddArray(fpid);
