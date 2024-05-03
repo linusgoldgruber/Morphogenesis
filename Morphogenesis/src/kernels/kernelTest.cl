@@ -512,11 +512,52 @@ __kernel void countingSortFull(
     // Print the value along with the thread index
     //printf("Thread Index: %d, Value: (%f, %f, %f, %f)\n", i, fposTemp[i].x, fposTemp[i].y, fposTemp[i].z, fposTemp[i].w);
 
+if(get_global_id(0) == 1) {
+        printf("Thread Index: %d\n", i);
+        printf("fbin: (%f, %f, %f, %f)\n", fbin[i].x, fbin[i].y, fbin[i].z, fbin[i].w);
+        printf("fbin_offset: %u\n", fbin_offset[i]);
+        printf("fpos: (%f, %f, %f, %f)\n", fpos[i].x, fpos[i].y, fpos[i].z, fpos[i].w);
+        printf("fvel: (%f, %f, %f, %f)\n", fvel[i].x, fvel[i].y, fvel[i].z, fvel[i].w);
+        printf("fveval: (%f, %f, %f, %f)\n", fveval[i].x, fveval[i].y, fveval[i].z, fveval[i].w);
+        printf("fforce: (%f, %f, %f, %f)\n", fforce[i].x, fforce[i].y, fforce[i].z, fforce[i].w);
+        printf("fpress: %f\n", fpress[i]);
+        printf("fdensity: %f\n", fdensity[i]);
+        printf("fage: %u\n", fage[i]);
+        printf("fcolor: %u\n", fcolor[i]);
+        printf("fgcell: %u\n", fgcell[i]);
+        printf("fgndx: %u\n", fgndx[i]);
+        printf("felastidx: %u\n", felastidx[i]);
+        printf("fparticleidx: %u\n", fparticleidx[i]);
+        printf("fparticle_id: %u\n", fparticle_id[i]);
+        printf("fmass_radius: %u\n", fmass_radius[i]);
+        printf("fnerveidx: %u\n", fnerveidx[i]);
+        printf("fepigen: %u\n", fepigen[i]);
+        printf("fconc: %u\n", fconc[i]);
+        printf("fposTemp: (%f, %f, %f, %f)\n", fposTemp[i].x, fposTemp[i].y, fposTemp[i].z, fposTemp[i].w);
+        printf("fvelTemp: (%f, %f, %f, %f)\n", fvelTemp[i].x, fvelTemp[i].y, fvelTemp[i].z, fvelTemp[i].w);
+        printf("fvevalTemp: (%f, %f, %f, %f)\n", fvevalTemp[i].x, fvevalTemp[i].y, fvevalTemp[i].z, fvevalTemp[i].w);
+        printf("fforceTemp: (%f, %f, %f, %f)\n", fforceTemp[i].x, fforceTemp[i].y, fforceTemp[i].z, fforceTemp[i].w);
+        printf("fpressTemp: %f\n", fpressTemp[i]);
+        printf("fdensityTemp: %f\n", fdensityTemp[i]);
+        printf("fageTemp: %u\n", fageTemp[i]);
+        printf("fcolorTemp: %u\n", fcolorTemp[i]);
+        printf("fgcellTemp: %u\n", fgcellTemp[i]);
+        printf("fgndxTemp: %u\n", fgndxTemp[i]);
+        printf("felastidxTemp: %u\n", felastidxTemp[i]);
+        printf("fparticleidxTemp: %u\n", fparticleidxTemp[i]);
+        printf("fparticle_idTemp: %u\n", fparticle_idTemp[i]);
+        printf("fmass_radiusTemp: %u\n", fmass_radiusTemp[i]);
+        printf("fnerveidxTemp: %u\n", fnerveidxTemp[i]);
+        printf("fepigenTemp: %u\n", fepigenTemp[i]);
+        printf("fconcTemp: %u\n", fconcTemp[i]);
+
+}
+
     if (i >= pnum) return;
     if (m_FParamsDevice->debug > 1 && i == 0) printf("\ncountingSortFull(): pnum=%u\n", pnum);
-    uint icell = fgcell[i];
+    uint icell = fgcellTemp[i];
     if (icell != GRID_UNDEF) {
-        uint indx = fgndx[i];
+        uint indx = fgndxTemp[i];
         int sort_ndx = fbin_offset[icell] + indx;
         //printf("\nIndices: indx = %u, sort_ndx = %d\n", indx, sort_ndx);
 
@@ -538,9 +579,6 @@ __kernel void countingSortFull(
         fgcell    [sort_ndx] = icell;
         fgndx     [sort_ndx] = indx;
         float4 pos = fpos[i];
-
-
-
         for (int a = 0; a < BONDS_PER_PARTICLE; a++) {
             uint j = felastidx[i * BOND_DATA + a * DATA_PER_BOND];
             uint j_sort_ndx = UINT_MAX;
@@ -548,7 +586,6 @@ __kernel void countingSortFull(
             if (j < pnum) {
                 jcell = fgcell[j];
                 uint jndx = UINT_MAX;
-
                 if (jcell != GRID_UNDEF) {
                     jndx = fgndx[j];
                     if ((fbin_offset[jcell] + jndx) < pnum) {
@@ -561,16 +598,11 @@ __kernel void countingSortFull(
                 fparticleidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + b] =
                 fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + b];
             }
-            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 5] =
-            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 5];
-            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 6] =
-            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 6];
-            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 7] =
-            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 7];
-            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 8] =
-            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 8];
-            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 8] =
-            fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 8];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 5] = fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 5];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 6] = fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 6];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 7] = fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 7];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 8] = fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 8];
+            felastidx[sort_ndx * BOND_DATA + a * DATA_PER_BOND + 8] = fparticleidxTemp[i * BOND_DATA + a * DATA_PER_BOND + 8];
 
         }
             for (int a = 0; a < BONDS_PER_PARTICLE; a++) {
@@ -605,6 +637,47 @@ __kernel void countingSortFull(
                 fconc[sort_ndx * NUM_TF + i] = fconcTemp[i * NUM_TF + i];
             }
 
+            if(get_global_id(0) == 1) {
+                printf("Thread Index: %d\n", i);
+                printf("sort_ndx: %d\n", sort_ndx);
+                printf("fbin: (%f, %f, %f, %f)\n", fbin[sort_ndx].x, fbin[sort_ndx].y, fbin[sort_ndx].z, fbin[sort_ndx].w);
+                printf("fbin_offset: %u\n", fbin_offset[sort_ndx]);
+                printf("fpos: (%f, %f, %f, %f)\n", fpos[sort_ndx].x, fpos[sort_ndx].y, fpos[sort_ndx].z, fpos[sort_ndx].w);
+                printf("fvel: (%f, %f, %f, %f)\n", fvel[sort_ndx].x, fvel[sort_ndx].y, fvel[sort_ndx].z, fvel[sort_ndx].w);
+                printf("fveval: (%f, %f, %f, %f)\n", fveval[sort_ndx].x, fveval[sort_ndx].y, fveval[sort_ndx].z, fveval[sort_ndx].w);
+                printf("fforce: (%f, %f, %f, %f)\n", fforce[sort_ndx].x, fforce[sort_ndx].y, fforce[sort_ndx].z, fforce[sort_ndx].w);
+                printf("fpress: %f\n", fpress[sort_ndx]);
+                printf("fdensity: %f\n", fdensity[sort_ndx]);
+                printf("fage: %u\n", fage[sort_ndx]);
+                printf("fcolor: %u\n", fcolor[sort_ndx]);
+                printf("fgcell: %u\n", fgcell[sort_ndx]);
+                printf("fgndx: %u\n", fgndx[sort_ndx]);
+                printf("felastidx: %u\n", felastidx[sort_ndx]);
+                printf("fparticleidx: %u\n", fparticleidx[sort_ndx]);
+                printf("fparticle_id: %u\n", fparticle_id[sort_ndx]);
+                printf("fmass_radius: %u\n", fmass_radius[sort_ndx]);
+                printf("fnerveidx: %u\n", fnerveidx[sort_ndx]);
+                printf("fepigen: %u\n", fepigen[sort_ndx]);
+                printf("fconc: %u\n", fconc[sort_ndx]);
+
+                printf("fposTemp: (%f, %f, %f, %f)\n", fposTemp[i].x, fposTemp[i].y, fposTemp[i].z, fposTemp[i].w);
+                printf("fvelTemp: (%f, %f, %f, %f)\n", fvelTemp[i].x, fvelTemp[i].y, fvelTemp[i].z, fvelTemp[i].w);
+                printf("fvevalTemp: (%f, %f, %f, %f)\n", fvevalTemp[i].x, fvevalTemp[i].y, fvevalTemp[i].z, fvevalTemp[i].w);
+                printf("fforceTemp: (%f, %f, %f, %f)\n", fforceTemp[i].x, fforceTemp[i].y, fforceTemp[i].z, fforceTemp[i].w);
+                printf("fpressTemp: %f\n", fpressTemp[i]);
+                printf("fdensityTemp: %f\n", fdensityTemp[i]);
+                printf("fageTemp: %u\n", fageTemp[i]);
+                printf("fcolorTemp: %u\n", fcolorTemp[i]);
+                printf("fgcellTemp: %u\n", fgcellTemp[i]);
+                printf("fgndxTemp: %u\n", fgndxTemp[i]);
+                printf("felastidxTemp: %u\n", felastidxTemp[i]);
+                printf("fparticleidxTemp: %u\n", fparticleidxTemp[i]);
+                printf("fparticle_idTemp: %u\n", fparticle_idTemp[i]);
+                printf("fmass_radiusTemp: %u\n", fmass_radiusTemp[i]);
+                printf("fnerveidxTemp: %u\n", fnerveidxTemp[i]);
+                printf("fepigenTemp: %u\n", fepigenTemp[i]);
+                printf("fconcTemp: %u\n", fconcTemp[i]);
+            }
         }
 }
 
